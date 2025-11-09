@@ -18,6 +18,7 @@ class MyApp extends StatelessWidget {
       title: 'FlowBank',
       theme: ThemeData(useMaterial3: true),
       home: const OnboardingScreen(),
+
       debugShowCheckedModeBanner: false,
     );
   }
