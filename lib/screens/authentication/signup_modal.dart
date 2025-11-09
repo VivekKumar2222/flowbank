@@ -233,7 +233,7 @@ Future<void> showSignUpBottomSheet(
                           final email = emailController.text.trim();
                           final password = passwordController.text.trim();
 
-                          // Frontend validation
+                          // --- Frontend validation ---
                           if (fullName.isEmpty ||
                               email.isEmpty ||
                               password.isEmpty) {
@@ -260,41 +260,51 @@ Future<void> showSignUpBottomSheet(
 
                           print("Sending data: $fullName, $email, $password");
 
-                          final response = await http.post(
-                            Uri.parse("http://localhost:5000/api/auth/signup"),
-                            headers: {"Content-Type": "application/json"},
-                            body: jsonEncode({
-                              "name": fullName,
-                              "email": email,
-                              "password": password,
-                            }),
-                          );
-
-                          print("Response status: ${response.statusCode}");
-                          print("Response body: ${response.body}");
-
-                          if (response.statusCode == 200) {
-                            await Future.delayed(
-                              const Duration(milliseconds: 500),
-                            );
-                            onMessage("User registered successfully");
-                            Navigator.pop(context);
-
-                            Navigator.push(
-                              context,
-                              MaterialPageRoute(
-                                builder: (context) => OtpScreen(
-                                  email: emailController.text.trim(),
-                                ),
+                          try {
+                            final response = await http.post(
+                              Uri.parse(
+                                "http://localhost:5000/api/auth/signup",
                               ),
+                              headers: {"Content-Type": "application/json"},
+                              body: jsonEncode({
+                                "name": fullName,
+                                "email": email,
+                                "password": password,
+                              }),
                             );
-                          } else {
-                            final error = jsonDecode(response.body);
-                            onMessage(
-                              "Error: ${error['message'] ?? 'Unknown error'}",
-                            );
+
+                            print("Response status: ${response.statusCode}");
+                            print("Response body: ${response.body}");
+
+                            if (response.statusCode == 200 ||
+                                response.statusCode == 201) {
+                              onMessage("User registered successfully");
+
+                              // ✅ Navigate to OTP verification first
+                              Navigator.push(
+                                context,
+                                MaterialPageRoute(
+                                  builder: (context) => OtpScreen(email: email),
+                                ),
+                              );
+
+                              // Optionally navigate to home after OTP verification
+                              // Navigator.pushReplacement(
+                              //   context,
+                              //   MaterialPageRoute(builder: (context) => HomePage()),
+                              // );
+                            } else {
+                              final error = jsonDecode(response.body);
+                              onMessage(
+                                "Error: ${error['message'] ?? 'Unknown error'}",
+                              );
+                            }
+                          } catch (e) {
+                            print("⚠️ Exception during signup: $e");
+                            onMessage("Failed to connect to the server");
                           }
                         },
+
                         style: ElevatedButton.styleFrom(
                           backgroundColor: const Color(0xFF1E88E5),
                           shape: RoundedRectangleBorder(

@@ -24,16 +24,16 @@ class _DetailCollectorState extends State<DetailCollector> {
     final country = countryController.text.trim();
 
     if (phone.isEmpty || city.isEmpty || country.isEmpty) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text("All fields are required")),
-      );
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(const SnackBar(content: Text("All fields are required")));
       return;
     }
 
     setState(() => isLoading = true);
 
     final response = await http.post(
-      Uri.parse("http://10.0.2.2:5000/api/auth/complete-profile"),
+      Uri.parse("http://localhost:5000/api/auth/complete-profile"),
       headers: {"Content-Type": "application/json"},
       body: jsonEncode({
         "email": widget.email,
@@ -48,9 +48,8 @@ class _DetailCollectorState extends State<DetailCollector> {
     if (response.statusCode == 200) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text("Profile completed successfully!")),
-
       );
-                 Navigator.pushReplacement(
+      Navigator.pushReplacement(
         context,
         MaterialPageRoute(builder: (_) => HomePage()),
       );
@@ -60,8 +59,8 @@ class _DetailCollectorState extends State<DetailCollector> {
       final error = jsonDecode(response.body);
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
-            content:
-                Text("Error: ${error['message'] ?? 'Unknown error'}")),
+          content: Text("Error: ${error['message'] ?? 'Unknown error'}"),
+        ),
       );
     }
   }
@@ -75,7 +74,13 @@ class _DetailCollectorState extends State<DetailCollector> {
           gradient: LinearGradient(
             begin: Alignment.topCenter,
             end: Alignment.bottomCenter,
-            colors: [Colors.white, Colors.white, Colors.white, Colors.white, Colors.white],
+            colors: [
+              Colors.white,
+              Colors.white,
+              Colors.white,
+              Colors.white,
+              Colors.white,
+            ],
             stops: [0.0, 0.15, 0.35, 0.65, 1.0],
           ),
         ),
@@ -84,16 +89,25 @@ class _DetailCollectorState extends State<DetailCollector> {
             Positioned(
               top: 80,
               right: -50,
-              child: CustomPaint(size: const Size(200, 200), painter: CurvePainter()),
+              child: CustomPaint(
+                size: const Size(200, 200),
+                painter: CurvePainter(),
+              ),
             ),
             Positioned(
               bottom: 150,
               left: -80,
-              child: CustomPaint(size: const Size(300, 300), painter: WavePainter()),
+              child: CustomPaint(
+                size: const Size(300, 300),
+                painter: WavePainter(),
+              ),
             ),
             SafeArea(
               child: Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 20),
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 24,
+                  vertical: 20,
+                ),
                 child: Column(
                   mainAxisAlignment: MainAxisAlignment.center,
                   children: [
@@ -121,14 +135,23 @@ class _DetailCollectorState extends State<DetailCollector> {
                         labelText: "Country",
                         filled: true,
                         fillColor: Colors.white,
-                        contentPadding: const EdgeInsets.symmetric(vertical: 16, horizontal: 16),
+                        contentPadding: const EdgeInsets.symmetric(
+                          vertical: 16,
+                          horizontal: 16,
+                        ),
                         enabledBorder: OutlineInputBorder(
                           borderRadius: BorderRadius.circular(12),
-                          borderSide: const BorderSide(color: Color(0xFFCCD0D7), width: 1),
+                          borderSide: const BorderSide(
+                            color: Color(0xFFCCD0D7),
+                            width: 1,
+                          ),
                         ),
                         focusedBorder: OutlineInputBorder(
                           borderRadius: BorderRadius.circular(12),
-                          borderSide: const BorderSide(color: Color(0xFF1E88E5), width: 2),
+                          borderSide: const BorderSide(
+                            color: Color(0xFF1E88E5),
+                            width: 2,
+                          ),
                         ),
                       ),
                     ),
@@ -141,14 +164,23 @@ class _DetailCollectorState extends State<DetailCollector> {
                         labelText: "City",
                         filled: true,
                         fillColor: Colors.white,
-                        contentPadding: const EdgeInsets.symmetric(vertical: 16, horizontal: 16),
+                        contentPadding: const EdgeInsets.symmetric(
+                          vertical: 16,
+                          horizontal: 16,
+                        ),
                         enabledBorder: OutlineInputBorder(
                           borderRadius: BorderRadius.circular(12),
-                          borderSide: const BorderSide(color: Color(0xFFCCD0D7), width: 1),
+                          borderSide: const BorderSide(
+                            color: Color(0xFFCCD0D7),
+                            width: 1,
+                          ),
                         ),
                         focusedBorder: OutlineInputBorder(
                           borderRadius: BorderRadius.circular(12),
-                          borderSide: const BorderSide(color: Color(0xFF1E88E5), width: 2),
+                          borderSide: const BorderSide(
+                            color: Color(0xFF1E88E5),
+                            width: 2,
+                          ),
                         ),
                       ),
                     ),
@@ -162,14 +194,23 @@ class _DetailCollectorState extends State<DetailCollector> {
                         labelText: "Phone",
                         filled: true,
                         fillColor: Colors.white,
-                        contentPadding: const EdgeInsets.symmetric(vertical: 16, horizontal: 16),
+                        contentPadding: const EdgeInsets.symmetric(
+                          vertical: 16,
+                          horizontal: 16,
+                        ),
                         enabledBorder: OutlineInputBorder(
                           borderRadius: BorderRadius.circular(12),
-                          borderSide: const BorderSide(color: Color(0xFFCCD0D7), width: 1),
+                          borderSide: const BorderSide(
+                            color: Color(0xFFCCD0D7),
+                            width: 1,
+                          ),
                         ),
                         focusedBorder: OutlineInputBorder(
                           borderRadius: BorderRadius.circular(12),
-                          borderSide: const BorderSide(color: Color(0xFF1E88E5), width: 2),
+                          borderSide: const BorderSide(
+                            color: Color(0xFF1E88E5),
+                            width: 2,
+                          ),
                         ),
                       ),
                     ),
@@ -189,7 +230,9 @@ class _DetailCollectorState extends State<DetailCollector> {
                           ),
                         ),
                         child: isLoading
-                            ? const CircularProgressIndicator(color: Colors.white)
+                            ? const CircularProgressIndicator(
+                                color: Colors.white,
+                              )
                             : const Text(
                                 "Continue",
                                 style: TextStyle(
@@ -222,7 +265,12 @@ class CurvePainter extends CustomPainter {
 
     final path = Path();
     path.moveTo(0, 0);
-    path.quadraticBezierTo(size.width * 0.5, size.height * 0.3, size.width * 0.2, size.height);
+    path.quadraticBezierTo(
+      size.width * 0.5,
+      size.height * 0.3,
+      size.width * 0.2,
+      size.height,
+    );
     canvas.drawPath(path, paint);
   }
 
@@ -239,8 +287,18 @@ class WavePainter extends CustomPainter {
 
     final path = Path();
     path.moveTo(0, size.height * 0.5);
-    path.quadraticBezierTo(size.width * 0.25, size.height * 0.3, size.width * 0.5, size.height * 0.5);
-    path.quadraticBezierTo(size.width * 0.75, size.height * 0.7, size.width, size.height * 0.5);
+    path.quadraticBezierTo(
+      size.width * 0.25,
+      size.height * 0.3,
+      size.width * 0.5,
+      size.height * 0.5,
+    );
+    path.quadraticBezierTo(
+      size.width * 0.75,
+      size.height * 0.7,
+      size.width,
+      size.height * 0.5,
+    );
     path.lineTo(size.width, size.height);
     path.lineTo(0, size.height);
     path.close();
