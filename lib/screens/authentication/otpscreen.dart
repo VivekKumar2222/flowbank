@@ -3,6 +3,9 @@ import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
 import '../authentication/notification.dart';
 import '../home/homescreen.dart';
+import '../home/detail_collector.dart';
+import 'dart:async';
+
 
 class OtpScreen extends StatefulWidget {
   final String email;
@@ -12,9 +15,42 @@ class OtpScreen extends StatefulWidget {
   State<OtpScreen> createState() => _OtpScreenState();
 }
 
+
+
 class _OtpScreenState extends State<OtpScreen> {
   final TextEditingController otpController = TextEditingController();
+
+    bool canResend = false;
+  int remainingSeconds = 60;
+  Timer? timer;
+
+  @override
+  void initState() {
+    super.initState();
+    startTimer(); // start countdown as soon as screen opens
+  }
+
+  void startTimer() {
+    canResend = false;
+    remainingSeconds = 60;
+    timer?.cancel();
+    timer = Timer.periodic(const Duration(seconds: 1), (timer) {
+      if (remainingSeconds == 0) {
+        setState(() => canResend = true);
+        timer.cancel();
+      } else {
+        setState(() => remainingSeconds--);
+      }
+    });
+  }
+
+  @override
+  void dispose() {
+    timer?.cancel();
+    super.dispose();
+  }
   bool isLoading = false;
+  
 
   Future<void> verifyOtp() async {
     setState(() => isLoading = true);
@@ -33,7 +69,7 @@ class _OtpScreenState extends State<OtpScreen> {
     if (response.statusCode == 201) {
       Navigator.pushReplacement(
         context,
-        MaterialPageRoute(builder: (_) => const HomePage()),
+        MaterialPageRoute(builder: (_) => DetailCollector(email: widget.email)),
       );
     }
 
@@ -187,20 +223,37 @@ class _OtpScreenState extends State<OtpScreen> {
                   const SizedBox(height: 16),
 
                   // Resend OTP
-                  TextButton(
-                    onPressed: () {
-                      showCustomNotification(
-                          context, "OTP resent successfully!");
-                    },
-                    child: Text(
-                      "Resend OTP",
-                      style: TextStyle(
-                        color: primaryColor,
-                        fontSize: 15,
-                        fontWeight: FontWeight.w500,
-                      ),
-                    ),
-                  ),
+TextButton(
+  onPressed: canResend
+      ? () async {
+          final response = await http.post(
+            Uri.parse("http://10.0.2.2:5000/api/auth/resend-otp"),
+            headers: {"Content-Type": "application/json"},
+            body: jsonEncode({"email": widget.email}),
+          );
+
+          final data = jsonDecode(response.body);
+          if (response.statusCode == 200) {
+            showCustomNotification(context, data['message']);
+            startTimer(); // Restart countdown
+          } else {
+            showCustomNotification(context, data['message'] ?? "Failed to resend OTP");
+          }
+        }
+      : null,
+  child: Text(
+    canResend
+        ? "Resend OTP"
+        : "Resend in ${remainingSeconds}s",
+    style: TextStyle(
+      color: canResend ? primaryColor : Colors.grey,
+      fontSize: 15,
+      fontWeight: FontWeight.w500,
+    ),
+  ),
+),
+
+
                 ],
               ),
             ),

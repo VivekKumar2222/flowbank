@@ -121,6 +121,41 @@ router.post("/verify-login-otp", async (req, res) => {
   }
 });
 
+// =================== RESEND OTP ROUTE ===================
+router.post("/resend-otp", async (req, res) => {
+  try {
+    const { email } = req.body;
+
+    // Check if user data exists in otpStore
+    const record = otpStore.get(email);
+    if (!record) {
+      return res.status(400).json({ message: "User not found. Please sign up again." });
+    }
+
+    // Generate new OTP
+    const newOtp = generateOTP();
+    const expiry = Date.now() + 5 * 60 * 1000; // 5 minutes validity
+
+    // Update the existing record
+    otpStore.set(email, { ...record, otp: newOtp, expiry });
+
+    // Send new OTP email
+    const html = `
+      <p>Hello ${record.name},</p>
+      <p>Your new OTP for FlowBank signup is: <b>${newOtp}</b></p>
+      <p>This code will expire in 5 minutes.</p>
+    `;
+    await sendEmail(email, "FlowBank New OTP", html);
+
+    res.status(200).json({ message: "A new OTP has been sent to your email." });
+
+  } catch (err) {
+    console.error("Resend OTP error:", err);
+    res.status(500).json({ message: "Server error", error: err.message });
+  }
+});
+
+
 
 // module.exports = router;
 
@@ -231,5 +266,28 @@ router.post("/login", async (req, res) => {
 //     res.status(500).json({ message: "Server error" });
 //   }
 // });
+
+router.post("/complete-profile", async (req, res) => {
+  try {
+    const { email, phone, city, country } = req.body;
+
+    // Find user
+    const user = await User.findOne({ email });
+    if (!user) return res.status(404).json({ message: "User not found" });
+
+    // Update fields
+    user.phone = phone;
+    user.city = city;
+    user.country = country;
+
+    await user.save();
+
+    res.status(200).json({ message: "Profile completed successfully!" });
+  } catch (err) {
+    console.error("Complete profile error:", err);
+    res.status(500).json({ message: "Server error", error: err.message });
+  }
+});
+
 
 module.exports = router;

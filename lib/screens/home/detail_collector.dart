@@ -1,44 +1,81 @@
 import 'dart:convert';
 import 'package:http/http.dart' as http;
 import 'package:flutter/material.dart';
+import '../home/homescreen.dart';
 
 class DetailCollector extends StatefulWidget {
-  const DetailCollector({Key? key}) : super(key: key);
+  final String email;
+  const DetailCollector({Key? key, required this.email}) : super(key: key);
 
   @override
   State<DetailCollector> createState() => _DetailCollectorState();
 }
 
 class _DetailCollectorState extends State<DetailCollector> {
-  final TextEditingController fullNameController = TextEditingController();
-  final TextEditingController emailController = TextEditingController();
-  final TextEditingController passwordController = TextEditingController();
+  final TextEditingController phoneController = TextEditingController();
+  final TextEditingController cityController = TextEditingController();
+  final TextEditingController countryController = TextEditingController();
 
-  bool isEmailValid(String email) {
-    final emailRegex = RegExp(r'^[\w-\.]+@([\w-]+\.)+[\w-]{2,4}$');
-    return emailRegex.hasMatch(email);
-  }
+  bool isLoading = false;
 
-  bool isValidPassword(String password) {
-    final passwordRegex = RegExp(r'^(?=.*[0-9!@#\$%\^&\*])(?=.{8,})');
-    return passwordRegex.hasMatch(password);
+  Future<void> submitDetails() async {
+    final phone = phoneController.text.trim();
+    final city = cityController.text.trim();
+    final country = countryController.text.trim();
+
+    if (phone.isEmpty || city.isEmpty || country.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text("All fields are required")),
+      );
+      return;
+    }
+
+    setState(() => isLoading = true);
+
+    final response = await http.post(
+      Uri.parse("http://10.0.2.2:5000/api/auth/complete-profile"),
+      headers: {"Content-Type": "application/json"},
+      body: jsonEncode({
+        "email": widget.email,
+        "phone": phone,
+        "city": city,
+        "country": country,
+      }),
+    );
+
+    setState(() => isLoading = false);
+
+    if (response.statusCode == 200) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text("Profile completed successfully!")),
+
+      );
+                 Navigator.pushReplacement(
+        context,
+        MaterialPageRoute(builder: (_) => HomePage()),
+      );
+      // Navigate to Home or Dashboard
+      // Navigator.pushReplacement(context, MaterialPageRoute(builder: (_) => HomePage()));
+    } else {
+      final error = jsonDecode(response.body);
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+            content:
+                Text("Error: ${error['message'] ?? 'Unknown error'}")),
+      );
+    }
   }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
+      resizeToAvoidBottomInset: false,
       body: Container(
         decoration: const BoxDecoration(
           gradient: LinearGradient(
             begin: Alignment.topCenter,
             end: Alignment.bottomCenter,
-            colors: [
-              Colors.white,
-              Colors.white,
-              Colors.white,
-              Colors.white,
-              Colors.white,
-            ],
+            colors: [Colors.white, Colors.white, Colors.white, Colors.white, Colors.white],
             stops: [0.0, 0.15, 0.35, 0.65, 1.0],
           ),
         ),
@@ -47,88 +84,22 @@ class _DetailCollectorState extends State<DetailCollector> {
             Positioned(
               top: 80,
               right: -50,
-              child: CustomPaint(
-                size: const Size(200, 200),
-                painter: CurvePainter(),
-              ),
+              child: CustomPaint(size: const Size(200, 200), painter: CurvePainter()),
             ),
             Positioned(
               bottom: 150,
               left: -80,
-              child: CustomPaint(
-                size: const Size(300, 300),
-                painter: WavePainter(),
-              ),
+              child: CustomPaint(size: const Size(300, 300), painter: WavePainter()),
             ),
             SafeArea(
-              child: SingleChildScrollView(
-                padding:
-                    const EdgeInsets.symmetric(horizontal: 24, vertical: 20),
+              child: Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 20),
                 child: Column(
+                  mainAxisAlignment: MainAxisAlignment.center,
                   children: [
-                    const SizedBox(height: 20),
+                    const SizedBox(height: 10),
                     Image.asset('assets/my_image5.png'),
-                    const SizedBox(height: 30),
-
-                    // Sign in with Google Button
-                    SizedBox(
-                      width: double.infinity,
-                      height: 52,
-                      child: ElevatedButton(
-                        onPressed: () {},
-                        style: ElevatedButton.styleFrom(
-                          backgroundColor: Colors.white,
-                          elevation: 0,
-                          shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(12),
-                            side: const BorderSide(
-                              color: Color(0xFFCCD0D7),
-                              width: 1,
-                            ),
-                          ),
-                        ),
-                        child: const Text(
-                          "Sign in with Google",
-                          style: TextStyle(
-                            fontSize: 16,
-                            fontWeight: FontWeight.w500,
-                            color: Color(0xFF475467),
-                          ),
-                        ),
-                      ),
-                    ),
-
                     const SizedBox(height: 20),
-
-                    // OR divider
-                    Row(
-                      children: [
-                        Expanded(
-                          child: Divider(
-                            color: const Color.fromARGB(199, 204, 208, 215),
-                            thickness: 1,
-                            endIndent: 8,
-                          ),
-                        ),
-                        const Text(
-                          'or',
-                          style: TextStyle(
-                            color: Color.fromARGB(179, 105, 111, 121),
-                            fontSize: 14,
-                            fontWeight: FontWeight.w500,
-                          ),
-                        ),
-                        Expanded(
-                          child: Divider(
-                            color: const Color.fromARGB(199, 204, 208, 215),
-                            thickness: 1,
-                            indent: 8,
-                          ),
-                        ),
-                      ],
-                    ),
-
-                    const SizedBox(height: 16),
 
                     const Align(
                       alignment: Alignment.centerLeft,
@@ -141,186 +112,94 @@ class _DetailCollectorState extends State<DetailCollector> {
                         ),
                       ),
                     ),
-
                     const SizedBox(height: 8),
 
-                    // Full Name
+                    // Country
                     TextField(
-                      controller: fullNameController,
+                      controller: countryController,
                       decoration: InputDecoration(
-                        labelText: "Full Name",
+                        labelText: "Country",
                         filled: true,
                         fillColor: Colors.white,
-                        contentPadding: const EdgeInsets.symmetric(
-                            vertical: 16, horizontal: 16),
+                        contentPadding: const EdgeInsets.symmetric(vertical: 16, horizontal: 16),
                         enabledBorder: OutlineInputBorder(
                           borderRadius: BorderRadius.circular(12),
-                          borderSide:
-                              const BorderSide(color: Color(0xFFCCD0D7), width: 1),
+                          borderSide: const BorderSide(color: Color(0xFFCCD0D7), width: 1),
                         ),
                         focusedBorder: OutlineInputBorder(
                           borderRadius: BorderRadius.circular(12),
-                          borderSide:
-                              const BorderSide(color: Color(0xFF1E88E5), width: 2),
+                          borderSide: const BorderSide(color: Color(0xFF1E88E5), width: 2),
                         ),
                       ),
                     ),
-
                     const SizedBox(height: 12),
 
-                    // Email
+                    // City
                     TextField(
-                      controller: emailController,
+                      controller: cityController,
                       decoration: InputDecoration(
-                        labelText: "Email",
+                        labelText: "City",
                         filled: true,
                         fillColor: Colors.white,
-                        contentPadding: const EdgeInsets.symmetric(
-                            vertical: 16, horizontal: 16),
+                        contentPadding: const EdgeInsets.symmetric(vertical: 16, horizontal: 16),
                         enabledBorder: OutlineInputBorder(
                           borderRadius: BorderRadius.circular(12),
-                          borderSide:
-                              const BorderSide(color: Color(0xFFCCD0D7), width: 1),
+                          borderSide: const BorderSide(color: Color(0xFFCCD0D7), width: 1),
                         ),
                         focusedBorder: OutlineInputBorder(
                           borderRadius: BorderRadius.circular(12),
-                          borderSide:
-                              const BorderSide(color: Color(0xFF1E88E5), width: 2),
+                          borderSide: const BorderSide(color: Color(0xFF1E88E5), width: 2),
                         ),
                       ),
                     ),
-
                     const SizedBox(height: 12),
 
-                    // Password
+                    // Phone
                     TextField(
-                      controller: passwordController,
-                      obscureText: true,
+                      controller: phoneController,
+                      keyboardType: TextInputType.phone,
                       decoration: InputDecoration(
-                        labelText: "Password",
+                        labelText: "Phone",
                         filled: true,
                         fillColor: Colors.white,
-                        contentPadding: const EdgeInsets.symmetric(
-                            vertical: 16, horizontal: 16),
+                        contentPadding: const EdgeInsets.symmetric(vertical: 16, horizontal: 16),
                         enabledBorder: OutlineInputBorder(
                           borderRadius: BorderRadius.circular(12),
-                          borderSide:
-                              const BorderSide(color: Color(0xFFCCD0D7), width: 1),
+                          borderSide: const BorderSide(color: Color(0xFFCCD0D7), width: 1),
                         ),
                         focusedBorder: OutlineInputBorder(
                           borderRadius: BorderRadius.circular(12),
-                          borderSide:
-                              const BorderSide(color: Color(0xFF1E88E5), width: 2),
+                          borderSide: const BorderSide(color: Color(0xFF1E88E5), width: 2),
                         ),
                       ),
                     ),
 
                     const SizedBox(height: 36),
 
-                    // Sign Up Button
+                    // Submit Button
                     SizedBox(
                       width: double.infinity,
                       height: 48,
                       child: ElevatedButton(
-                        onPressed: () async {
-                          final fullName = fullNameController.text.trim();
-                          final email = emailController.text.trim();
-                          final password = passwordController.text.trim();
-
-                          if (fullName.isEmpty ||
-                              email.isEmpty ||
-                              password.isEmpty) {
-                            ScaffoldMessenger.of(context).showSnackBar(
-                              const SnackBar(
-                                  content: Text("All fields are required")),
-                            );
-                            return;
-                          }
-
-                          if (!isEmailValid(email)) {
-                            ScaffoldMessenger.of(context).showSnackBar(
-                              const SnackBar(
-                                  content: Text("Enter a valid email")),
-                            );
-                            return;
-                          }
-
-                          if (!isValidPassword(password)) {
-                            ScaffoldMessenger.of(context).showSnackBar(
-                              const SnackBar(
-                                  content: Text(
-                                      "Password must be at least 8 characters and include a number or special character")),
-                            );
-                            return;
-                          }
-
-                          final response = await http.post(
-                            Uri.parse("http://10.0.2.2:5000/api/auth/signup"),
-                            headers: {"Content-Type": "application/json"},
-                            body: jsonEncode({
-                              "name": fullName,
-                              "email": email,
-                              "password": password,
-                            }),
-                          );
-
-                          if (response.statusCode == 201) {
-                            ScaffoldMessenger.of(context).showSnackBar(
-                              const SnackBar(
-                                  content:
-                                      Text("User registered successfully")),
-                            );
-                          } else {
-                            final error = jsonDecode(response.body);
-                            ScaffoldMessenger.of(context).showSnackBar(
-                              SnackBar(
-                                  content: Text(
-                                      "Error: ${error['message'] ?? 'Unknown error'}")),
-                            );
-                          }
-                        },
+                        onPressed: isLoading ? null : submitDetails,
                         style: ElevatedButton.styleFrom(
                           backgroundColor: const Color(0xFF1E88E5),
                           shape: RoundedRectangleBorder(
                             borderRadius: BorderRadius.circular(12),
                           ),
                         ),
-                        child: const Text(
-                          "Sign Up",
-                          style: TextStyle(
-                            fontSize: 16,
-                            fontWeight: FontWeight.w600,
-                            color: Colors.white,
-                          ),
-                        ),
+                        child: isLoading
+                            ? const CircularProgressIndicator(color: Colors.white)
+                            : const Text(
+                                "Continue",
+                                style: TextStyle(
+                                  fontSize: 16,
+                                  fontWeight: FontWeight.w600,
+                                  color: Colors.white,
+                                ),
+                              ),
                       ),
                     ),
-
-                    const SizedBox(height: 14),
-
-                    // Already have an account
-                    Row(
-                      mainAxisAlignment: MainAxisAlignment.center,
-                      children: const [
-                        Text(
-                          "Already have an account? ",
-                          style: TextStyle(
-                            fontSize: 14,
-                            fontWeight: FontWeight.w500,
-                            color: Color(0xFF475467),
-                          ),
-                        ),
-                        Text(
-                          "Login",
-                          style: TextStyle(
-                            fontSize: 14,
-                            fontWeight: FontWeight.w500,
-                            color: Color(0xFF0179FE),
-                          ),
-                        ),
-                      ],
-                    ),
-                    const SizedBox(height: 40),
                   ],
                 ),
               ),
@@ -332,7 +211,7 @@ class _DetailCollectorState extends State<DetailCollector> {
   }
 }
 
-// painters stay same
+// painters unchanged
 class CurvePainter extends CustomPainter {
   @override
   void paint(Canvas canvas, Size size) {
@@ -343,13 +222,7 @@ class CurvePainter extends CustomPainter {
 
     final path = Path();
     path.moveTo(0, 0);
-    path.quadraticBezierTo(
-      size.width * 0.5,
-      size.height * 0.3,
-      size.width * 0.2,
-      size.height,
-    );
-
+    path.quadraticBezierTo(size.width * 0.5, size.height * 0.3, size.width * 0.2, size.height);
     canvas.drawPath(path, paint);
   }
 
@@ -366,18 +239,8 @@ class WavePainter extends CustomPainter {
 
     final path = Path();
     path.moveTo(0, size.height * 0.5);
-    path.quadraticBezierTo(
-      size.width * 0.25,
-      size.height * 0.3,
-      size.width * 0.5,
-      size.height * 0.5,
-    );
-    path.quadraticBezierTo(
-      size.width * 0.75,
-      size.height * 0.7,
-      size.width,
-      size.height * 0.5,
-    );
+    path.quadraticBezierTo(size.width * 0.25, size.height * 0.3, size.width * 0.5, size.height * 0.5);
+    path.quadraticBezierTo(size.width * 0.75, size.height * 0.7, size.width, size.height * 0.5);
     path.lineTo(size.width, size.height);
     path.lineTo(0, size.height);
     path.close();

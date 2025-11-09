@@ -18,7 +18,7 @@ class MyApp extends StatelessWidget {
       theme: ThemeData(
         useMaterial3: true,
       ),
-      home: const DetailCollector(),
+      home: const OnboardingScreen(),
       debugShowCheckedModeBanner: false,
     );
   }
