@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 import 'screens/onboarding/OnboardingScreen.dart';
 // import 'screens/onboarding/onboarding_screen.dart';
 import 'screens/home/homescreen.dart';
-import 'screens/settlle_up/settle_up_screen.dart';
+import 'screens/home/detail_collector.dart';
 
 void main() {
   runApp(const MyApp());
@@ -16,7 +16,7 @@ class MyApp extends StatelessWidget {
     return MaterialApp(
       title: 'FlowBank',
       theme: ThemeData(useMaterial3: true),
-      home: const OnboardingScreen(),
+      home: const DetailCollector(),
       debugShowCheckedModeBanner: false,
     );
   }

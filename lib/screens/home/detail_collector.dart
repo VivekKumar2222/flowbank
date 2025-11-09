@@ -1,20 +1,20 @@
 import 'dart:convert';
-import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
-import '../home/homescreen.dart';
-import '../authentication/otpscreen.dart';
+import 'package:flutter/material.dart';
 
-Future<void> showSignUpBottomSheet(
-  BuildContext context, {
-  required Function(String) onMessage,
-}) async {
+class DetailCollector extends StatefulWidget {
+  const DetailCollector({Key? key}) : super(key: key);
+
+  @override
+  State<DetailCollector> createState() => _DetailCollectorState();
+}
+
+class _DetailCollectorState extends State<DetailCollector> {
   final TextEditingController fullNameController = TextEditingController();
   final TextEditingController emailController = TextEditingController();
   final TextEditingController passwordController = TextEditingController();
 
-  bool isEmailValid = true;
-
-  bool isValidEmail(String email) {
+  bool isEmailValid(String email) {
     final emailRegex = RegExp(r'^[\w-\.]+@([\w-]+\.)+[\w-]{2,4}$');
     return emailRegex.hasMatch(email);
   }
@@ -24,56 +24,60 @@ Future<void> showSignUpBottomSheet(
     return passwordRegex.hasMatch(password);
   }
 
-  showGeneralDialog(
-    context: context,
-    barrierDismissible: true,
-    barrierLabel: 'Sign Up',
-    barrierColor: Colors.black54,
-    transitionDuration: const Duration(milliseconds: 500),
-    pageBuilder: (context, animation1, animation2) {
-      return Align(
-        alignment: Alignment.bottomCenter,
-        child: Material(
-          color: Colors.white,
-          borderRadius: const BorderRadius.vertical(top: Radius.circular(42)),
-          child: FractionallySizedBox(
-            heightFactor: 0.6175,
-            child: Padding(
-              padding: EdgeInsets.only(
-                left: 24,
-                right: 24,
-                top: 16,
-                bottom: MediaQuery.of(context).viewInsets.bottom + 16,
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      body: Container(
+        decoration: const BoxDecoration(
+          gradient: LinearGradient(
+            begin: Alignment.topCenter,
+            end: Alignment.bottomCenter,
+            colors: [
+              Colors.white,
+              Colors.white,
+              Colors.white,
+              Colors.white,
+              Colors.white,
+            ],
+            stops: [0.0, 0.15, 0.35, 0.65, 1.0],
+          ),
+        ),
+        child: Stack(
+          children: [
+            Positioned(
+              top: 80,
+              right: -50,
+              child: CustomPaint(
+                size: const Size(200, 200),
+                painter: CurvePainter(),
               ),
+            ),
+            Positioned(
+              bottom: 150,
+              left: -80,
+              child: CustomPaint(
+                size: const Size(300, 300),
+                painter: WavePainter(),
+              ),
+            ),
+            SafeArea(
               child: SingleChildScrollView(
+                padding:
+                    const EdgeInsets.symmetric(horizontal: 24, vertical: 20),
                 child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    const SizedBox(height: 4),
-                    Center(
-                      child: Container(
-                        width: 90,
-                        height: 6,
-                        margin: const EdgeInsets.only(bottom: 16),
-                        decoration: BoxDecoration(
-                          color: const Color(0xFF1E88E5),
-                          borderRadius: BorderRadius.circular(2),
-                        ),
-                      ),
-                    ),
-                    const SizedBox(height: 12),
+                    const SizedBox(height: 20),
+                    Image.asset('assets/my_image5.png'),
+                    const SizedBox(height: 30),
+
+                    // Sign in with Google Button
                     SizedBox(
                       width: double.infinity,
                       height: 52,
                       child: ElevatedButton(
-                        onPressed: () => Navigator.pop(context),
+                        onPressed: () {},
                         style: ElevatedButton.styleFrom(
-                          backgroundColor: const Color.fromARGB(
-                            255,
-                            255,
-                            255,
-                            255,
-                          ),
+                          backgroundColor: Colors.white,
                           elevation: 0,
                           shape: RoundedRectangleBorder(
                             borderRadius: BorderRadius.circular(12),
@@ -93,7 +97,10 @@ Future<void> showSignUpBottomSheet(
                         ),
                       ),
                     ),
+
                     const SizedBox(height: 20),
+
+                    // OR divider
                     Row(
                       children: [
                         Expanded(
@@ -120,18 +127,24 @@ Future<void> showSignUpBottomSheet(
                         ),
                       ],
                     ),
+
                     const SizedBox(height: 16),
-                    const Text(
-                      'Please enter your details.',
-                      style: TextStyle(
-                        fontSize: 16.5,
-                        fontWeight: FontWeight.w400,
-                        color: Color(0xFF475467),
+
+                    const Align(
+                      alignment: Alignment.centerLeft,
+                      child: Text(
+                        'Please enter your details.',
+                        style: TextStyle(
+                          fontSize: 16.5,
+                          fontWeight: FontWeight.w400,
+                          color: Color(0xFF475467),
+                        ),
                       ),
                     ),
+
                     const SizedBox(height: 8),
 
-                    // Full name field
+                    // Full Name
                     TextField(
                       controller: fullNameController,
                       decoration: InputDecoration(
@@ -139,129 +152,110 @@ Future<void> showSignUpBottomSheet(
                         filled: true,
                         fillColor: Colors.white,
                         contentPadding: const EdgeInsets.symmetric(
-                          vertical: 16,
-                          horizontal: 16,
-                        ),
+                            vertical: 16, horizontal: 16),
                         enabledBorder: OutlineInputBorder(
                           borderRadius: BorderRadius.circular(12),
-                          borderSide: const BorderSide(
-                            color: Color(0xFFCCD0D7),
-                            width: 1,
-                          ),
+                          borderSide:
+                              const BorderSide(color: Color(0xFFCCD0D7), width: 1),
                         ),
                         focusedBorder: OutlineInputBorder(
                           borderRadius: BorderRadius.circular(12),
-                          borderSide: const BorderSide(
-                            color: Color(0xFF1E88E5),
-                            width: 2,
-                          ),
+                          borderSide:
+                              const BorderSide(color: Color(0xFF1E88E5), width: 2),
                         ),
                       ),
                     ),
+
                     const SizedBox(height: 12),
 
-                    // Email field
+                    // Email
                     TextField(
                       controller: emailController,
-                      onChanged: (value) {
-                        isEmailValid = isValidEmail(value);
-                      },
                       decoration: InputDecoration(
                         labelText: "Email",
                         filled: true,
                         fillColor: Colors.white,
                         contentPadding: const EdgeInsets.symmetric(
-                          vertical: 16,
-                          horizontal: 16,
-                        ),
+                            vertical: 16, horizontal: 16),
                         enabledBorder: OutlineInputBorder(
                           borderRadius: BorderRadius.circular(12),
-                          borderSide: const BorderSide(
-                            color: Color(0xFFCCD0D7),
-                            width: 1,
-                          ),
+                          borderSide:
+                              const BorderSide(color: Color(0xFFCCD0D7), width: 1),
                         ),
                         focusedBorder: OutlineInputBorder(
                           borderRadius: BorderRadius.circular(12),
-                          borderSide: const BorderSide(
-                            color: Color(0xFF1E88E5),
-                            width: 2,
-                          ),
+                          borderSide:
+                              const BorderSide(color: Color(0xFF1E88E5), width: 2),
                         ),
                       ),
                     ),
+
                     const SizedBox(height: 12),
 
-                    // Password field
+                    // Password
                     TextField(
                       controller: passwordController,
+                      obscureText: true,
                       decoration: InputDecoration(
                         labelText: "Password",
                         filled: true,
                         fillColor: Colors.white,
                         contentPadding: const EdgeInsets.symmetric(
-                          vertical: 16,
-                          horizontal: 16,
-                        ),
+                            vertical: 16, horizontal: 16),
                         enabledBorder: OutlineInputBorder(
                           borderRadius: BorderRadius.circular(12),
-                          borderSide: const BorderSide(
-                            color: Color(0xFFCCD0D7),
-                            width: 1,
-                          ),
+                          borderSide:
+                              const BorderSide(color: Color(0xFFCCD0D7), width: 1),
                         ),
                         focusedBorder: OutlineInputBorder(
                           borderRadius: BorderRadius.circular(12),
-                          borderSide: const BorderSide(
-                            color: Color(0xFF1E88E5),
-                            width: 2,
-                          ),
+                          borderSide:
+                              const BorderSide(color: Color(0xFF1E88E5), width: 2),
                         ),
                       ),
                     ),
+
                     const SizedBox(height: 36),
 
-                    // Sign Up button
+                    // Sign Up Button
                     SizedBox(
                       width: double.infinity,
                       height: 48,
                       child: ElevatedButton(
                         onPressed: () async {
-                          print("Validating inputs...");
-
                           final fullName = fullNameController.text.trim();
                           final email = emailController.text.trim();
                           final password = passwordController.text.trim();
 
-                          // Frontend validation
                           if (fullName.isEmpty ||
                               email.isEmpty ||
                               password.isEmpty) {
-                            print("❌ Missing field(s)");
-                            onMessage("All fields are required");
+                            ScaffoldMessenger.of(context).showSnackBar(
+                              const SnackBar(
+                                  content: Text("All fields are required")),
+                            );
                             return;
                           }
 
-                          if (!isValidEmail(email)) {
-                            print("❌ Invalid email: $email");
-                            onMessage(
-                              "Please enter a valid email (e.g., name@gmail.com)",
+                          if (!isEmailValid(email)) {
+                            ScaffoldMessenger.of(context).showSnackBar(
+                              const SnackBar(
+                                  content: Text("Enter a valid email")),
                             );
                             return;
                           }
 
                           if (!isValidPassword(password)) {
-                            print("❌ Weak password");
-                            onMessage(
-                              "Password must be at least 8 characters and include a number or special character",
+                            ScaffoldMessenger.of(context).showSnackBar(
+                              const SnackBar(
+                                  content: Text(
+                                      "Password must be at least 8 characters and include a number or special character")),
                             );
                             return;
                           }
 
-                          print("Sending data: $fullName, $email, $password");
-
                           final response = await http.post(
-                            Uri.parse("http://localhost:5000/api/auth/signup"),
+                            Uri.parse("http://10.0.2.2:5000/api/auth/signup"),
                             headers: {"Content-Type": "application/json"},
                             body: jsonEncode({
                               "name": fullName,
@@ -270,28 +264,18 @@ Future<void> showSignUpBottomSheet(
                             }),
                           );
 
-                          print("Response status: ${response.statusCode}");
-                          print("Response body: ${response.body}");
-
-                          if (response.statusCode == 200) {
-                            await Future.delayed(
-                              const Duration(milliseconds: 500),
-                            );
-                            onMessage("User registered successfully");
-                            Navigator.pop(context);
-
-                            Navigator.push(
-                              context,
-                              MaterialPageRoute(
-                                builder: (context) => OtpScreen(
-                                  email: emailController.text.trim(),
-                                ),
-                              ),
+                          if (response.statusCode == 201) {
+                            ScaffoldMessenger.of(context).showSnackBar(
+                              const SnackBar(
+                                  content:
+                                      Text("User registered successfully")),
                             );
                           } else {
                             final error = jsonDecode(response.body);
-                            onMessage(
-                              "Error: ${error['message'] ?? 'Unknown error'}",
+                            ScaffoldMessenger.of(context).showSnackBar(
+                              SnackBar(
+                                  content: Text(
+                                      "Error: ${error['message'] ?? 'Unknown error'}")),
                             );
                           }
                         },
@@ -313,49 +297,94 @@ Future<void> showSignUpBottomSheet(
                     ),
 
                     const SizedBox(height: 14),
-                    Center(
-                      child: Row(
-                        mainAxisAlignment: MainAxisAlignment.center,
-                        children: const [
-                          Text(
-                            "Already have an account? ",
-                            style: TextStyle(
-                              fontSize: 14,
-                              fontWeight: FontWeight.w500,
-                              color: Color(0xFF475467),
-                            ),
+
+                    // Already have an account
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: const [
+                        Text(
+                          "Already have an account? ",
+                          style: TextStyle(
+                            fontSize: 14,
+                            fontWeight: FontWeight.w500,
+                            color: Color(0xFF475467),
                           ),
-                          Text(
-                            "Login",
-                            style: TextStyle(
-                              fontSize: 14,
-                              fontWeight: FontWeight.w500,
-                              color: Color(0xFF0179FE),
-                            ),
+                        ),
+                        Text(
+                          "Login",
+                          style: TextStyle(
+                            fontSize: 14,
+                            fontWeight: FontWeight.w500,
+                            color: Color(0xFF0179FE),
                           ),
-                        ],
-                      ),
+                        ),
+                      ],
                     ),
+                    const SizedBox(height: 40),
                   ],
                 ),
               ),
             ),
-          ),
+          ],
         ),
-      );
-    },
-    transitionBuilder: (context, animation1, animation2, child) {
-      final curved = CurvedAnimation(
-        parent: animation1,
-        curve: Curves.easeInOut,
-      );
-      return SlideTransition(
-        position: Tween(
-          begin: const Offset(0, 1),
-          end: Offset.zero,
-        ).animate(curved),
-        child: child,
-      );
-    },
-  );
+      ),
+    );
+  }
+}
+
+// painters stay same
+class CurvePainter extends CustomPainter {
+  @override
+  void paint(Canvas canvas, Size size) {
+    final paint = Paint()
+      ..color = Colors.white.withOpacity(0.15)
+      ..style = PaintingStyle.stroke
+      ..strokeWidth = 2;
+
+    final path = Path();
+    path.moveTo(0, 0);
+    path.quadraticBezierTo(
+      size.width * 0.5,
+      size.height * 0.3,
+      size.width * 0.2,
+      size.height,
+    );
+
+    canvas.drawPath(path, paint);
+  }
+
+  @override
+  bool shouldRepaint(CurvePainter oldDelegate) => false;
+}
+
+class WavePainter extends CustomPainter {
+  @override
+  void paint(Canvas canvas, Size size) {
+    final paint = Paint()
+      ..color = Colors.white.withOpacity(0.2)
+      ..style = PaintingStyle.fill;
+
+    final path = Path();
+    path.moveTo(0, size.height * 0.5);
+    path.quadraticBezierTo(
+      size.width * 0.25,
+      size.height * 0.3,
+      size.width * 0.5,
+      size.height * 0.5,
+    );
+    path.quadraticBezierTo(
+      size.width * 0.75,
+      size.height * 0.7,
+      size.width,
+      size.height * 0.5,
+    );
+    path.lineTo(size.width, size.height);
+    path.lineTo(0, size.height);
+    path.close();
+
+    canvas.drawPath(path, paint);
+  }
+
+  @override
+  bool shouldRepaint(WavePainter oldDelegate) => false;
 }
