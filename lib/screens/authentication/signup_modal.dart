@@ -2,6 +2,7 @@ import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
 import '../home/homescreen.dart';
+import '../authentication/otpscreen.dart';
 
 Future<void> showSignUpBottomSheet(
   BuildContext context, {
@@ -282,7 +283,9 @@ Future<void> showSignUpBottomSheet(
                             Navigator.push(
                               context,
                               MaterialPageRoute(
-                                builder: (context) => HomePage(),
+                                builder: (context) => OtpScreen(
+                                  email: emailController.text.trim(),
+                                ),
                               ),
                             );
                           } else {

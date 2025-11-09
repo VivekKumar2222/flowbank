@@ -2,6 +2,7 @@ import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
 import '../home/homescreen.dart';
+import '../authentication/otpscreen.dart';
 
 Future<void> showLoginBottomSheet(
   BuildContext context, {
@@ -147,13 +148,19 @@ Future<void> showLoginBottomSheet(
                           );
 
                           if (response.statusCode == 200) {
-                            onMessage("Login Successful");
-                            Navigator.pop(context);
+                            // onMessage("Login Successful");
+                            // Navigator.pop(context);
 
+                            // Navigator.push(
+                            //   context,
+                            //   MaterialPageRoute(builder: (context) => HomePage()),
+                            // );
                             Navigator.push(
                               context,
                               MaterialPageRoute(
-                                builder: (context) => HomePage(),
+                                builder: (context) => OtpScreen(
+                                  email: emailController.text.trim(),
+                                ),
                               ),
                             );
                           } else {
