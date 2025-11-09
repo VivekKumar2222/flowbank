@@ -1,4 +1,6 @@
 import 'package:flutter/material.dart';
+import '../settlle_up/settle_up_screen.dart'; // adjust the relative path if needed
+import 'package:shared_preferences/shared_preferences.dart';
 
 class HomePage extends StatefulWidget {
   const HomePage({Key? key}) : super(key: key);
@@ -8,6 +10,20 @@ class HomePage extends StatefulWidget {
 }
 
 class _HomePageState extends State<HomePage> {
+  String? userName;
+  Future<void> _loadUserName() async {
+    final prefs = await SharedPreferences.getInstance();
+    setState(() {
+      userName = prefs.getString('userName') ?? 'User';
+    });
+  }
+
+  @override
+  void initState() {
+    super.initState();
+    _loadUserName();
+  }
+
   int selectedTab = 0;
   final List<String> tabs = ['Chase Bank', 'Bank of America', 'First Plat'];
   final List<TransactionItem> transactions = [
@@ -45,7 +61,10 @@ class _HomePageState extends State<HomePage> {
             children: [
               // Header with icons
               Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 16),
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 24,
+                  vertical: 16,
+                ),
                 child: Row(
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
@@ -92,9 +111,9 @@ class _HomePageState extends State<HomePage> {
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     RichText(
-                      text: const TextSpan(
+                      text: TextSpan(
                         children: [
-                          TextSpan(
+                          const TextSpan(
                             text: 'Welcome, ',
                             style: TextStyle(
                               color: Colors.black,
@@ -103,8 +122,8 @@ class _HomePageState extends State<HomePage> {
                             ),
                           ),
                           TextSpan(
-                            text: 'Adrian',
-                            style: TextStyle(
+                            text: userName ?? '...',
+                            style: const TextStyle(
                               color: Color(0xFF1E88E5),
                               fontSize: 28,
                               fontWeight: FontWeight.w600,
@@ -113,6 +132,7 @@ class _HomePageState extends State<HomePage> {
                         ],
                       ),
                     ),
+
                     const SizedBox(height: 8),
                     const Text(
                       'Access & manage your account and\ntransactions efficiently.',
@@ -164,11 +184,7 @@ class _HomePageState extends State<HomePage> {
                             ),
                             child: const Row(
                               children: [
-                                Icon(
-                                  Icons.add,
-                                  color: Colors.white,
-                                  size: 16,
-                                ),
+                                Icon(Icons.add, color: Colors.white, size: 16),
                                 SizedBox(width: 4),
                                 Text(
                                   'Add bank',
@@ -200,7 +216,9 @@ class _HomePageState extends State<HomePage> {
                                   valueColor: AlwaysStoppedAnimation(
                                     Colors.white.withOpacity(0.3),
                                   ),
-                                  backgroundColor: Colors.white.withOpacity(0.1),
+                                  backgroundColor: Colors.white.withOpacity(
+                                    0.1,
+                                  ),
                                 ),
                                 CircularProgressIndicator(
                                   value: 0.65,
@@ -335,20 +353,16 @@ class _HomePageState extends State<HomePage> {
               Padding(
                 padding: const EdgeInsets.symmetric(horizontal: 24),
                 child: Column(
-                  children: transactions
-                      .asMap()
-                      .entries
-                      .map((entry) {
-                        final index = entry.key;
-                        final transaction = entry.value;
-                        return Padding(
-                          padding: EdgeInsets.only(
-                            bottom: index < transactions.length - 1 ? 12 : 0,
-                          ),
-                          child: TransactionCard(transaction: transaction),
-                        );
-                      })
-                      .toList(),
+                  children: transactions.asMap().entries.map((entry) {
+                    final index = entry.key;
+                    final transaction = entry.value;
+                    return Padding(
+                      padding: EdgeInsets.only(
+                        bottom: index < transactions.length - 1 ? 12 : 0,
+                      ),
+                      child: TransactionCard(transaction: transaction),
+                    );
+                  }).toList(),
                 ),
               ),
 
@@ -361,15 +375,28 @@ class _HomePageState extends State<HomePage> {
         backgroundColor: Colors.white,
         selectedItemColor: const Color(0xFF1E88E5),
         unselectedItemColor: const Color(0xFFBDBDBD),
-        currentIndex: 0,
+        currentIndex: selectedTab,
+        onTap: (index) {
+          if (index == 1) {
+            // 👇 Navigate to Settle-Up when tapped
+            Navigator.push(
+              context,
+              MaterialPageRoute(builder: (_) => const SettleUpScreen()),
+            );
+            return;
+          }
+          setState(() {
+            selectedTab = index;
+          });
+        },
         items: const [
           BottomNavigationBarItem(
             icon: Icon(Icons.home_rounded),
             label: 'Home',
           ),
           BottomNavigationBarItem(
-            icon: Icon(Icons.swap_vert_rounded),
-            label: 'Send/Receive',
+            icon: Icon(Icons.swap_horiz_rounded),
+            label: 'Settle-Up', // 👈 new tab
           ),
           BottomNavigationBarItem(
             icon: Icon(Icons.account_balance_wallet_rounded),
@@ -400,10 +427,8 @@ class TransactionItem {
 class TransactionCard extends StatelessWidget {
   final TransactionItem transaction;
 
-  const TransactionCard({
-    Key? key,
-    required this.transaction,
-  }) : super(key: key);
+  const TransactionCard({Key? key, required this.transaction})
+    : super(key: key);
 
   @override
   Widget build(BuildContext context) {

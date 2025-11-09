@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
 import '../authentication/notification.dart';
 import '../home/homescreen.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
 class OtpScreen extends StatefulWidget {
   final String email;
@@ -20,7 +21,7 @@ class _OtpScreenState extends State<OtpScreen> {
     setState(() => isLoading = true);
 
     final response = await http.post(
-      Uri.parse("http://10.0.2.2:5000/api/auth/verify-login-otp"),
+      Uri.parse("http://localhost:5000/api/auth/verify-login-otp"),
       headers: {"Content-Type": "application/json"},
       body: jsonEncode({
         "email": widget.email,
@@ -31,18 +32,33 @@ class _OtpScreenState extends State<OtpScreen> {
     setState(() => isLoading = false);
 
     if (response.statusCode == 200) {
+      final data = jsonDecode(response.body);
+
+      // ✅ Save user info locally
+      if (data['user'] != null) {
+        print("before prefs");
+        final prefs = await SharedPreferences.getInstance();
+        print("after prefs");
+
+        await prefs.setString('userId', data['user']['_id']);
+        await prefs.setString('userName', data['user']['name'] ?? '');
+        await prefs.setString('userEmail', data['user']['email'] ?? '');
+      }
+
       Navigator.pushReplacement(
         context,
         MaterialPageRoute(builder: (_) => const HomePage()),
       );
-    }
-
-     else {
+    } else {
       final error = jsonDecode(response.body);
-      showCustomNotification(context, error['message']);
+      showCustomNotification(
+        context,
+        error['message'] ?? 'Verification failed',
+      );
     }
   }
 
+  // 👇 build() must be INSIDE the class — not outside!
   @override
   Widget build(BuildContext context) {
     final primaryColor = const Color(0xFF1E88E5);
@@ -55,11 +71,7 @@ class _OtpScreenState extends State<OtpScreen> {
           gradient: LinearGradient(
             begin: Alignment.topCenter,
             end: Alignment.bottomCenter,
-            colors: [
-              Colors.white,
-              Colors.white,
-              Color(0xFFF7F8FC),
-            ],
+            colors: [Colors.white, Colors.white, Color(0xFFF7F8FC)],
           ),
         ),
         child: SafeArea(
@@ -69,7 +81,7 @@ class _OtpScreenState extends State<OtpScreen> {
               child: Column(
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [
-                  // Logo or Icon
+                  // Logo
                   Container(
                     width: 64,
                     height: 64,
@@ -83,10 +95,8 @@ class _OtpScreenState extends State<OtpScreen> {
                       size: 36,
                     ),
                   ),
-
                   const SizedBox(height: 24),
 
-                  // Heading
                   const Text(
                     "Verify Your Email",
                     style: TextStyle(
@@ -99,10 +109,7 @@ class _OtpScreenState extends State<OtpScreen> {
                   const SizedBox(height: 8),
                   Text(
                     "We've sent a 6-digit code to",
-                    style: TextStyle(
-                      fontSize: 16,
-                      color: Colors.grey.shade700,
-                    ),
+                    style: TextStyle(fontSize: 16, color: Colors.grey.shade700),
                   ),
                   Text(
                     widget.email,
@@ -112,13 +119,14 @@ class _OtpScreenState extends State<OtpScreen> {
                       fontWeight: FontWeight.w500,
                     ),
                   ),
-
                   const SizedBox(height: 32),
 
-                  // OTP Input
+                  // OTP input
                   Container(
                     padding: const EdgeInsets.symmetric(
-                        horizontal: 16, vertical: 4),
+                      horizontal: 16,
+                      vertical: 4,
+                    ),
                     decoration: BoxDecoration(
                       color: Colors.white,
                       borderRadius: BorderRadius.circular(12),
@@ -139,10 +147,7 @@ class _OtpScreenState extends State<OtpScreen> {
                         counterText: "",
                         border: InputBorder.none,
                         hintText: "Enter OTP",
-                        hintStyle: TextStyle(
-                          color: Colors.grey,
-                          fontSize: 16,
-                        ),
+                        hintStyle: TextStyle(color: Colors.grey, fontSize: 16),
                       ),
                       style: const TextStyle(
                         fontSize: 20,
@@ -151,10 +156,9 @@ class _OtpScreenState extends State<OtpScreen> {
                       ),
                     ),
                   ),
-
                   const SizedBox(height: 28),
 
-                  // Verify Button
+                  // Verify button
                   SizedBox(
                     width: double.infinity,
                     height: 50,
@@ -183,14 +187,15 @@ class _OtpScreenState extends State<OtpScreen> {
                             ),
                     ),
                   ),
-
                   const SizedBox(height: 16),
 
                   // Resend OTP
                   TextButton(
                     onPressed: () {
                       showCustomNotification(
-                          context, "OTP resent successfully!");
+                        context,
+                        "OTP resent successfully!",
+                      );
                     },
                     child: Text(
                       "Resend OTP",

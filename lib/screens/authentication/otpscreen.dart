@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
 import '../authentication/notification.dart';
 import '../home/homescreen.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
 class OtpScreen extends StatefulWidget {
   final String email;
@@ -15,12 +16,11 @@ class OtpScreen extends StatefulWidget {
 class _OtpScreenState extends State<OtpScreen> {
   final TextEditingController otpController = TextEditingController();
   bool isLoading = false;
-
   Future<void> verifyOtp() async {
     setState(() => isLoading = true);
 
     final response = await http.post(
-      Uri.parse("http://10.0.2.2:5000/api/auth/verify-otp"),
+      Uri.parse("http://localhost:5000/api/auth/verify-otp"),
       headers: {"Content-Type": "application/json"},
       body: jsonEncode({
         "email": widget.email,
@@ -30,16 +30,26 @@ class _OtpScreenState extends State<OtpScreen> {
 
     setState(() => isLoading = false);
 
-    if (response.statusCode == 201) {
+    if (response.statusCode == 200 || response.statusCode == 201) {
+      final data = jsonDecode(response.body);
+      final user = data['user'];
+      if (user != null && user['_id'] != null) {
+        final prefs = await SharedPreferences.getInstance();
+        await prefs.setString('userId', user['_id']);
+        await prefs.setString('userName', user['name'] ?? '');
+        await prefs.setString('userEmail', user['email'] ?? '');
+      }
+
       Navigator.pushReplacement(
         context,
         MaterialPageRoute(builder: (_) => const HomePage()),
       );
-    }
-
-     else {
+    } else {
       final error = jsonDecode(response.body);
-      showCustomNotification(context, error['message']);
+      showCustomNotification(
+        context,
+        error['message'] ?? 'Verification failed',
+      );
     }
   }
 
@@ -55,11 +65,7 @@ class _OtpScreenState extends State<OtpScreen> {
           gradient: LinearGradient(
             begin: Alignment.topCenter,
             end: Alignment.bottomCenter,
-            colors: [
-              Colors.white,
-              Colors.white,
-              Color(0xFFF7F8FC),
-            ],
+            colors: [Colors.white, Colors.white, Color(0xFFF7F8FC)],
           ),
         ),
         child: SafeArea(
@@ -99,10 +105,7 @@ class _OtpScreenState extends State<OtpScreen> {
                   const SizedBox(height: 8),
                   Text(
                     "We've sent a 6-digit code to",
-                    style: TextStyle(
-                      fontSize: 16,
-                      color: Colors.grey.shade700,
-                    ),
+                    style: TextStyle(fontSize: 16, color: Colors.grey.shade700),
                   ),
                   Text(
                     widget.email,
@@ -118,7 +121,9 @@ class _OtpScreenState extends State<OtpScreen> {
                   // OTP Input
                   Container(
                     padding: const EdgeInsets.symmetric(
-                        horizontal: 16, vertical: 4),
+                      horizontal: 16,
+                      vertical: 4,
+                    ),
                     decoration: BoxDecoration(
                       color: Colors.white,
                       borderRadius: BorderRadius.circular(12),
@@ -139,10 +144,7 @@ class _OtpScreenState extends State<OtpScreen> {
                         counterText: "",
                         border: InputBorder.none,
                         hintText: "Enter OTP",
-                        hintStyle: TextStyle(
-                          color: Colors.grey,
-                          fontSize: 16,
-                        ),
+                        hintStyle: TextStyle(color: Colors.grey, fontSize: 16),
                       ),
                       style: const TextStyle(
                         fontSize: 20,
@@ -190,7 +192,9 @@ class _OtpScreenState extends State<OtpScreen> {
                   TextButton(
                     onPressed: () {
                       showCustomNotification(
-                          context, "OTP resent successfully!");
+                        context,
+                        "OTP resent successfully!",
+                      );
                     },
                     child: Text(
                       "Resend OTP",

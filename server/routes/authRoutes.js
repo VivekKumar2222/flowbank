@@ -84,7 +84,15 @@ router.post("/verify-otp", async (req, res) => {
     // Remove from OTP store
     otpStore.delete(email);
 
-    res.status(201).json({ message: "Signup completed and email verified successfully!" });
+    res.status(201).json({
+  message: "Signup completed and email verified successfully!",
+  user: {
+    _id: newUser._id,
+    name: newUser.name,
+    email: newUser.email,
+  },
+});
+
 
   } catch (err) {
     console.error("Verify OTP error:", err);
@@ -114,7 +122,18 @@ router.post("/verify-login-otp", async (req, res) => {
     // (Optional) Generate JWT here
     // const token = jwt.sign({ id: user._id }, "jwt_secret_key", { expiresIn: "1h" });
 
-    res.json({ message: "Login successful!" });
+   const user = await User.findOne({ email });
+if (!user) return res.status(404).json({ message: "User not found" });
+
+res.json({
+  message: "Login successful!",
+  user: {
+    _id: user._id,
+    name: user.name,
+    email: user.email,
+  },
+});
+
   } catch (err) {
     console.error("Verify Login OTP error:", err);
     res.status(500).json({ message: "Server error", error: err.message });

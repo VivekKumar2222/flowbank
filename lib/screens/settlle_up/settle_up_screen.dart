@@ -1,11 +1,12 @@
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
 import 'dart:convert';
-
+import 'package:shared_preferences/shared_preferences.dart';
 import '../../models/participant.dart';
 import '../../widgets/settle_up/participant_card.dart';
 import '../../widgets/settle_up/add_participant_modal.dart';
 import '../../api/settlements_api.dart';
+import '../home/homescreen.dart';
 
 // Transaction type helper
 String _typeToString(TransactionType t) =>
@@ -25,8 +26,8 @@ class _SettleUpScreenState extends State<SettleUpScreen> {
   static const String baseUrl = 'http://localhost:5000/api';
 
   // <-- or 10.0.2.2 for Android
-  static const String currentUserId =
-      '691099bc652f6110c7a929c8'; // replace with your MongoDB user's _id
+  String? currentUserId;
+  // replace with your MongoDB user's _id
 
   // ===== STATE =====
   List<Participant> participants = [];
@@ -37,12 +38,21 @@ class _SettleUpScreenState extends State<SettleUpScreen> {
   // ===== API HELPERS =====
   Map<String, String> get _headers => {
     'Content-Type': 'application/json',
-    'x-user-id': currentUserId,
+    'x-user-id': currentUserId ?? '',
   };
 
   Future<void> _loadData() async {
     try {
       setState(() => loading = true);
+      final prefs = await SharedPreferences.getInstance();
+      currentUserId = prefs.getString('userId');
+
+      if (currentUserId == null || currentUserId!.isEmpty) {
+        error = 'User session not found. Please log in again.';
+        setState(() => loading = false);
+        return;
+      }
+
       final res = await http.get(
         Uri.parse('$baseUrl/settlements'),
         headers: _headers,
@@ -113,19 +123,31 @@ class _SettleUpScreenState extends State<SettleUpScreen> {
 
   // ===== CRUD =====
   void _addParticipant(Participant participant) async {
+    if (participant.amount <= 0 || participant.name.trim().isEmpty) {
+      // prevent empty or invalid entries
+      return;
+    }
+
+    // prevent duplicates
+    bool alreadyExists = participants.any((p) => p.name == participant.name);
+    if (alreadyExists) return;
+
     setState(() => participants.add(participant));
     await _persist();
   }
 
   void _updateParticipant(Participant updated) async {
-    setState(() {
-      final i = participants.indexWhere((p) => p.id == updated.id);
-      if (i != -1) participants[i] = updated;
-    });
-    await _persist();
+    if (updated.amount <= 0 || updated.name.trim().isEmpty) return;
 
-    //  Force totals to recalculate after editing
-    setState(() {});
+    setState(() {
+      final index = participants.indexWhere((p) => p.id == updated.id);
+      if (index != -1) {
+        participants[index] = updated;
+      }
+    });
+
+    await _persist();
+    setState(() {}); // refresh totals
   }
 
   void _deleteParticipant(String id) async {
@@ -337,7 +359,7 @@ class _SettleUpScreenState extends State<SettleUpScreen> {
                     width: double.infinity,
                     padding: const EdgeInsets.all(32),
                     decoration: BoxDecoration(
-                      color: const Color(0xFFF5F5F5),
+                      color: const Color(0xFF1E88E5),
                       borderRadius: BorderRadius.circular(16),
                     ),
                     child: Column(
@@ -345,13 +367,13 @@ class _SettleUpScreenState extends State<SettleUpScreen> {
                         Icon(
                           Icons.handshake_outlined,
                           size: 56,
-                          color: Color(0xFFBDBDBD),
+                          color: Color.fromARGB(255, 255, 255, 255),
                         ),
                         SizedBox(height: 12),
                         Text(
                           'No settlements yet',
                           style: TextStyle(
-                            color: Color(0xFF666666),
+                            color: Color.fromARGB(255, 255, 255, 255),
                             fontSize: 14,
                             fontWeight: FontWeight.w500,
                           ),
@@ -360,7 +382,7 @@ class _SettleUpScreenState extends State<SettleUpScreen> {
                         Text(
                           'Tap the + button to add participants',
                           style: TextStyle(
-                            color: Color(0xFF999999),
+                            color: Color.fromARGB(255, 255, 255, 255),
                             fontSize: 12,
                             fontWeight: FontWeight.w400,
                           ),
@@ -405,14 +427,23 @@ class _SettleUpScreenState extends State<SettleUpScreen> {
         backgroundColor: Colors.white,
         selectedItemColor: const Color(0xFF1E88E5),
         unselectedItemColor: const Color(0xFFBDBDBD),
+        currentIndex: 1, // highlight Settle-Up here
+        onTap: (index) {
+          if (index == 0) {
+            // go back to Home
+            Navigator.pop(context);
+            // (or use pushReplacement to be explicit)
+            // Navigator.pushReplacement(context, MaterialPageRoute(builder: (_) => const HomePage()));
+          }
+        },
         items: const [
           BottomNavigationBarItem(
             icon: Icon(Icons.home_rounded),
             label: 'Home',
           ),
           BottomNavigationBarItem(
-            icon: Icon(Icons.swap_vert_rounded),
-            label: 'Send/Receive',
+            icon: Icon(Icons.swap_horiz_rounded),
+            label: 'Settle-Up',
           ),
           BottomNavigationBarItem(
             icon: Icon(Icons.account_balance_wallet_rounded),

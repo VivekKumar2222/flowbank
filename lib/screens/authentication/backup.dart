@@ -8,9 +8,8 @@ void showSignUpBottomSheet(BuildContext context) {
   final TextEditingController passwordController = TextEditingController();
 
   bool isNameValid = true;
-bool isEmailValid = true;
-bool isPasswordValid = true;
-
+  bool isEmailValid = true;
+  bool isPasswordValid = true;
 
   bool isValidEmail(String email) {
     final emailRegex = RegExp(r'^[\w-\.]+@([\w-]+\.)+[\w-]{2,4}$');
@@ -183,10 +182,10 @@ bool isPasswordValid = true;
 
                     TextField(
                       controller: emailController,
-                        onChanged: (value) {
-    // live validation
-    isEmailValid = isValidEmail(value);
-  },
+                      onChanged: (value) {
+                        // live validation
+                        isEmailValid = isValidEmail(value);
+                      },
                       decoration: InputDecoration(
                         labelText: "Email",
                         // prefixIcon: const Icon(Icons.person_outline, color: Color(0xFF1E88E5)), // icon color
@@ -268,47 +267,63 @@ bool isPasswordValid = true;
                       height: 48,
                       child: ElevatedButton(
                         onPressed: () async {
-
                           print("Validating inputs...");
 
                           final fullName = fullNameController.text.trim();
                           final email = emailController.text.trim();
                           final password = passwordController.text.trim();
 
-                            // Reset error state
-  Color borderColor = const Color(0xFFCCD0D7);
+                          // Reset error state
+                          Color borderColor = const Color(0xFFCCD0D7);
 
-  // Frontend validation
-  if (fullName.isEmpty || email.isEmpty || password.isEmpty) {
-    print("❌ Missing field(s)");
-  ScaffoldMessenger.of(Navigator.of(context).overlay!.context).showSnackBar(
-    const SnackBar(content: Text("All fields are required")),
-    );
-    return;
-  }
+                          // Frontend validation
+                          if (fullName.isEmpty ||
+                              email.isEmpty ||
+                              password.isEmpty) {
+                            print("❌ Missing field(s)");
+                            ScaffoldMessenger.of(
+                              Navigator.of(context).overlay!.context,
+                            ).showSnackBar(
+                              const SnackBar(
+                                content: Text("All fields are required"),
+                              ),
+                            );
+                            return;
+                          }
 
-  if (!isValidEmail(email)) {
-    print("❌ Invalid email: $email");
-   ScaffoldMessenger.of(Navigator.of(context).overlay!.context).showSnackBar(
-    const SnackBar(content: Text("Please enter a valid email (e.g., name@gmail.com)")),
-    );
-    return;
-  }
+                          if (!isValidEmail(email)) {
+                            print("❌ Invalid email: $email");
+                            ScaffoldMessenger.of(
+                              Navigator.of(context).overlay!.context,
+                            ).showSnackBar(
+                              const SnackBar(
+                                content: Text(
+                                  "Please enter a valid email (e.g., name@gmail.com)",
+                                ),
+                              ),
+                            );
+                            return;
+                          }
 
-  if (!isValidPassword(password)) {
-    print("❌ Weak password");
-   ScaffoldMessenger.of(Navigator.of(context).overlay!.context).showSnackBar(
-    const SnackBar(content: Text("Password must be at least 8 characters and include a number or special character")),
-    );
-    return;
-  }
-
+                          if (!isValidPassword(password)) {
+                            print("❌ Weak password");
+                            ScaffoldMessenger.of(
+                              Navigator.of(context).overlay!.context,
+                            ).showSnackBar(
+                              const SnackBar(
+                                content: Text(
+                                  "Password must be at least 8 characters and include a number or special character",
+                                ),
+                              ),
+                            );
+                            return;
+                          }
 
                           print("Sending data: $fullName, $email, $password");
 
                           final response = await http.post(
                             Uri.parse(
-                              "http://10.0.2.2:5000/api/auth/signup",
+                              "http://localhost:5000/api/auth/signup",
                             ), // use your IP on mobile
                             headers: {"Content-Type": "application/json"},
                             body: jsonEncode({
@@ -331,8 +346,12 @@ bool isPasswordValid = true;
                           } else {
                             // show error
                             final error = jsonDecode(response.body);
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(content: Text("Error: ${error['message'] ?? 'Unknown error'}")),
+                            ScaffoldMessenger.of(context).showSnackBar(
+                              SnackBar(
+                                content: Text(
+                                  "Error: ${error['message'] ?? 'Unknown error'}",
+                                ),
+                              ),
                             );
                           }
                         },
