@@ -138,9 +138,12 @@ Future<void> showLoginBottomSheet(
                           }
 
                           final response = await http.post(
-                            Uri.parse("http://10.0.2.2:5000/api/auth/login"),
+                            Uri.parse("http://localhost:5000/api/auth/login"),
                             headers: {"Content-Type": "application/json"},
-                            body: jsonEncode({"email": email, "password": password}),
+                            body: jsonEncode({
+                              "email": email,
+                              "password": password,
+                            }),
                           );
 
                           if (response.statusCode == 200) {
@@ -149,7 +152,9 @@ Future<void> showLoginBottomSheet(
 
                             Navigator.push(
                               context,
-                              MaterialPageRoute(builder: (context) => HomePage()),
+                              MaterialPageRoute(
+                                builder: (context) => HomePage(),
+                              ),
                             );
                           } else {
                             final error = jsonDecode(response.body);
@@ -187,7 +192,10 @@ Future<void> showLoginBottomSheet(
         curve: Curves.easeInOut,
       );
       return SlideTransition(
-        position: Tween(begin: const Offset(0, 1), end: Offset.zero).animate(curved),
+        position: Tween(
+          begin: const Offset(0, 1),
+          end: Offset.zero,
+        ).animate(curved),
         child: child,
       );
     },

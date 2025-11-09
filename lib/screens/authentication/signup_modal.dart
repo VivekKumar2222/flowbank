@@ -67,7 +67,12 @@ Future<void> showSignUpBottomSheet(
                       child: ElevatedButton(
                         onPressed: () => Navigator.pop(context),
                         style: ElevatedButton.styleFrom(
-                          backgroundColor: const Color.fromARGB(255, 255, 255, 255),
+                          backgroundColor: const Color.fromARGB(
+                            255,
+                            255,
+                            255,
+                            255,
+                          ),
                           elevation: 0,
                           shape: RoundedRectangleBorder(
                             borderRadius: BorderRadius.circular(12),
@@ -228,7 +233,9 @@ Future<void> showSignUpBottomSheet(
                           final password = passwordController.text.trim();
 
                           // Frontend validation
-                          if (fullName.isEmpty || email.isEmpty || password.isEmpty) {
+                          if (fullName.isEmpty ||
+                              email.isEmpty ||
+                              password.isEmpty) {
                             print("❌ Missing field(s)");
                             onMessage("All fields are required");
                             return;
@@ -236,20 +243,24 @@ Future<void> showSignUpBottomSheet(
 
                           if (!isValidEmail(email)) {
                             print("❌ Invalid email: $email");
-                            onMessage("Please enter a valid email (e.g., name@gmail.com)");
+                            onMessage(
+                              "Please enter a valid email (e.g., name@gmail.com)",
+                            );
                             return;
                           }
 
                           if (!isValidPassword(password)) {
                             print("❌ Weak password");
-                            onMessage("Password must be at least 8 characters and include a number or special character");
+                            onMessage(
+                              "Password must be at least 8 characters and include a number or special character",
+                            );
                             return;
                           }
 
                           print("Sending data: $fullName, $email, $password");
 
                           final response = await http.post(
-                            Uri.parse("http://10.0.2.2:5000/api/auth/signup"),
+                            Uri.parse("http://localhost:5000/api/auth/signup"),
                             headers: {"Content-Type": "application/json"},
                             body: jsonEncode({
                               "name": fullName,
@@ -262,17 +273,23 @@ Future<void> showSignUpBottomSheet(
                           print("Response body: ${response.body}");
 
                           if (response.statusCode == 201) {
-                            await Future.delayed(const Duration(milliseconds: 500));
+                            await Future.delayed(
+                              const Duration(milliseconds: 500),
+                            );
                             onMessage("User registered successfully");
                             Navigator.pop(context);
 
-                              Navigator.push(
-    context,
-    MaterialPageRoute(builder: (context) => HomePage()),
-  );
+                            Navigator.push(
+                              context,
+                              MaterialPageRoute(
+                                builder: (context) => HomePage(),
+                              ),
+                            );
                           } else {
                             final error = jsonDecode(response.body);
-                            onMessage("Error: ${error['message'] ?? 'Unknown error'}");
+                            onMessage(
+                              "Error: ${error['message'] ?? 'Unknown error'}",
+                            );
                           }
                         },
                         style: ElevatedButton.styleFrom(
