@@ -16,31 +16,33 @@ router.post("/signup", async (req, res) => {
   try {
     const { name, email, password } = req.body;
 
-    // Check if user already exists
+    // Check if user already exists in DB
     const existingUser = await User.findOne({ email });
     if (existingUser) {
       return res.status(400).json({ message: "User already exists" });
     }
 
-    // Hash password
-    const hashedPassword = await bcrypt.hash(password, 10);
-
-    // Create new user (unverified initially)
-    const newUser = new User({ name, email, password: hashedPassword, isVerified: false });
-    await newUser.save();
-
-    // Generate OTP and set expiry (5 minutes)
+    // Generate OTP
     const otp = generateOTP();
     const expiry = Date.now() + 5 * 60 * 1000; // 5 minutes
-    otpStore.set(email, { otp, expiry });
 
-    // Send OTP via email
-    const html = `<p>Hello ${name},</p>
-                  <p>Your OTP for FlowBank signup is: <b>${otp}</b></p>
-                  <p>This code will expire in 5 minutes.</p>`;
+    // Temporarily store user data and OTP in memory
+    otpStore.set(email, {
+      otp,
+      expiry,
+      name,
+      password, // store plain for now or hashed (better hashed)
+    });
+
+    // Send OTP
+    const html = `
+      <p>Hello ${name},</p>
+      <p>Your OTP for FlowBank signup is: <b>${otp}</b></p>
+      <p>This code will expire in 5 minutes.</p>
+    `;
     await sendEmail(email, "FlowBank Signup OTP", html);
 
-    res.status(201).json({ message: "User registered successfully. OTP sent to email." });
+    res.status(200).json({ message: "OTP sent to email. Please verify to complete signup." });
 
   } catch (err) {
     console.error("Signup error:", err);
@@ -48,47 +50,77 @@ router.post("/signup", async (req, res) => {
   }
 });
 
+
 // =================== VERIFY OTP ROUTE ===================
 router.post("/verify-otp", async (req, res) => {
   try {
     const { email, otp } = req.body;
 
-    // Check if OTP exists for this email
-    if (!otpStore.has(email)) {
-      return res.status(400).json({ message: "OTP not found. Request again." });
-    }
-
+    // Check OTP existence
     const record = otpStore.get(email);
+    if (!record) return res.status(400).json({ message: "OTP not found or expired." });
 
-    // Check if OTP expired
+    // Validate OTP expiry
     if (Date.now() > record.expiry) {
       otpStore.delete(email);
-      return res.status(400).json({ message: "OTP expired. Please request a new one." });
+      return res.status(400).json({ message: "OTP expired. Please sign up again." });
     }
 
-    // Check if OTP matches
+    // Validate OTP match
     if (otp !== record.otp) {
-      return res.status(400).json({ message: "Invalid OTP" });
+      return res.status(400).json({ message: "Invalid OTP." });
     }
 
-    // Mark user as verified
-    const user = await User.findOne({ email });
-    if (!user) {
-      return res.status(400).json({ message: "User not found" });
-    }
-    user.isVerified = true;
-    await user.save();
+    // ✅ Create and save user now
+    const hashedPassword = await bcrypt.hash(record.password, 10);
+    const newUser = new User({
+      name: record.name,
+      email,
+      password: hashedPassword,
+      isVerified: true,
+    });
+    await newUser.save();
 
-    // Delete OTP after verification
+    // Remove from OTP store
     otpStore.delete(email);
 
-    res.json({ message: "OTP verified successfully. You can now login." });
+    res.status(201).json({ message: "Signup completed and email verified successfully!" });
 
   } catch (err) {
     console.error("Verify OTP error:", err);
     res.status(500).json({ message: "Server error", error: err.message });
   }
 });
+
+router.post("/verify-login-otp", async (req, res) => {
+  try {
+    const { email, otp } = req.body;
+
+    const record = otpStore.get(email);
+    if (!record) return res.status(400).json({ message: "OTP not found or expired." });
+
+    if (Date.now() > record.expiry) {
+      otpStore.delete(email);
+      return res.status(400).json({ message: "OTP expired. Please try again." });
+    }
+
+    if (otp !== record.otp) {
+      return res.status(400).json({ message: "Invalid OTP." });
+    }
+
+    // ✅ OTP valid → login success
+    otpStore.delete(email);
+
+    // (Optional) Generate JWT here
+    // const token = jwt.sign({ id: user._id }, "jwt_secret_key", { expiresIn: "1h" });
+
+    res.json({ message: "Login successful!" });
+  } catch (err) {
+    console.error("Verify Login OTP error:", err);
+    res.status(500).json({ message: "Server error", error: err.message });
+  }
+});
+
 
 // module.exports = router;
 

@@ -20,7 +20,7 @@ class _OtpScreenState extends State<OtpScreen> {
     setState(() => isLoading = true);
 
     final response = await http.post(
-      Uri.parse("http://10.0.2.2:5000/api/auth/verify-otp"),
+      Uri.parse("http://10.0.2.2:5000/api/auth/verify-login-otp"),
       headers: {"Content-Type": "application/json"},
       body: jsonEncode({
         "email": widget.email,
@@ -30,7 +30,7 @@ class _OtpScreenState extends State<OtpScreen> {
 
     setState(() => isLoading = false);
 
-    if (response.statusCode == 201) {
+    if (response.statusCode == 200) {
       Navigator.pushReplacement(
         context,
         MaterialPageRoute(builder: (_) => const HomePage()),
