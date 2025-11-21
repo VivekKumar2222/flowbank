@@ -138,7 +138,7 @@ class _OtpScreenState extends State<OtpScreen> {
                   ),
                   const SizedBox(height: 8),
                   Text(
-                    "We've sent a 6-digit code to",
+                    "We've sent a 4-digit code to",
                     style: TextStyle(fontSize: 16, color: Colors.grey.shade700),
                   ),
                   Text(
@@ -228,7 +228,7 @@ class _OtpScreenState extends State<OtpScreen> {
                         ? () async {
                             final response = await http.post(
                               Uri.parse(
-                                "http://10.0.2.2:5000/api/auth/resend-otp",
+                                "http://localhost:5000/api/auth/resend-otp",
                               ),
                               headers: {"Content-Type": "application/json"},
                               body: jsonEncode({"email": widget.email}),

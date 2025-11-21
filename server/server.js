@@ -10,10 +10,10 @@ const settlementRoutes = require("./routes/settlementRoutes"); // ⬅️ NEW
 
 dotenv.config();
 
-// ✅ Create app FIRST before using it
+//  Create app FIRST before using it
 const app = express();
 
-// ✅ Middleware
+//  Middleware
 app.use(
   cors({
     origin: (origin, callback) => {
@@ -32,19 +32,19 @@ app.use(
 app.use(express.json());
 app.use(morgan("dev"));
 
-// ✅ Connect MongoDB
+//  Connect MongoDB
 mongoose
   .connect(process.env.MONGO_URI)
   .then(() => console.log("✅ MongoDB Connected"))
   .catch((err) => console.error("❌ MongoDB connection error:", err));
 
-// ✅ Routes
+//  Routes
 app.use("/api/auth", authRoutes);
 app.use("/api/settlements", settlementRoutes); // ⬅️ NEW
 
-// ✅ Test route
+//  Test route
 app.get("/", (req, res) => res.send("API is running..."));
 
-// ✅ Start server
+//  Start server
 const PORT = process.env.PORT || 5000;
 app.listen(PORT, () => console.log(`🚀 Server running on port ${PORT}`));

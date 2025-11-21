@@ -235,56 +235,6 @@ router.post("/login", async (req, res) => {
   }
 });
 
-// router.post("/login", async (req, res) => {
-//   try {
-//     const { email, password } = req.body;
-//     const user = await User.findOne({ email });
-//     if (!user) return res.status(400).json({ message: "Invalid credentials" });
-
-//     const isMatch = await bcrypt.compare(password, user.password);
-//     if (!isMatch) return res.status(400).json({ message: "Invalid credentials" });
-
-//     // Generate OTP
-//     const otp = otpGenerator.generate(6, { upperCaseAlphabets: false, specialChars: false, alphabets: false });
-//     otpStore[email] = otp;
-
-//     // Send OTP via email
-//     await transporter.sendMail({
-//       from: process.env.EMAIL_USER,
-//       to: email,
-//       subject: "Your OTP for FlowBank Login",
-//       text: `Your OTP is: ${otp}`,
-//     });
-
-//     res.json({ message: "OTP sent to your email" });
-//   } catch (err) {
-//     console.error(err);
-//     res.status(500).json({ message: "Server error" });
-//   }
-// });
-
-// router.post("/verify-otp", async (req, res) => {
-//   try {
-//     const { email, otp } = req.body;
-//     const user = await User.findOne({ email });
-//     if (!user) return res.status(400).json({ message: "Invalid credentials" });
-
-//     if (otpStore[email] !== otp) {
-//       return res.status(400).json({ message: "Invalid OTP" });
-//     }
-
-//     // OTP is valid → create JWT token
-//     const token = jwt.sign({ id: user._id }, "jwt_secret_key", { expiresIn: "1h" });
-
-//     // Delete OTP after verification
-//     delete otpStore[email];
-
-//     res.json({ message: "Login successful", token });
-//   } catch (err) {
-//     console.error(err);
-//     res.status(500).json({ message: "Server error" });
-//   }
-// });
 
 router.post("/complete-profile", async (req, res) => {
   try {
