@@ -53,7 +53,7 @@ class _OtpScreenState extends State<OtpScreen> {
     setState(() => isLoading = true);
 
     final response = await http.post(
-      Uri.parse("http://localhost:5000/api/auth/verify-login-otp"),
+      Uri.parse("http://10.0.2.2:5000/api/auth/verify-login-otp"),
       headers: {"Content-Type": "application/json"},
       body: jsonEncode({
         "email": widget.email,

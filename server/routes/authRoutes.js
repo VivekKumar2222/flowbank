@@ -308,5 +308,79 @@ router.post("/complete-profile", async (req, res) => {
   }
 });
 
+// ============= REQUEST PASSWORD RESET OTP =============
+router.post("/request-password-reset", async (req, res) => {
+  try {
+    const { email } = req.body;
+
+    const user = await User.findOne({ email });
+    if (!user) return res.status(404).json({ message: "User not found" });
+
+    // Generate OTP
+    const otp = generateOTP();
+    const expiry = Date.now() + 5 * 60 * 1000;
+
+    otpStore.set(email, { otp, expiry, action: "reset-password" });
+
+    const html = `
+      <p>Hello ${user.name},</p>
+      <p>Your OTP for resetting your FlowBank password is:</p>
+      <h2>${otp}</h2>
+      <p>This OTP expires in 5 minutes.</p>
+    `;
+
+    await sendEmail(email, "FlowBank Password Reset", html);
+
+    res.json({ message: "OTP sent to email." });
+
+  } catch (err) {
+    console.error("Reset Password OTP Error:", err);
+    res.status(500).json({ message: "Server error" });
+  }
+});
+
+
+// ============= VERIFY RESET PASSWORD OTP =============
+router.post("/verify-reset-otp", (req, res) => {
+  const { email, otp } = req.body;
+
+  const record = otpStore.get(email);
+  if (!record || record.action !== "reset-password")
+    return res.status(400).json({ message: "OTP not found" });
+
+  if (Date.now() > record.expiry)
+    return res.status(400).json({ message: "OTP expired" });
+
+  if (record.otp !== otp)
+    return res.status(400).json({ message: "Invalid OTP" });
+
+  res.json({ message: "OTP verified. You may reset password now." });
+});
+
+
+// ============= FINAL RESET PASSWORD ROUTE =============
+router.post("/reset-password", async (req, res) => {
+  try {
+    const { email, newPassword } = req.body;
+
+    const user = await User.findOne({ email });
+    if (!user) return res.status(404).json({ message: "User not found" });
+
+    const hashed = await bcrypt.hash(newPassword, 10);
+    user.password = hashed;
+    await user.save();
+
+    // Remove OTP
+    otpStore.delete(email);
+
+    res.json({ message: "Password updated successfully" });
+
+  } catch (err) {
+    console.error("Reset Password Error:", err);
+    res.status(500).json({ message: "Server error" });
+  }
+});
+
+
 
 module.exports = router;

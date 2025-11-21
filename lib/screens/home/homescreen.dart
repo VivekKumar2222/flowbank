@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import '../settlle_up/settle_up_screen.dart'; // adjust the relative path if needed
 import 'package:shared_preferences/shared_preferences.dart';
+import '../home/profile.dart';
 
 class HomePage extends StatefulWidget {
   const HomePage({Key? key}) : super(key: key);
@@ -82,24 +83,33 @@ class _HomePageState extends State<HomePage> {
                         size: 24,
                       ),
                     ),
-                    // Profile avatar
-                    Container(
-                      width: 44,
-                      height: 44,
-                      decoration: BoxDecoration(
-                        shape: BoxShape.circle,
-                        border: Border.all(
-                          color: const Color(0xFFE0E0E0),
-                          width: 2,
-                        ),
-                      ),
-                      child: ClipOval(
-                        child: Image.network(
-                          'https://hebbkx1anhila5yf.public.blob.vercel-storage.com/image-n5s0xbDXu8bonfG5EsMJ9TFPqSt5TJ.png',
-                          fit: BoxFit.cover,
-                        ),
-                      ),
-                    ),
+ // Profile avatar
+GestureDetector(
+  onTap: () {
+    Navigator.push(
+      context,
+      MaterialPageRoute(builder: (_) => const ProfileScreen()),
+    );
+  },
+  child: Container(
+    width: 44,
+    height: 44,
+    decoration: BoxDecoration(
+      shape: BoxShape.circle,
+      border: Border.all(
+        color: const Color(0xFFE0E0E0),
+        width: 2,
+      ),
+    ),
+    child: ClipOval(
+      child: Image.network(
+        'https://hebbkx1anhila5yf.public.blob.vercel-storage.com/image-n5s0xbDXu8bonfG5EsMJ9TFPqSt5TJ.png',
+        fit: BoxFit.cover,
+      ),
+    ),
+  ),
+),
+
                   ],
                 ),
               ),

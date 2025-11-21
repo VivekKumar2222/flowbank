@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'screens/onboarding/OnboardingScreen.dart';
 import 'screens/home/homescreen.dart';
 import 'screens/home/detail_collector.dart';
+import 'screens/home/profile.dart';
 
 void main() {
   WidgetsFlutterBinding.ensureInitialized(); // 👈 this is required

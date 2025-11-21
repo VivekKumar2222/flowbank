@@ -18,6 +18,7 @@ dependencies:
 
 
   cupertino_icons: ^1.0.8
+  dropdown_button2: ^2.3.9
   
 
 dev_dependencies:
@@ -34,3 +35,6 @@ flutter:
     - assets/my_image2.png
     - assets/my_image4.png
     - assets/my_image5.png
+    - assets/my_image6.png
+    - assets/my_image7.png
+    - assets/my_image8.png

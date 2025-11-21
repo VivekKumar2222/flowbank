@@ -18,6 +18,7 @@ const userSchema = new mongoose.Schema({
   phone: { type: String, default: "" },
   city: { type: String, default: "" },
   country: { type: String, default: "" },
+  postalCode: {type: String, default: "" },
 }, { timestamps: true });
 
 module.exports = mongoose.model("User", userSchema);

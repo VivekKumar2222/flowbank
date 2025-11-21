@@ -2,6 +2,8 @@ import 'dart:convert';
 import 'package:http/http.dart' as http;
 import 'package:flutter/material.dart';
 import '../home/homescreen.dart';
+import '../home/country_dropdown.dart';
+import 'package:dropdown_button2/dropdown_button2.dart';
 
 class DetailCollector extends StatefulWidget {
   final String email;
@@ -15,13 +17,15 @@ class _DetailCollectorState extends State<DetailCollector> {
   final TextEditingController phoneController = TextEditingController();
   final TextEditingController cityController = TextEditingController();
   final TextEditingController countryController = TextEditingController();
+  final TextEditingController postalCodeController = TextEditingController();
 
   bool isLoading = false;
 
   Future<void> submitDetails() async {
     final phone = phoneController.text.trim();
     final city = cityController.text.trim();
-    final country = countryController.text.trim();
+    final country = selectedCountry ?? '';
+    final postalCode = postalCodeController.text.trim();
 
     if (phone.isEmpty || city.isEmpty || country.isEmpty) {
       ScaffoldMessenger.of(
@@ -39,6 +43,7 @@ class _DetailCollectorState extends State<DetailCollector> {
         "email": widget.email,
         "phone": phone,
         "city": city,
+        "postalCode": postalCode,
         "country": country,
       }),
     );
@@ -53,8 +58,6 @@ class _DetailCollectorState extends State<DetailCollector> {
         context,
         MaterialPageRoute(builder: (_) => HomePage()),
       );
-      // Navigate to Home or Dashboard
-      // Navigator.pushReplacement(context, MaterialPageRoute(builder: (_) => HomePage()));
     } else {
       final error = jsonDecode(response.body);
       ScaffoldMessenger.of(context).showSnackBar(
@@ -103,148 +106,305 @@ class _DetailCollectorState extends State<DetailCollector> {
               ),
             ),
             SafeArea(
-              child: Padding(
-                padding: const EdgeInsets.symmetric(
-                  horizontal: 24,
-                  vertical: 20,
+              child: Column(
+                children: [
+                  // ✅ Image with NO padding
+                  Image.asset('assets/my_image8.png'),
+
+                  // ✅ Scrollable form with padding
+                  Expanded(
+                    child: SingleChildScrollView(
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 24,
+                        vertical: 24,
+                      ),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          const Text(
+                            'Please enter your details.',
+                            style: TextStyle(
+                              fontSize: 17.5,
+                              fontWeight: FontWeight.w400,
+                              color: Color(0xFF475467),
+                            ),
+                          ),
+                          const SizedBox(height: 20),
+
+                          // Country
+                          // Country Dropdown
+DropdownButtonFormField2<String>(
+          value: selectedCountry,
+          isExpanded: true, // makes text fill horizontally
+          decoration: InputDecoration(
+            labelText: "Country",
+            labelStyle: const TextStyle(
+              fontSize: 18,
+              color: Color(0xFF667085),
+            ),
+            filled: true,
+            fillColor: Colors.white,
+            contentPadding: const EdgeInsets.symmetric(
+              vertical: 12,
+              horizontal: 16,
+            ),
+            enabledBorder: OutlineInputBorder(
+              borderRadius: BorderRadius.circular(12),
+              borderSide: const BorderSide(
+                color: Color.fromARGB(210, 204, 208, 215),
+                width: 1.8,
+              ),
+            ),
+            focusedBorder: OutlineInputBorder(
+              borderRadius: BorderRadius.circular(12),
+              borderSide: const BorderSide(
+                color: Color(0xFF1E88E5),
+                width: 2,
+              ),
+            ),
+          ),
+
+          // 👇 Selected text style (in the input box)
+          style: const TextStyle(
+            fontSize: 16,
+            color: Color(0xFF475467),
+            fontWeight: FontWeight.w400,
+          ),
+
+          // 👇 Dropdown popup style customization
+          dropdownStyleData: DropdownStyleData(
+            maxHeight: 300, // maximum height of popup list
+            width: MediaQuery.of(context).size.width - 32, // full width
+            decoration: BoxDecoration(
+              color: const Color(0xFFF9FAFB), // background of dropdown popup
+              borderRadius: BorderRadius.circular(14), // rounded corners
+              boxShadow: [
+                BoxShadow(
+                  color: Colors.black.withOpacity(0.15), // soft shadow
+                  blurRadius: 8,
+                  offset: const Offset(0, 4),
                 ),
-                child: Column(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  children: [
-                    const SizedBox(height: 10),
-                    Image.asset('assets/my_image5.png'),
-                    const SizedBox(height: 20),
+              ],
+              border: Border.all(
+                color: const Color(0xFFD0D5DD), // border around dropdown
+                width: 1.2,
+              ),
+            ),
+            elevation: 2, // controls the depth/shadow intensity
+            offset: const Offset(0, 8), // space between input and popup
+          ),
 
-                    const Align(
-                      alignment: Alignment.centerLeft,
-                      child: Text(
-                        'Please enter your details.',
-                        style: TextStyle(
-                          fontSize: 16.5,
-                          fontWeight: FontWeight.w400,
-                          color: Color(0xFF475467),
-                        ),
-                      ),
-                    ),
-                    const SizedBox(height: 8),
+          // 👇 Custom padding/spacing inside each item
+          menuItemStyleData: const MenuItemStyleData(
+            height: 48, // item height
+            padding: EdgeInsets.symmetric(horizontal: 16, vertical: 6),
+          ),
 
-                    // Country
-                    TextField(
-                      controller: countryController,
-                      decoration: InputDecoration(
-                        labelText: "Country",
-                        filled: true,
-                        fillColor: Colors.white,
-                        contentPadding: const EdgeInsets.symmetric(
-                          vertical: 16,
-                          horizontal: 16,
-                        ),
-                        enabledBorder: OutlineInputBorder(
-                          borderRadius: BorderRadius.circular(12),
-                          borderSide: const BorderSide(
-                            color: Color(0xFFCCD0D7),
-                            width: 1,
-                          ),
-                        ),
-                        focusedBorder: OutlineInputBorder(
-                          borderRadius: BorderRadius.circular(12),
-                          borderSide: const BorderSide(
-                            color: Color(0xFF1E88E5),
-                            width: 2,
-                          ),
-                        ),
-                      ),
-                    ),
-                    const SizedBox(height: 12),
+          // 👇 The dropdown items
+          items: countries.map((country) {
+            return DropdownMenuItem<String>(
+              value: country,
+              child: Text(
+                country,
+                style: const TextStyle(
+                  fontSize: 16,
+                  color: Color(0xFF334155),
+                  fontWeight: FontWeight.w400,
+                ),
+              ),
+            );
+          }).toList(),
 
-                    // City
-                    TextField(
-                      controller: cityController,
-                      decoration: InputDecoration(
-                        labelText: "City",
-                        filled: true,
-                        fillColor: Colors.white,
-                        contentPadding: const EdgeInsets.symmetric(
-                          vertical: 16,
-                          horizontal: 16,
-                        ),
-                        enabledBorder: OutlineInputBorder(
-                          borderRadius: BorderRadius.circular(12),
-                          borderSide: const BorderSide(
-                            color: Color(0xFFCCD0D7),
-                            width: 1,
-                          ),
-                        ),
-                        focusedBorder: OutlineInputBorder(
-                          borderRadius: BorderRadius.circular(12),
-                          borderSide: const BorderSide(
-                            color: Color(0xFF1E88E5),
-                            width: 2,
-                          ),
-                        ),
-                      ),
-                    ),
-                    const SizedBox(height: 12),
+          // 👇 Called when user selects something
+          onChanged: (value) {
+            setState(() {
+              selectedCountry = value;
+            });
+          },
 
-                    // Phone
-                    TextField(
-                      controller: phoneController,
-                      keyboardType: TextInputType.phone,
-                      decoration: InputDecoration(
-                        labelText: "Phone",
-                        filled: true,
-                        fillColor: Colors.white,
-                        contentPadding: const EdgeInsets.symmetric(
-                          vertical: 16,
-                          horizontal: 16,
-                        ),
-                        enabledBorder: OutlineInputBorder(
-                          borderRadius: BorderRadius.circular(12),
-                          borderSide: const BorderSide(
-                            color: Color(0xFFCCD0D7),
-                            width: 1,
-                          ),
-                        ),
-                        focusedBorder: OutlineInputBorder(
-                          borderRadius: BorderRadius.circular(12),
-                          borderSide: const BorderSide(
-                            color: Color(0xFF1E88E5),
-                            width: 2,
-                          ),
-                        ),
-                      ),
-                    ),
+          // 👇 Optional: change how the dropdown icon looks
+          iconStyleData: const IconStyleData(
+            icon: Icon(Icons.keyboard_arrow_down_rounded),
+            iconSize: 26,
+            iconEnabledColor: Color(0xFF475467),
+          ),
+        ),
 
-                    const SizedBox(height: 36),
+                          const SizedBox(height: 16),
 
-                    // Submit Button
-                    SizedBox(
-                      width: double.infinity,
-                      height: 48,
-                      child: ElevatedButton(
-                        onPressed: isLoading ? null : submitDetails,
-                        style: ElevatedButton.styleFrom(
-                          backgroundColor: const Color(0xFF1E88E5),
-                          shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(12),
-                          ),
-                        ),
-                        child: isLoading
-                            ? const CircularProgressIndicator(
-                                color: Colors.white,
-                              )
-                            : const Text(
-                                "Continue",
-                                style: TextStyle(
-                                  fontSize: 16,
-                                  fontWeight: FontWeight.w600,
-                                  color: Colors.white,
+                          // City
+                          Row(
+                            children: [
+                              Expanded(
+                                child: TextField(
+                                  controller: cityController,
+                                  style: const TextStyle(fontSize: 15),
+                                  decoration: InputDecoration(
+                                    labelText: "City",
+
+                                    labelStyle: const TextStyle(
+                                      fontSize: 18,
+                                      color: Color(0xFF667085),
+                                    ),
+                                    filled: true,
+                                    fillColor: Colors.white,
+                                    contentPadding: const EdgeInsets.symmetric(
+                                      vertical: 12,
+                                      horizontal: 16,
+                                    ),
+                                    enabledBorder: OutlineInputBorder(
+                                      borderRadius: BorderRadius.circular(12),
+                                      borderSide: const BorderSide(
+                                        color: Color.fromARGB(
+                                          210,
+                                          204,
+                                          208,
+                                          215,
+                                        ),
+                                        width: 1.8,
+                                      ),
+                                    ),
+                                    focusedBorder: OutlineInputBorder(
+                                      borderRadius: BorderRadius.circular(12),
+                                      borderSide: const BorderSide(
+                                        color: Color(0xFF1E88E5),
+                                        width: 2,
+                                      ),
+                                    ),
+                                  ),
                                 ),
                               ),
+                              SizedBox(width: 12),
+                              Expanded(
+                                child: TextField(
+                                  controller: postalCodeController,
+                                  style: const TextStyle(fontSize: 15),
+                                  decoration: InputDecoration(
+                                    labelText: "Postal Code",
+                                    labelStyle: const TextStyle(
+                                      fontSize: 18,
+                                      color: Color(0xFF667085),
+                                    ),
+                                    filled: true,
+                                    fillColor: Colors.white,
+                                    contentPadding: const EdgeInsets.symmetric(
+                                      vertical: 12,
+                                      horizontal: 16,
+                                    ),
+                                    enabledBorder: OutlineInputBorder(
+                                      borderRadius: BorderRadius.circular(12),
+                                      borderSide: const BorderSide(
+                                        color: Color.fromARGB(
+                                          210,
+                                          204,
+                                          208,
+                                          215,
+                                        ),
+                                        width: 1.8,
+                                      ),
+                                    ),
+                                    focusedBorder: OutlineInputBorder(
+                                      borderRadius: BorderRadius.circular(12),
+                                      borderSide: const BorderSide(
+                                        color: Color(0xFF1E88E5),
+                                        width: 2,
+                                      ),
+                                    ),
+                                  ),
+                                ),
+                              ),
+                            ],
+                          ),
+                          const SizedBox(height: 16),
+
+                          // Phone
+                          TextField(
+                            controller: phoneController,
+                            keyboardType: TextInputType.phone,
+                            decoration: InputDecoration(
+                              labelText: "Phone",
+                              labelStyle: const TextStyle(
+                                fontSize: 18,
+                                color: Color(0xFF667085),
+                              ),
+
+                              filled: true,
+                              fillColor: Colors.white,
+                              contentPadding: const EdgeInsets.symmetric(
+                                vertical: 12,
+                                horizontal: 16,
+                              ),
+                              enabledBorder: OutlineInputBorder(
+                                borderRadius: BorderRadius.circular(12),
+                                borderSide: const BorderSide(
+                                  color: Color.fromARGB(210, 204, 208, 215),
+                                  width: 1.8,
+                                ),
+                              ),
+                              focusedBorder: OutlineInputBorder(
+                                borderRadius: BorderRadius.circular(12),
+                                borderSide: const BorderSide(
+                                  color: Color(0xFF1E88E5),
+                                  width: 2,
+                                ),
+                              ),
+                            ),
+                          ),
+                          const SizedBox(height: 34),
+
+                          // Submit Button
+                          SizedBox(
+                            width: double.infinity,
+                            height: 50,
+                            child: ElevatedButton(
+                              onPressed: isLoading ? null : submitDetails,
+                              style: ElevatedButton.styleFrom(
+                                backgroundColor: const Color(0xFF1E88E5),
+                                shape: RoundedRectangleBorder(
+                                  borderRadius: BorderRadius.circular(12),
+                                ),
+                              ),
+                              child: isLoading
+                                  ? const CircularProgressIndicator(
+                                      color: Colors.white,
+                                    )
+                                  : const Text(
+                                      "Continue",
+                                      style: TextStyle(
+                                        fontSize: 16,
+                                        fontWeight: FontWeight.w600,
+                                        color: Colors.white,
+                                      ),
+                                    ),
+                            ),
+                          ),
+                          SizedBox(height: 16),
+                          Center(
+                            child: Text(
+                              "We collect this info just to improve your experience",
+                              style: TextStyle(
+                                fontSize: 12.6,
+                                fontWeight: FontWeight.w500,
+                                color: Color.fromARGB(212, 71, 84, 103),
+                              ),
+                            ),
+                          ),
+                          SizedBox(height: 2),
+                          Center(
+                            child: Text(
+                              "it stays private.",
+                              style: TextStyle(
+                                fontSize: 12.6,
+                                fontWeight: FontWeight.w500,
+                                color: Color(0xFF308AFF),
+                              ),
+                            ),
+                          ),
+                        ],
                       ),
                     ),
-                  ],
-                ),
+                  ),
+                ],
               ),
             ),
           ],
@@ -254,7 +414,7 @@ class _DetailCollectorState extends State<DetailCollector> {
   }
 }
 
-// painters unchanged
+// Decorative Painters (unchanged)
 class CurvePainter extends CustomPainter {
   @override
   void paint(Canvas canvas, Size size) {

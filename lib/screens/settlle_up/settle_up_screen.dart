@@ -23,7 +23,7 @@ class SettleUpScreen extends StatefulWidget {
 
 class _SettleUpScreenState extends State<SettleUpScreen> {
   // ===== CONFIG =====
-  static const String baseUrl = 'http://localhost:5000/api';
+  static const String baseUrl = 'http://10.0.2.2:5000/api';
 
   // <-- or 10.0.2.2 for Android
   String? currentUserId;

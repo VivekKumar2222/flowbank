@@ -17,8 +17,8 @@ const app = express();
 app.use(
   cors({
     origin: (origin, callback) => {
-      // Allow Flutter web origins like http://localhost:xxxx or http://127.0.0.1:xxxx
-      if (!origin || origin.startsWith("http://localhost:") || origin.startsWith("http://127.0.0.1:")) {
+      // Allow Flutter web origins like http://localhost:xxxx or http://10.0.2.2:xxxx
+      if (!origin || origin.startsWith("http://localhost:") || origin.startsWith("http://10.0.2.2:")) {
         callback(null, true);
       } else {
         callback(new Error("CORS blocked this origin"));

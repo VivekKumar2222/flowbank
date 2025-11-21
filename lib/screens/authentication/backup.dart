@@ -323,7 +323,7 @@ void showSignUpBottomSheet(BuildContext context) {
 
                           final response = await http.post(
                             Uri.parse(
-                              "http://localhost:5000/api/auth/signup",
+                              "http://10.0.2.2:5000/api/auth/signup",
                             ), // use your IP on mobile
                             headers: {"Content-Type": "application/json"},
                             body: jsonEncode({
