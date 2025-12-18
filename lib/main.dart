@@ -4,10 +4,17 @@ import 'screens/onboarding/OnboardingScreen.dart';
 import 'screens/home/homescreen.dart';
 import 'screens/home/detail_collector.dart';
 import 'screens/home/profile.dart';
+import 'screens/home/new_homescreen.dart';
+import 'package:device_preview/device_preview.dart';
 
 void main() {
   WidgetsFlutterBinding.ensureInitialized(); // 👈 this is required
-  runApp(const MyApp());
+  runApp(
+    DevicePreview(
+      enabled: true,
+      builder: (context) => const MyApp(),
+    ),
+  );
 }
 
 class MyApp extends StatelessWidget {
@@ -17,8 +24,10 @@ class MyApp extends StatelessWidget {
   Widget build(BuildContext context) {
     return MaterialApp(
       title: 'FlowBank',
-      theme: ThemeData(useMaterial3: true),
-      home: const OnboardingScreen(),
+      theme: ThemeData(fontFamily: 'Manrope', useMaterial3: true),
+      locale: DevicePreview.locale(context),
+      builder: DevicePreview.appBuilder,
+      home: const HomeScreen(),
 
       debugShowCheckedModeBanner: false,
     );
