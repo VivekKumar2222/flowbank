@@ -1,4 +1,9 @@
+import 'dart:convert';
 import 'package:flutter/material.dart';
+import 'package:shared_preferences/shared_preferences.dart';
+import 'package:http/http.dart' as http;
+// import '../collaboration/add_members_page.dart';
+import '../collaboration/add_members_page.dart';
 
 enum GroupType { billSplitting, sharedExpenses, ledgerTracking }
 
@@ -12,134 +17,250 @@ class CreateGroupPage extends StatefulWidget {
 class _CreateGroupPageState extends State<CreateGroupPage> {
   final TextEditingController _groupNameController = TextEditingController();
   GroupType? _selectedType;
+  String _selectedCurrency = "USD";
+  bool? _hasVerificationSource;
+  String? userEmail;
+  bool isLoading = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _loadUserEmail();
+  }
+
+  Future<void> _loadUserEmail() async {
+    final prefs = await SharedPreferences.getInstance();
+    setState(() {
+      userEmail = prefs.getString('userEmail') ?? 'user';
+    });
+  }
+
+  String _mapGroupType(GroupType type) {
+    switch (type) {
+      case GroupType.billSplitting:
+        return "bill_split";
+      case GroupType.sharedExpenses:
+        return "shared_expense";
+      case GroupType.ledgerTracking:
+        return "ledger_track";
+    }
+  }
+
+  Future<void> _createGroup() async {
+    if (userEmail == null || _selectedType == null) return;
+
+    setState(() => isLoading = true);
+
+    final body = {
+      "name": _groupNameController.text.trim(),
+      "type": _mapGroupType(_selectedType!),
+      "ownerId": userEmail,
+      "currency": _selectedCurrency,
+      "settings": {"requireVerification": _hasVerificationSource ?? false},
+    };
+
+    try {
+      final response = await http.post(
+        Uri.parse("http://10.0.2.2:5000/api/collab/create-dashboard"),
+        headers: {"Content-Type": "application/json"},
+        body: jsonEncode(body),
+      );
+
+      
+
+      if (response.statusCode == 201) {
+        print("hello");
+
+        final decoded = jsonDecode(response.body);
+        final String dashboardId = decoded["dashboard"]["_id"];
+
+        final body2 = {
+          "dashboardId": dashboardId,
+          "userId": userEmail,
+          "role": "owner",
+        };
+
+              final response2 = await http.post(
+        Uri.parse("http://10.0.2.2:5000/api/collab/add-member"),
+        headers: {"Content-Type": "application/json"},
+        body: jsonEncode(body2),
+      );
+
+      if (response2.statusCode != 201) {
+  throw Exception("Failed to add creator as owner");
+}
+
+        print("hello2");
+
+        print("STATUS CODE: ${response.statusCode}");
+        print("RESPONSE BODY: ${response.body}");
+
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text("Group created successfully")),
+        );
+
+        Navigator.pushReplacement(
+          context,
+          MaterialPageRoute(
+            builder: (_) => AddMembersPage(dashboardId: dashboardId),
+          ),
+        );
+      } else {
+        print("STATUS CODE: ${response.statusCode}");
+        print("RESPONSE BODY: ${response.body}");
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(SnackBar(content: Text("Failed: ${response.body}")));
+      }
+    } catch (e) {
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text("Error: $e")));
+    } finally {
+      setState(() => isLoading = false);
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
-    final theme = Theme.of(context);
+    final isButtonEnabled =
+        _selectedType != null && _groupNameController.text.isNotEmpty;
 
     return Scaffold(
-      backgroundColor: const Color(0xFFF7F9FC),
+      backgroundColor: Colors.white,
       appBar: AppBar(
         elevation: 0,
         backgroundColor: Colors.transparent,
         foregroundColor: Colors.black,
-        title: const Text(
-          'Create Group',
-          style: TextStyle(fontWeight: FontWeight.w600),
+        title: const Center(
+          child: Text(
+            'Create Group',
+            style: TextStyle(
+              fontWeight: FontWeight.w700,
+              color: Color(0xFF217BFF),
+              fontSize: 26,
+            ),
+          ),
         ),
-        centerTitle: true,
       ),
       body: SafeArea(
         child: Padding(
-          padding: const EdgeInsets.all(16),
+          padding: const EdgeInsets.symmetric(horizontal: 18),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-
-              /// GROUP NAME
-              _SectionTitle(title: 'Group Name'),
-              const SizedBox(height: 8),
-              _CardContainer(
+              const SizedBox(height: 14),
+              const Text(
+                "Group Name",
+                style: TextStyle(fontSize: 16, fontWeight: FontWeight.w600),
+              ),
+              const SizedBox(height: 12),
+              Container(
+                decoration: BoxDecoration(
+                  border: Border.all(
+                    color: const Color.fromARGB(154, 33, 122, 255),
+                    width: 1.5,
+                  ),
+                  borderRadius: BorderRadius.circular(16),
+                ),
                 child: TextField(
                   controller: _groupNameController,
                   decoration: const InputDecoration(
                     hintText: 'e.g. Office Expenses, Goa Trip',
                     border: InputBorder.none,
+                    prefixIcon: Icon(Icons.group, color: Color(0xFF217BFF)),
+                    contentPadding: EdgeInsets.symmetric(
+                      horizontal: 16,
+                      vertical: 12,
+                    ),
                   ),
+                  onChanged: (_) => setState(() {}),
                 ),
               ),
-
-              const SizedBox(height: 24),
-
-              /// GROUP TYPE
-              _SectionTitle(title: 'Group Type'),
+              const SizedBox(height: 16),
+              const Text(
+                "Currency",
+                style: TextStyle(fontSize: 16, fontWeight: FontWeight.w600),
+              ),
               const SizedBox(height: 12),
-
-              _GroupTypeCard(
-                title: 'Bill Splitting',
-                subtitle: 'Split bills equally or custom',
-                icon: Icons.receipt_long_rounded,
-                isSelected: _selectedType == GroupType.billSplitting,
-                onTap: () {
-                  setState(() {
-                    _selectedType = GroupType.billSplitting;
-                  });
-                },
+              Row(
+                children: [
+                  _CurrencyOption(
+                    label: "PKR",
+                    isSelected: _selectedCurrency == "PKR",
+                    onTap: () => setState(() => _selectedCurrency = "PKR"),
+                  ),
+                  const SizedBox(width: 12),
+                  _CurrencyOption(
+                    label: "USD",
+                    isSelected: _selectedCurrency == "USD",
+                    onTap: () => setState(() => _selectedCurrency = "USD"),
+                  ),
+                ],
               ),
-
-              _GroupTypeCard(
-                title: 'Shared Expenses',
-                subtitle: 'Track group spending together',
-                icon: Icons.groups_rounded,
-                isSelected: _selectedType == GroupType.sharedExpenses,
-                onTap: () {
-                  setState(() {
-                    _selectedType = GroupType.sharedExpenses;
-                  });
-                },
+              const SizedBox(height: 20),
+              const Text(
+                "Source of Verification",
+                style: TextStyle(fontSize: 16, fontWeight: FontWeight.w600),
               ),
-
-              _GroupTypeCard(
-                title: 'Ledger Tracking',
-                subtitle: 'Track who owes whom',
-                icon: Icons.book_rounded,
-                isSelected: _selectedType == GroupType.ledgerTracking,
-                onTap: () {
-                  setState(() {
-                    _selectedType = GroupType.ledgerTracking;
-                  });
-                },
+              const SizedBox(height: 12),
+              Row(
+                children: [
+                  _VerificationRadio(
+                    label: "Yes",
+                    value: true,
+                    groupValue: _hasVerificationSource,
+                    onChanged: (val) =>
+                        setState(() => _hasVerificationSource = val),
+                  ),
+                  const SizedBox(width: 20),
+                  _VerificationRadio(
+                    label: "No",
+                    value: false,
+                    groupValue: _hasVerificationSource,
+                    onChanged: (val) =>
+                        setState(() => _hasVerificationSource = val),
+                  ),
+                ],
               ),
-
               const SizedBox(height: 24),
-
-              /// FILLER / EMPTY STATE GRAPHIC
+              const Text(
+                "Group Type",
+                style: TextStyle(fontSize: 16, fontWeight: FontWeight.w600),
+              ),
+              const SizedBox(height: 12),
               Expanded(
-                child: Center(
+                child: SingleChildScrollView(
                   child: Column(
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    children: const [
-                      Icon(
-                        Icons.account_balance_wallet_outlined,
-                        size: 64,
-                        color: Color(0xFFB6C5E3),
+                    children: [
+                      _GroupTypeCard(
+                        title: 'Bill Splitting',
+                        subtitle: 'Split bills equally or custom',
+                        icon: Icons.receipt_long_rounded,
+                        isSelected: _selectedType == GroupType.billSplitting,
+                        onTap: () => setState(
+                          () => _selectedType = GroupType.billSplitting,
+                        ),
                       ),
-                      SizedBox(height: 12),
-                      Text(
-                        'You can change group settings later',
-                        style: TextStyle(
-                          color: Colors.grey,
-                          fontSize: 14,
+                      _GroupTypeCard(
+                        title: 'Shared Expenses',
+                        subtitle: 'Track group spending together',
+                        icon: Icons.groups_rounded,
+                        isSelected: _selectedType == GroupType.sharedExpenses,
+                        onTap: () => setState(
+                          () => _selectedType = GroupType.sharedExpenses,
+                        ),
+                      ),
+                      _GroupTypeCard(
+                        title: 'Ledger Tracking',
+                        subtitle: 'Track who owes whom',
+                        icon: Icons.book_rounded,
+                        isSelected: _selectedType == GroupType.ledgerTracking,
+                        onTap: () => setState(
+                          () => _selectedType = GroupType.ledgerTracking,
                         ),
                       ),
                     ],
-                  ),
-                ),
-              ),
-
-              /// CREATE BUTTON
-              SizedBox(
-                width: double.infinity,
-                child: ElevatedButton(
-                  onPressed: _selectedType == null ||
-                          _groupNameController.text.isEmpty
-                      ? null
-                      : () {
-                          // Handle create group
-                        },
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: const Color(0xFF4F8DF7),
-                    padding: const EdgeInsets.symmetric(vertical: 14),
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(14),
-                    ),
-                  ),
-                  child: const Text(
-                    'Create Group',
-                    style: TextStyle(
-                      fontSize: 16,
-                      fontWeight: FontWeight.w600,
-                    ),
                   ),
                 ),
               ),
@@ -147,54 +268,106 @@ class _CreateGroupPageState extends State<CreateGroupPage> {
           ),
         ),
       ),
-    );
-  }
-}
-
-/// REUSABLE WIDGETS
-
-class _SectionTitle extends StatelessWidget {
-  final String title;
-
-  const _SectionTitle({required this.title});
-
-  @override
-  Widget build(BuildContext context) {
-    return Text(
-      title,
-      style: const TextStyle(
-        fontSize: 16,
-        fontWeight: FontWeight.w600,
-      ),
-    );
-  }
-}
-
-class _CardContainer extends StatelessWidget {
-  final Widget child;
-
-  const _CardContainer({required this.child});
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(16),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withOpacity(0.04),
-            blurRadius: 12,
-            offset: const Offset(0, 4),
+      bottomNavigationBar: Padding(
+        padding: const EdgeInsets.all(18),
+        child: SizedBox(
+          height: 56,
+          child: ElevatedButton(
+            onPressed: _createGroup,
+            style: ElevatedButton.styleFrom(
+              backgroundColor: isButtonEnabled
+                  ? const Color(0xFF217BFF)
+                  : Colors.grey.shade300,
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(14),
+              ),
+            ),
+            child: isLoading
+                ? const CircularProgressIndicator(color: Colors.white)
+                : const Text(
+                    'Create Group',
+                    style: TextStyle(fontSize: 18, fontWeight: FontWeight.w600),
+                  ),
           ),
-        ],
+        ),
       ),
-      child: child,
     );
   }
 }
 
+/// Verification Radio
+class _VerificationRadio extends StatelessWidget {
+  final String label;
+  final bool value;
+  final bool? groupValue;
+  final ValueChanged<bool?> onChanged;
+
+  const _VerificationRadio({
+    required this.label,
+    required this.value,
+    required this.groupValue,
+    required this.onChanged,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Row(
+      children: [
+        Radio<bool>(
+          value: value,
+          groupValue: groupValue,
+          onChanged: onChanged,
+          activeColor: const Color(0xFF217BFF),
+        ),
+        Text(
+          label,
+          style: const TextStyle(fontSize: 15, fontWeight: FontWeight.w500),
+        ),
+      ],
+    );
+  }
+}
+
+/// Currency Option
+class _CurrencyOption extends StatelessWidget {
+  final String label;
+  final bool isSelected;
+  final VoidCallback onTap;
+
+  const _CurrencyOption({
+    required this.label,
+    required this.isSelected,
+    required this.onTap,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return GestureDetector(
+      onTap: onTap,
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
+        decoration: BoxDecoration(
+          color: isSelected ? const Color(0xFF217BFF) : Colors.white,
+          borderRadius: BorderRadius.circular(16),
+          border: Border.all(
+            color: isSelected ? const Color(0xFF217BFF) : Colors.grey.shade300,
+            width: 1.5,
+          ),
+        ),
+        child: Text(
+          label,
+          style: TextStyle(
+            color: isSelected ? Colors.white : const Color(0xFF217BFF),
+            fontWeight: FontWeight.w600,
+            fontSize: 16,
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+/// Group Type Card
 class _GroupTypeCard extends StatelessWidget {
   final String title;
   final String subtitle;
@@ -219,28 +392,21 @@ class _GroupTypeCard extends StatelessWidget {
         child: Container(
           padding: const EdgeInsets.all(14),
           decoration: BoxDecoration(
-            color: isSelected ? const Color(0xFFEAF1FF) : Colors.white,
+            color: isSelected ? const Color(0xFFF5FAFF) : Colors.white,
             borderRadius: BorderRadius.circular(16),
             border: Border.all(
               color: isSelected
-                  ? const Color(0xFF4F8DF7)
-                  : Colors.transparent,
-              width: 1.2,
+                  ? const Color.fromARGB(168, 33, 122, 255)
+                  : Colors.grey.shade300,
+              width: 1.5,
             ),
-            boxShadow: [
-              BoxShadow(
-                color: Colors.black.withOpacity(0.04),
-                blurRadius: 10,
-                offset: const Offset(0, 4),
-              ),
-            ],
           ),
           child: Row(
             children: [
               CircleAvatar(
                 radius: 22,
-                backgroundColor: const Color(0xFF4F8DF7),
-                child: Icon(icon, color: Colors.white),
+                backgroundColor: const Color(0xFFD1E9FF),
+                child: Icon(icon, color: const Color(0xFF217BFF)),
               ),
               const SizedBox(width: 14),
               Expanded(
@@ -249,26 +415,18 @@ class _GroupTypeCard extends StatelessWidget {
                   children: [
                     Text(
                       title,
-                      style: const TextStyle(
-                        fontWeight: FontWeight.w600,
-                      ),
+                      style: const TextStyle(fontWeight: FontWeight.w600),
                     ),
                     const SizedBox(height: 4),
                     Text(
                       subtitle,
-                      style: const TextStyle(
-                        fontSize: 13,
-                        color: Colors.grey,
-                      ),
+                      style: const TextStyle(fontSize: 13, color: Colors.grey),
                     ),
                   ],
                 ),
               ),
               if (isSelected)
-                const Icon(
-                  Icons.check_circle,
-                  color: Color(0xFF4F8DF7),
-                ),
+                const Icon(Icons.check_circle, color: Color(0xFF4F8DF7)),
             ],
           ),
         ),

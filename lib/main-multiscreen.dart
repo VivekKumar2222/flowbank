@@ -9,12 +9,12 @@
 
 // void main() {
 //   WidgetsFlutterBinding.ensureInitialized(); // 👈 this is required
-//   runApp(
-//     DevicePreview(
-//       enabled: true,
-//       builder: (context) => const MyApp(),
-//     ),
-//   );
+  // runApp(
+    // DevicePreview(
+    //   enabled: true,
+    //   builder: (context) => const MyApp(),
+  //   ),
+  // );
 // }
 
 // class MyApp extends StatelessWidget {
@@ -25,8 +25,8 @@
 //     return MaterialApp(
 //       title: 'FlowBank',
 //       theme: ThemeData(fontFamily: 'Manrope', useMaterial3: true),
-//       locale: DevicePreview.locale(context),
-//       builder: DevicePreview.appBuilder,
+      // locale: DevicePreview.locale(context),
+      // builder: DevicePreview.appBuilder,
 //       home: const HomeScreen(),
 
 //       debugShowCheckedModeBanner: false,

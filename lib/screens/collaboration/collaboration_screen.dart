@@ -1,32 +1,165 @@
+import 'dart:convert';
 import 'dart:ui';
+
 import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import 'package:http/http.dart' as http;
+
 import '../collaboration/groups_outlook.dart';
+import '../collaboration/request-widgets.dart';
+import '../collaboration/create_group.dart';
+
 import '../home/section_header.dart';
-import '../onboarding/OnboardingScreen.dart';
 import '../home/status_card.dart';
 import '../home/status_card_box.dart';
 import '../home/user-total-balance-view.dart';
 import '../home/bank_transactions.dart';
-import '../collaboration/request-widgets.dart';
 
+import '../onboarding/OnboardingScreen.dart';
+
+/// --------------------
+/// Get Saved Balance
+/// --------------------
 Future<double> getSavedTotalBalance() async {
   final prefs = await SharedPreferences.getInstance();
   return prefs.getDouble('totalBalance') ?? 0.0;
 }
 
-class HomeScreen extends StatefulWidget {
-  const HomeScreen({super.key});
+/// --------------------
+/// Collaboration Screen
+/// --------------------
+class CollaborationScreen extends StatefulWidget {
+  const CollaborationScreen({super.key});
 
   @override
-  State<HomeScreen> createState() => _HomeScreenState();
+  State<CollaborationScreen> createState() => _CollaborationScreenState();
 }
 
-class _HomeScreenState extends State<HomeScreen> {
+class _CollaborationScreenState extends State<CollaborationScreen> {
   int _selectedIndex = 0;
+  String? userEmail;
 
   final Color activeColor = const Color(0xFF217BFF);
   final Color inactiveColor = const Color(0xFF667085);
+
+  List<GroupData> userGroups = [];
+  List<GroupData> invitedUserGroups = [];
+
+  @override
+  void initState() {
+    super.initState();
+    _loadUserEmail();
+  }
+
+  /// --------------------
+  /// Load User Email
+  /// --------------------
+  Future<void> _loadUserEmail() async {
+    final prefs = await SharedPreferences.getInstance();
+
+    setState(() {
+      userEmail = prefs.getString('userEmail') ?? 'user';
+    });
+
+    if (userEmail != null) {
+      await _fetchUserGroups(userEmail!);
+      await _fetchInvitedGroups(userEmail!);
+    }
+  }
+
+  /// --------------------
+  /// Fetch User Groups
+  /// --------------------
+  ///
+
+Future<void> _fetchInvitedGroups(String email) async {
+  try {
+    final response = await http.get(
+      Uri.parse(
+        'http://10.0.2.2:5000/api/collab/invited-dashboards?userId=$email',
+      ),
+    );
+
+    if (response.statusCode != 200) {
+      throw Exception("Failed to load invited dashboards");
+    }
+
+    final List<dynamic> data = jsonDecode(response.body);
+
+    List<GroupData> invitedGroups = data.map((dash) {
+      return GroupData(
+        groupName: dash['name'],
+        groupType: dash['type'],
+        ownerName: dash['ownerName'], // email or map later
+        createdDate: DateTime.parse(dash['createdAt']),
+        members: List<String>.from(dash['members']), // ✅ REAL MEMBERS
+      );
+    }).toList();
+
+    setState(() {
+      invitedUserGroups = invitedGroups;
+    });
+  } catch (e) {
+    debugPrint("Error fetching invited groups: $e");
+  }
+}
+
+
+  Future<void> _fetchUserGroups(String email) async {
+    try {
+      // 1️⃣ Fetch dashboard members
+      final membersResponse = await http.get(
+        Uri.parse(
+          'http://10.0.2.2:5000/api/collab/dashboard-members?userId=$email',
+        ),
+      );
+
+      if (membersResponse.statusCode != 200) {
+        throw Exception('Failed to load dashboard members');
+      }
+
+      final List<dynamic> membersData = jsonDecode(membersResponse.body);
+
+      // Extract dashboard IDs
+      List<String> dashboardIds = membersData
+          .map((member) => member['dashboardId'] as String)
+          .toList();
+
+      if (dashboardIds.isEmpty) return;
+
+      // 2️⃣ Fetch dashboards
+      final dashboardsResponse = await http.post(
+        Uri.parse('http://10.0.2.2:5000/api/collab/dashboards-by-ids'),
+        headers: {'Content-Type': 'application/json'},
+        body: jsonEncode({'ids': dashboardIds}),
+      );
+
+      if (dashboardsResponse.statusCode != 200) {
+        throw Exception('Failed to load dashboards');
+      }
+
+      final List<dynamic> dashboardsData = jsonDecode(dashboardsResponse.body);
+
+      List<GroupData> groups = dashboardsData.map((dash) {
+        return GroupData(
+          groupName: dash['name'],
+          groupType: dash['type'],
+          ownerName: dash['ownerId'],
+          createdDate: DateTime.parse(dash['createdAt']),
+          members: membersData
+              .where((m) => m['dashboardId'] == dash['_id'])
+              .map((m) => m['userId'].toString())
+              .toList(),
+        );
+      }).toList();
+
+      setState(() {
+        userGroups = groups;
+      });
+    } catch (e) {
+      debugPrint("Error fetching user groups: $e");
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -36,10 +169,14 @@ class _HomeScreenState extends State<HomeScreen> {
       top: false,
       bottom: false,
       child: Scaffold(
+        backgroundColor: Colors.white,
+        extendBody: true,
+
+        /// --------------------
+        /// Floating Button
+        /// --------------------
         floatingActionButton: Padding(
-          padding: EdgeInsets.only(
-            bottom: 80 + MediaQuery.of(context).viewPadding.bottom,
-          ),
+          padding: EdgeInsets.only(bottom: 80 + bottomInset),
           child: Container(
             decoration: BoxDecoration(
               borderRadius: BorderRadius.circular(16),
@@ -47,200 +184,174 @@ class _HomeScreenState extends State<HomeScreen> {
                 BoxShadow(
                   color: const Color(0xFF217BFF).withOpacity(0.35),
                   blurRadius: 22,
-                  spreadRadius: 0.7,
                   offset: const Offset(0, 10),
                 ),
               ],
             ),
             child: FloatingActionButton(
-              onPressed: () {
-                // TODO: open create group / request modal
-              },
               backgroundColor: const Color(0xFF217BFF),
-              elevation: 0, // IMPORTANT: disable default shadow
+              elevation: 0,
               shape: RoundedRectangleBorder(
                 borderRadius: BorderRadius.circular(16),
               ),
+              onPressed: () {
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(builder: (_) => const CreateGroupPage()),
+                );
+              },
               child: const Icon(Icons.add, color: Colors.white, size: 28),
             ),
           ),
         ),
-
         floatingActionButtonLocation: FloatingActionButtonLocation.endDocked,
 
-        backgroundColor: Colors.white,
-        extendBody: true,
-
-        // ---------------------- APP BAR ----------------------
+        /// --------------------
+        /// App Bar
+        /// --------------------
         appBar: PreferredSize(
           preferredSize: const Size.fromHeight(120),
           child: AppBar(
             elevation: 0,
-            scrolledUnderElevation: 0, // disable default shadow
-            backgroundColor: const Color.fromARGB(
-              0,
-              255,
-              255,
-              255,
-            ).withOpacity(0.0),
-            surfaceTintColor: Colors.transparent, // IMPORTANT
+            backgroundColor: Colors.transparent,
             automaticallyImplyLeading: false,
             titleSpacing: 0,
-
-            flexibleSpace: ClipRect(
-              child: BackdropFilter(
-                filter: ImageFilter.blur(sigmaX: 0, sigmaY: 0),
-                child: SafeArea(
-                  bottom: false,
-                  child: Padding(
-                    padding: const EdgeInsets.only(
-                      left: 18,
-                      right: 26,
-                      bottom: 16,
-                    ),
-                    child: Column(
-                      mainAxisAlignment: MainAxisAlignment.end,
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Row(
-                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                          crossAxisAlignment: CrossAxisAlignment.end,
-                          children: [
-                            Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: const [
-                                Text(
-                                  "space", //black space
-                                  style: TextStyle(
-                                    fontSize: 28,
-                                    fontFamily: "Manrope",
-                                    fontWeight: FontWeight.w700,
-                                    height: -0.5,
-                                    color: Color.fromARGB(0, 255, 255, 255),
-                                  ),
-                                ),
-                                SizedBox(height: 6),
-                                Text(
-                                  "CollaBorations",
-                                  style: TextStyle(
-                                    color: Color(0xFF0179FE),
-                                    fontSize: 28,
-                                    fontFamily: "Manrope",
-                                    fontWeight: FontWeight.w700,
-                                  ),
-                                ),
-                              ],
-                            ),
-                            const Padding(
-                              padding: EdgeInsets.only(bottom: 8),
-                              child: CircleAvatar(
-                                radius: 28,
-                                backgroundImage: NetworkImage(
-                                  "https://i.pravatar.cc/150?img=3",
-                                ),
-                              ),
-                            ),
-                          ],
-                        ),
-                      ],
-                    ),
-                  ),
-                ),
-              ),
-            ),
-          ),
-        ),
-
-        // ---------------------- BODY (SCROLLABLE) ----------------------
-        body: SingleChildScrollView(
-          physics: const BouncingScrollPhysics(),
-          child: Column(
-            children: [
-              // -------- TOP SECTION --------
-              Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 18),
+            flexibleSpace: SafeArea(
+              bottom: false,
+              child: Padding(
+                padding: const EdgeInsets.fromLTRB(18, 0, 26, 16),
                 child: Column(
+                  mainAxisAlignment: MainAxisAlignment.end,
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    const SizedBox(height: 12),
-
-                    SectionHeader(
-                      title: "All Requests",
-                      showButton: true,
-                      destination: OnboardingScreen(),
-                    ),
-
-                    const SizedBox(height: 16),
-
-                    RequestsRow(
-                      requests: [
-                        RequestData(
-                          groupName: "Office Expenses",
-                          groupType: "Shared Expenses",
-                          ownerName: "Katty Phillips",
-                          createdDate: DateTime(2025, 1, 17),
-                          members: [
-                            "Vivek Kumar",
-                            "John Doe",
-                            "Sarah Smith",
-                            "Ali Khan",
-                            "Zara Noor",
-                            "Michael",
-                          ],
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      children: const [
+                        Text(
+                          "CollaBorations",
+                          style: TextStyle(
+                            color: Color(0xFF0179FE),
+                            fontSize: 28,
+                            fontWeight: FontWeight.w700,
+                          ),
                         ),
-                        RequestData(
-                          groupName: "Trip Budgeting and planning",
-                          groupType: "Bill Split",
-                          ownerName: "John Doe",
-                          createdDate: DateTime(2025, 2, 2),
-                          members: ["Vivek Kumar", "Sarah Smith"],
-                        ),
-                      ],
-                    ),
-
-                    const SizedBox(height: 24),
-
-                    SectionHeader(
-                      title: "All Groups",
-                      showButton: true,
-                      destination: OnboardingScreen(),
-                    ),
-
-                    const SizedBox(height: 16),
-
-                    GroupsRow(
-                      groups: [
-                        GroupData(
-                          groupName: "Office Expenses",
-                          groupType: "Shared Expenses",
-                          ownerName: "Katty Phillips",
-                          createdDate: DateTime(2025, 1, 17),
-                          members: [
-                            "Vivek Kumar",
-                            "John Doe",
-                            "Sarah Smith",
-                            "Ali Khan",
-                            "Zara Noor",
-                            "Michael",
-                          ],
-                        ),
-                        GroupData(
-                          groupName: "Trip Plan 2025",
-                          groupType: "Bill Splitting",
-                          ownerName: "John Doe",
-                          createdDate: DateTime(2025, 2, 2),
-                          members: ["Vivek Kumar", "Sarah Smith"],
+                        CircleAvatar(
+                          radius: 28,
+                          backgroundImage: NetworkImage(
+                            "https://i.pravatar.cc/150?img=3",
+                          ),
                         ),
                       ],
                     ),
                   ],
                 ),
               ),
-            ],
+            ),
           ),
         ),
 
-        // ---------------------- BOTTOM NAV ----------------------
+        /// --------------------
+        /// Body
+        /// --------------------
+        body: SingleChildScrollView(
+          physics: const BouncingScrollPhysics(),
+          child: Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 18),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                const SizedBox(height: 12),
+
+                /// Requests
+                SectionHeader(
+                  title: "All Requests",
+                  showButton: true,
+                  destination: OnboardingScreen(),
+                ),
+                const SizedBox(height: 16),
+
+        invitedUserGroups.isEmpty
+            ? Container(
+        width: double.infinity,
+        height: 118,
+        decoration: BoxDecoration(
+          color: const Color(0xFFD6D6D6),
+          borderRadius: BorderRadius.circular(16),
+          border: Border.all(
+            color: const Color(0xFFB0B0B0),
+            width: 1.2,
+          ),
+        ),
+        child: const Center(
+          child: Text(
+            "No Request",
+            style: TextStyle(
+              color: Color(0xFF5E5E5E),
+              fontSize: 17,
+              fontWeight: FontWeight.w700,
+            ),
+          ),
+        ),
+      )
+            : RequestsRow(
+                requests: invitedUserGroups.map((group) {
+                  return RequestData(
+                    groupName: group.groupName,
+                    groupType: group.groupType,
+                    ownerName: group.ownerName,
+                    createdDate: group.createdDate,
+                    members: group.members,
+                  );
+                }).toList(),
+              ),
+
+                const SizedBox(height: 12),
+
+                /// Groups
+                SectionHeader(
+                  title: "All Groups",
+                  showButton: true,
+                  destination: OnboardingScreen(),
+                ),
+                const SizedBox(height: 16),
+
+                userGroups.isEmpty
+                    ? Padding(
+                        padding: const EdgeInsets.symmetric(vertical: 50),
+                        child: Center(
+                          child: Text(
+                            "No groups yet",
+                            style: TextStyle(
+                              fontSize: 16,
+                              fontWeight: FontWeight.w600,
+                              color: Colors.grey.shade600,
+                            ),
+                          ),
+                        ),
+                      )
+                    : GroupsRow(
+                        groups: userGroups.map((group) {
+                          final ownerName = group.ownerName == userEmail
+                              ? "You"
+                              : group.ownerName;
+
+                          return GroupData(
+                            groupName: group.groupName,
+                            groupType: group.groupType,
+                            members: group.members,
+                            ownerName: ownerName,
+                            createdDate: group.createdDate,
+                          );
+                        }).toList(),
+                      ),
+              ],
+            ),
+          ),
+        ),
+
+        /// --------------------
+        /// Bottom Navigation
+        /// --------------------
         bottomNavigationBar: ClipRRect(
           borderRadius: const BorderRadius.only(
             topLeft: Radius.circular(24),
@@ -250,40 +361,33 @@ class _HomeScreenState extends State<HomeScreen> {
             filter: ImageFilter.blur(sigmaX: 20, sigmaY: 20),
             child: Container(
               height: 70 + bottomInset.clamp(0, 40),
-              decoration: BoxDecoration(
-                color: Colors.white.withOpacity(0.6),
-                border: Border.all(color: Colors.white.withOpacity(0.2)),
-              ),
-              child: SafeArea(
-                top: false,
-                child: BottomNavigationBar(
-                  backgroundColor: Colors.transparent,
-                  type: BottomNavigationBarType.fixed,
-                  elevation: 0,
-                  selectedItemColor: activeColor,
-                  unselectedItemColor: inactiveColor,
-                  currentIndex: _selectedIndex,
-                  showUnselectedLabels: true,
-                  onTap: (index) {
-                    setState(() {
-                      _selectedIndex = index;
-                    });
-                  },
-                  items: const [
-                    BottomNavigationBarItem(
-                      icon: Icon(Icons.home_rounded),
-                      label: "Home",
-                    ),
-                    BottomNavigationBarItem(
-                      icon: Icon(Icons.groups_rounded),
-                      label: "Groups",
-                    ),
-                    BottomNavigationBarItem(
-                      icon: Icon(Icons.insert_chart_rounded),
-                      label: "Report",
-                    ),
-                  ],
-                ),
+              color: Colors.white.withOpacity(0.6),
+              child: BottomNavigationBar(
+                currentIndex: _selectedIndex,
+                backgroundColor: Colors.transparent,
+                elevation: 0,
+                type: BottomNavigationBarType.fixed,
+                selectedItemColor: activeColor,
+                unselectedItemColor: inactiveColor,
+                onTap: (index) {
+                  setState(() {
+                    _selectedIndex = index;
+                  });
+                },
+                items: const [
+                  BottomNavigationBarItem(
+                    icon: Icon(Icons.home_rounded),
+                    label: "Home",
+                  ),
+                  BottomNavigationBarItem(
+                    icon: Icon(Icons.groups_rounded),
+                    label: "Groups",
+                  ),
+                  BottomNavigationBarItem(
+                    icon: Icon(Icons.insert_chart_rounded),
+                    label: "Report",
+                  ),
+                ],
               ),
             ),
           ),

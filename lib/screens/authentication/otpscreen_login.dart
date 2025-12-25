@@ -2,7 +2,8 @@ import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
 import '../authentication/notification.dart';
-import '../home/homescreen.dart';
+// import '../home/homescreen.dart';
+import '../home/new_homescreen.dart';
 import 'dart:async';
 import 'package:shared_preferences/shared_preferences.dart';
 
@@ -79,7 +80,7 @@ class _OtpScreenState extends State<OtpScreen> {
 
       Navigator.pushReplacement(
         context,
-        MaterialPageRoute(builder: (_) => const HomePage()),
+        MaterialPageRoute(builder: (_) => const HomeScreen()),
       );
     } else {
       final error = jsonDecode(response.body);

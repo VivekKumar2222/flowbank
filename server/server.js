@@ -7,6 +7,8 @@ const morgan = require("morgan");
 
 const authRoutes = require("./routes/authRoutes");
 const settlementRoutes = require("./routes/settlementRoutes"); // ⬅️ NEW
+const collabRoutes = require("./routes/collabRoutes");
+const searchRoutes = require("./routes/userSearch");
 
 dotenv.config();
 
@@ -41,6 +43,8 @@ mongoose
 // ✅ Routes
 app.use("/api/auth", authRoutes);
 app.use("/api/settlements", settlementRoutes); // ⬅️ NEW
+app.use("/api/collab", collabRoutes);
+app.use("/api/search", searchRoutes);
 
 // ✅ Test route
 app.get("/", (req, res) => res.send("API is running..."));

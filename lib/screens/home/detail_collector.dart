@@ -1,7 +1,7 @@
 import 'dart:convert';
 import 'package:http/http.dart' as http;
 import 'package:flutter/material.dart';
-import '../home/homescreen.dart';
+import '../home/new_homescreen.dart';
 import '../home/country_dropdown.dart';
 import 'package:dropdown_button2/dropdown_button2.dart';
 
@@ -56,7 +56,7 @@ class _DetailCollectorState extends State<DetailCollector> {
       );
       Navigator.pushReplacement(
         context,
-        MaterialPageRoute(builder: (_) => HomePage()),
+        MaterialPageRoute(builder: (_) => HomeScreen()),
       );
     } else {
       final error = jsonDecode(response.body);

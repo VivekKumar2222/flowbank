@@ -7,9 +7,9 @@ import '../home/status_card.dart';
 import '../home/status_card_box.dart';
 import '../home/user-total-balance-view.dart';
 import '../home/bank_transactions.dart';
-
+import '../collaboration/groups_outlook.dart';
 import 'package:shared_preferences/shared_preferences.dart';
-
+import '../collaboration/collaboration_screen.dart';
 
 class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
@@ -19,8 +19,13 @@ class HomeScreen extends StatefulWidget {
 }
 
 class _HomeScreenState extends State<HomeScreen> {
+  String? userName;
+    @override
+  void initState() {
+    super.initState();
+    _loadUserName();
+  }
 
-    String? userName;
   Future<void> _loadUserName() async {
     final prefs = await SharedPreferences.getInstance();
     setState(() {
@@ -44,75 +49,83 @@ class _HomeScreenState extends State<HomeScreen> {
         extendBody: true,
 
         // ---------------------- APP BAR ----------------------
-    appBar: PreferredSize(
-  preferredSize: const Size.fromHeight(120),
-  child: AppBar(
-    elevation: 0,
-    scrolledUnderElevation: 0, // disable default shadow
-    backgroundColor: const Color.fromARGB(0, 255, 255, 255).withOpacity(0.0),
-    surfaceTintColor: Colors.transparent, // IMPORTANT
-    automaticallyImplyLeading: false,
-    titleSpacing: 0,
+        appBar: PreferredSize(
+          preferredSize: const Size.fromHeight(120),
+          child: AppBar(
+            elevation: 0,
+            scrolledUnderElevation: 0, // disable default shadow
+            backgroundColor: const Color.fromARGB(
+              0,
+              255,
+              255,
+              255,
+            ).withOpacity(0.0),
+            surfaceTintColor: Colors.transparent, // IMPORTANT
+            automaticallyImplyLeading: false,
+            titleSpacing: 0,
 
-    flexibleSpace: ClipRect(
-      child: BackdropFilter(
-        filter: ImageFilter.blur(sigmaX: 0, sigmaY: 0),
-        child: SafeArea(
-          bottom: false,
-          child: Padding(
-            padding:
-                const EdgeInsets.only(left: 18, right: 26, bottom: 16),
-            child: Column(
-              mainAxisAlignment: MainAxisAlignment.end,
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                  crossAxisAlignment: CrossAxisAlignment.end,
-                  children: [
-                    Column(
+            flexibleSpace: ClipRect(
+              child: BackdropFilter(
+                filter: ImageFilter.blur(sigmaX: 0, sigmaY: 0),
+                child: SafeArea(
+                  bottom: false,
+                  child: Padding(
+                    padding: const EdgeInsets.only(
+                      left: 18,
+                      right: 26,
+                      bottom: 16,
+                    ),
+                    child: Column(
+                      mainAxisAlignment: MainAxisAlignment.end,
                       crossAxisAlignment: CrossAxisAlignment.start,
-                      children:  [
-                        Text(
-                          "Welcome,",
-                          style: TextStyle(
-                            fontSize: 28,
-                            fontFamily: "Manrope",
-                            fontWeight: FontWeight.w700,
-                            height: -0.5,
-                          ),
-                        ),
-                        SizedBox(height: 6),
-                        Text(
-                          userName ?? 'User',
-                          style: TextStyle(
-                            color: Color(0xFF0179FE),
-                            fontSize: 28,
-                            fontFamily: "Manrope",
-                            fontWeight: FontWeight.w700,
-                          ),
+                      children: [
+                        Row(
+                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                          crossAxisAlignment: CrossAxisAlignment.end,
+                          children: [
+                            Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Text(
+                                  "Welcome,",
+                                  style: TextStyle(
+                                    fontSize: 28,
+                                    fontFamily: "Manrope",
+                                    fontWeight: FontWeight.w700,
+                                    height: -0.5,
+                                  ),
+                                ),
+                                SizedBox(height: 6),
+                                Text(
+                                  userName ?? 'User',
+                                  style: TextStyle(
+                                    color: Color(0xFF0179FE),
+                                    fontSize: 28,
+                                    fontFamily: "Manrope",
+                                    fontWeight: FontWeight.w700,
+                                  ),
+                                ),
+                              ],
+                            ),
+                            const Padding(
+                              padding: EdgeInsets.only(bottom: 8),
+                              child: CircleAvatar(
+                                radius: 28,
+                                backgroundImage: NetworkImage(
+                                  "https://i.pravatar.cc/150?img=3",
+                                ),
+                              ),
+                            ),
+                          ],
                         ),
                       ],
                     ),
-                    const Padding(
-                      padding: EdgeInsets.only(bottom: 8),
-                      child: CircleAvatar(
-                        radius: 28,
-                        backgroundImage:
-                            NetworkImage("https://i.pravatar.cc/150?img=3"),
-                      ),
-                    ),
-                  ],
+                  ),
                 ),
-              ],
+              ),
             ),
           ),
         ),
-      ),
-    ),
-  ),
-),
-
 
         // ---------------------- BODY (SCROLLABLE) ----------------------
         body: SingleChildScrollView(
@@ -138,7 +151,7 @@ class _HomeScreenState extends State<HomeScreen> {
                     Row(
                       children: [
                         Column(
-                          children:  [
+                          children: [
                             InfoCard(
                               title: 'Subscription',
                               currentValue: 600,
@@ -179,20 +192,14 @@ class _HomeScreenState extends State<HomeScreen> {
                     cardHolder: "Adrian Hajdin",
                     amount: 1000.12,
                     dateConnected: "06/24",
-                    gradientColors: [
-                      Color(0xFFB28DFF),
-                      Color(0xFFF3B0FF)
-                    ],
+                    gradientColors: [Color(0xFFB28DFF), Color(0xFFF3B0FF)],
                   ),
                   BankAccount(
                     bankName: "Sky Bank",
                     cardHolder: "John Doe",
                     amount: 1600.00,
                     dateConnected: "07/23",
-                    gradientColors: [
-                      Color(0xFF2193FF),
-                      Color(0xFF6DD5ED)
-                    ],
+                    gradientColors: [Color(0xFF2193FF), Color(0xFF6DD5ED)],
                   ),
                 ],
               ),
@@ -212,80 +219,79 @@ class _HomeScreenState extends State<HomeScreen> {
 
                     const SizedBox(height: 16),
 
-BankTransactionsWidget(
-  banks: [
-    Bank(
-      name: 'Chase Bank',
-      logoText: 'CB',
-      transactions: [
-        TransactionItem(
-          title: 'Chris David',
-          subtitle: 'Request Received',
-          amount: 35.0,
-          isPositive: true,
-          date: "12 Jan",
-          isCategorized: true,
-        ),
-        TransactionItem(
-          title: 'James Richardson',
-          subtitle: 'Payment Sent',
-          amount: 104.0,
-          date: "12 Jan",
-          isPositive: false,
-          isCategorized: false,
-            onCategorize: () {
-    print("Categorize clicked");
-  },
-        ),
-      ],
-    ),
-    Bank(
-      name: 'Bank of America',
-      logoText: 'BA',
-      transactions: [
-        TransactionItem(
-          title: 'Dale Harry',
-          subtitle: 'Payment Sent',
-          amount: 85.0,
-          date: "12 Jan",
-          isCategorized: false,
-          isPositive: false,
-        ),
-        TransactionItem(
-          title: 'Dale Harry',
-          subtitle: 'Request Received',
-          amount: 15.0,
-          isCategorized: true,
-          date: "12 Jan",
-          isPositive: true,
-        ),
-      ],
-    ),
-    Bank(
-      name: 'National Bank',
-      logoText: 'BA',
-      transactions: [
-        TransactionItem(
-          title: 'Dale Harry',
-          subtitle: 'Payment Sent',
-          amount: 85.0,
-          date: "12 Jan",
-          isCategorized: false,
-          isPositive: false,
-        ),
-        TransactionItem(
-          title: 'Dale Harry',
-          subtitle: 'Request Received',
-          amount: 15.0,
-          isCategorized: true,
-          date: "12 Jan",
-          isPositive: true,
-        ),
-      ],
-    ),
-  ],
-)
-
+                    BankTransactionsWidget(
+                      banks: [
+                        Bank(
+                          name: 'Chase Bank',
+                          logoText: 'CB',
+                          transactions: [
+                            TransactionItem(
+                              title: 'Chris David',
+                              subtitle: 'Request Received',
+                              amount: 35.0,
+                              isPositive: true,
+                              date: "12 Jan",
+                              isCategorized: true,
+                            ),
+                            TransactionItem(
+                              title: 'James Richardson',
+                              subtitle: 'Payment Sent',
+                              amount: 104.0,
+                              date: "12 Jan",
+                              isPositive: false,
+                              isCategorized: false,
+                              onCategorize: () {
+                                print("Categorize clicked");
+                              },
+                            ),
+                          ],
+                        ),
+                        Bank(
+                          name: 'Bank of America',
+                          logoText: 'BA',
+                          transactions: [
+                            TransactionItem(
+                              title: 'Dale Harry',
+                              subtitle: 'Payment Sent',
+                              amount: 85.0,
+                              date: "12 Jan",
+                              isCategorized: false,
+                              isPositive: false,
+                            ),
+                            TransactionItem(
+                              title: 'Dale Harry',
+                              subtitle: 'Request Received',
+                              amount: 15.0,
+                              isCategorized: true,
+                              date: "12 Jan",
+                              isPositive: true,
+                            ),
+                          ],
+                        ),
+                        Bank(
+                          name: 'National Bank',
+                          logoText: 'BA',
+                          transactions: [
+                            TransactionItem(
+                              title: 'Dale Harry',
+                              subtitle: 'Payment Sent',
+                              amount: 85.0,
+                              date: "12 Jan",
+                              isCategorized: false,
+                              isPositive: false,
+                            ),
+                            TransactionItem(
+                              title: 'Dale Harry',
+                              subtitle: 'Request Received',
+                              amount: 15.0,
+                              isCategorized: true,
+                              date: "12 Jan",
+                              isPositive: true,
+                            ),
+                          ],
+                        ),
+                      ],
+                    ),
                   ],
                 ),
               ),
@@ -321,10 +327,21 @@ BankTransactionsWidget(
                   currentIndex: _selectedIndex,
                   showUnselectedLabels: true,
                   onTap: (index) {
-                    setState(() {
-                      _selectedIndex = index;
-                    });
+                    if (index == 1) {
+                      // Navigate to Groups page
+                      Navigator.push(
+                        context,
+                        MaterialPageRoute(
+                          builder: (context) => const CollaborationScreen(),
+                        ),
+                      );
+                    } else {
+                      setState(() {
+                        _selectedIndex = index;
+                      });
+                    }
                   },
+
                   items: const [
                     BottomNavigationBarItem(
                       icon: Icon(Icons.home_rounded),

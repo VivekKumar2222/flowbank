@@ -42,6 +42,9 @@ flutter:
     - assets/my_image7.png
     - assets/my_image8.png
     - assets/visa.svg
+    - assets/member-image.svg
+    - assets/members-image.png
+    - assets/members-image2.png
     - assets/fonts/
 
 
