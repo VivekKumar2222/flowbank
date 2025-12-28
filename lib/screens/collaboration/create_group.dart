@@ -8,7 +8,7 @@ import '../collaboration/add_members_page.dart';
 enum GroupType { billSplitting, sharedExpenses, ledgerTracking }
 
 class CreateGroupPage extends StatefulWidget {
-  const CreateGroupPage({Key? key}) : super(key: key);
+  const CreateGroupPage({super.key});
 
   @override
   State<CreateGroupPage> createState() => _CreateGroupPageState();
@@ -20,6 +20,7 @@ class _CreateGroupPageState extends State<CreateGroupPage> {
   String _selectedCurrency = "USD";
   bool? _hasVerificationSource;
   String? userEmail;
+  String? userName;
   bool isLoading = false;
 
   @override
@@ -35,14 +36,21 @@ class _CreateGroupPageState extends State<CreateGroupPage> {
     });
   }
 
+  // Future<void> _loadUserName() async {
+  //   final prefs = await SharedPreferences.getInstance();
+  //   setState(() {
+  //     userName = prefs.getString('userName') ?? 'user';
+  //   });
+  // }
+
   String _mapGroupType(GroupType type) {
     switch (type) {
       case GroupType.billSplitting:
-        return "bill_split";
+        return "Bill Splitting";
       case GroupType.sharedExpenses:
-        return "shared_expense";
+        return "Shared Expense";
       case GroupType.ledgerTracking:
-        return "ledger_track";
+        return "Ledger Tracking";
     }
   }
 
@@ -55,6 +63,7 @@ class _CreateGroupPageState extends State<CreateGroupPage> {
       "name": _groupNameController.text.trim(),
       "type": _mapGroupType(_selectedType!),
       "ownerId": userEmail,
+      // "ownerName": userName,
       "currency": _selectedCurrency,
       "settings": {"requireVerification": _hasVerificationSource ?? false},
     };
@@ -77,6 +86,7 @@ class _CreateGroupPageState extends State<CreateGroupPage> {
         final body2 = {
           "dashboardId": dashboardId,
           "userId": userEmail,
+          // "userName": userName,
           "role": "owner",
         };
 
@@ -99,10 +109,16 @@ class _CreateGroupPageState extends State<CreateGroupPage> {
           const SnackBar(content: Text("Group created successfully")),
         );
 
+        final groupType = _mapGroupType(_selectedType!);
+
         Navigator.pushReplacement(
           context,
           MaterialPageRoute(
-            builder: (_) => AddMembersPage(dashboardId: dashboardId),
+            builder: (_) => AddMembersPage(
+              dashboardId: dashboardId,
+              groupType: groupType,
+              currency: _selectedCurrency,
+              ),
           ),
         );
       } else {
@@ -284,9 +300,15 @@ class _CreateGroupPageState extends State<CreateGroupPage> {
             ),
             child: isLoading
                 ? const CircularProgressIndicator(color: Colors.white)
-                : const Text(
+                :  Text(
                     'Create Group',
-                    style: TextStyle(fontSize: 18, fontWeight: FontWeight.w600),
+                    style: TextStyle(
+                      fontSize: 18, 
+                      fontWeight: FontWeight.w600,
+                      color: isButtonEnabled
+                  ? const Color.fromARGB(255, 255, 255, 255)
+                  : Color(0xFF217BFF),
+                      ),
                   ),
           ),
         ),

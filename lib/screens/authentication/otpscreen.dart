@@ -10,7 +10,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 
 class OtpScreen extends StatefulWidget {
   final String email;
-  const OtpScreen({required this.email, Key? key}) : super(key: key);
+  const OtpScreen({required this.email, super.key});
 
   @override
   State<OtpScreen> createState() => _OtpScreenState();

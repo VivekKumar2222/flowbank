@@ -7,7 +7,7 @@ import 'package:dropdown_button2/dropdown_button2.dart';
 
 class DetailCollector extends StatefulWidget {
   final String email;
-  const DetailCollector({Key? key, required this.email}) : super(key: key);
+  const DetailCollector({super.key, required this.email});
 
   @override
   State<DetailCollector> createState() => _DetailCollectorState();

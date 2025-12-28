@@ -6,7 +6,7 @@ const cors = require("cors");
 const morgan = require("morgan");
 
 const authRoutes = require("./routes/authRoutes");
-const settlementRoutes = require("./routes/settlementRoutes"); // ⬅️ NEW
+
 const collabRoutes = require("./routes/collabRoutes");
 const searchRoutes = require("./routes/userSearch");
 
@@ -42,7 +42,7 @@ mongoose
 
 // ✅ Routes
 app.use("/api/auth", authRoutes);
-app.use("/api/settlements", settlementRoutes); // ⬅️ NEW
+
 app.use("/api/collab", collabRoutes);
 app.use("/api/search", searchRoutes);
 

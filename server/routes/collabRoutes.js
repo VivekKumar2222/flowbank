@@ -5,6 +5,7 @@ const DashboardMember = require("../models/collab_DashboardMember");
 const EntryVerification = require("../models/collab_EntryVerification");
 const Invitation = require("../models/collab_Invitation");
 const User = require("../models/User");
+const DashboardBillSplit = require("../models/collab_BillSplitTotal");
 
 
 const router = express.Router();
@@ -16,7 +17,9 @@ router.post("/create-dashboard", async (req, res) => {
 
     // Validate required fields
     if (!name || !type || !ownerId) {
-      return res.status(400).json({ error: "name, type, and ownerId are required" });
+      return res
+        .status(400)
+        .json({ error: "name, type, and ownerId are required" });
     }
 
     // Create dashboard using the data from request body
@@ -24,8 +27,9 @@ router.post("/create-dashboard", async (req, res) => {
       name,
       type,
       ownerId,
-      currency,   // optional, will use default if not provided
-      settings,   // optional, will use defaults if not provided
+      // ownerName,
+      currency, // optional, will use default if not provided
+      settings, // optional, will use defaults if not provided
     });
 
     res.status(201).json({
@@ -40,10 +44,21 @@ router.post("/create-dashboard", async (req, res) => {
 
 router.post("/create-entry", async (req, res) => {
   try {
-    const { dashboardId, createdBy, entryType, amount, participants, status, dueDate, description } = req.body;
+    const {
+      dashboardId,
+      createdBy,
+      entryType,
+      amount,
+      participants,
+      status,
+      dueDate,
+      description,
+    } = req.body;
 
     if (!dashboardId || !createdBy || !entryType || !amount) {
-      return res.status(400).json({ error: "dashboardId, createdBy, entryType, and amount are required" });
+      return res.status(400).json({
+        error: "dashboardId, createdBy, entryType, and amount are required",
+      });
     }
 
     const entry = await DashboardEntry.create({
@@ -70,7 +85,9 @@ router.post("/add-member", async (req, res) => {
     const { dashboardId, userId, role } = req.body;
 
     if (!dashboardId || !userId) {
-      return res.status(400).json({ error: "dashboardId and userId are required" });
+      return res
+        .status(400)
+        .json({ error: "dashboardId and userId are required" });
     }
 
     const member = await DashboardMember.create({ dashboardId, userId, role });
@@ -84,7 +101,8 @@ router.post("/add-member", async (req, res) => {
 /// ─── Entry Verification ─────────────────
 router.post("/verify-entry", async (req, res) => {
   try {
-    const { entryId, uploadedBy, type, fileUrl, note, verifiedBy, verifiedAt } = req.body;
+    const { entryId, uploadedBy, type, fileUrl, note, verifiedBy, verifiedAt } =
+      req.body;
 
     if (!entryId) {
       return res.status(400).json({ error: "entryId is required" });
@@ -100,7 +118,9 @@ router.post("/verify-entry", async (req, res) => {
       verifiedAt,
     });
 
-    res.status(201).json({ message: "Entry verification created", verification });
+    res
+      .status(201)
+      .json({ message: "Entry verification created", verification });
   } catch (error) {
     console.error(error);
     res.status(500).json({ error: error.message });
@@ -113,10 +133,17 @@ router.post("/invite", async (req, res) => {
     const { dashboardId, fromUser, toUser, status } = req.body;
 
     if (!dashboardId || !fromUser || !toUser) {
-      return res.status(400).json({ error: "dashboardId, fromUser, and toUser are required" });
+      return res
+        .status(400)
+        .json({ error: "dashboardId, fromUser, and toUser are required" });
     }
 
-    const invitation = await Invitation.create({ dashboardId, fromUser, toUser, status });
+    const invitation = await Invitation.create({
+      dashboardId,
+      fromUser,
+      toUser,
+      status,
+    });
     res.status(201).json({ message: "Invitation created", invitation });
   } catch (error) {
     console.error(error);
@@ -138,32 +165,32 @@ router.get("/dashboard-members", async (req, res) => {
   }
 });
 
-
 router.post("/dashboards-by-ids", async (req, res) => {
   try {
     const { ids } = req.body;
-    if (!ids || !Array.isArray(ids)) 
+    if (!ids || !Array.isArray(ids))
       return res.status(400).json({ error: "Invalid IDs" });
 
     // Fetch dashboards
     const dashboards = await Dashboard.find({ _id: { $in: ids } });
 
     // Fetch owners' names in one query
-    const ownerEmails = dashboards.map(d => d.ownerId);
+    const ownerEmails = dashboards.map((d) => d.ownerId);
     const owners = await User.find({ email: { $in: ownerEmails } });
 
     // Map email -> name for easy lookup
     const ownerMap = {};
-    owners.forEach(u => { ownerMap[u.email] = u.name; });
+    owners.forEach((u) => {
+      ownerMap[u.email] = u.name;
+    });
 
     // Add ownerName to dashboard objects
-    const dashboardsWithOwner = dashboards.map(d => ({
+    const dashboardsWithOwner = dashboards.map((d) => ({
       ...d.toObject(),
-      ownerName: ownerMap[d.ownerId] || d.ownerId // fallback to email if not found
+      ownerName: ownerMap[d.ownerId] || d.ownerId, // fallback to email if not found
     }));
 
     res.json(dashboardsWithOwner);
-
   } catch (err) {
     console.error(err);
     res.status(500).json({ error: err.message });
@@ -212,9 +239,6 @@ router.get("/invitations", async (req, res) => {
   }
 });
 
-
-
-
 router.post("/reject-invitation", async (req, res) => {
   try {
     const { invitationId } = req.body;
@@ -238,15 +262,22 @@ router.get("/invited-dashboards", async (req, res) => {
       return res.status(400).json({ error: "userId required" });
     }
 
-    // 1️⃣ Invitations
-    const invitations = await Invitation.find({
+        const invitations = await Invitation.find({
       toUser: userId,
       status: "pending",
     });
 
     if (!invitations.length) return res.json([]);
 
-    const dashboardIds = invitations.map(i => i.dashboardId);
+    const invitationMap = {};
+    invitations.forEach((inv) => {
+      invitationMap[inv.dashboardId.toString()] = inv._id.toString();
+    });
+
+    // 1️⃣ Invitations
+
+
+    const dashboardIds = invitations.map((i) => i.dashboardId);
 
     // 2️⃣ Dashboards
     const dashboards = await Dashboard.find({
@@ -254,7 +285,7 @@ router.get("/invited-dashboards", async (req, res) => {
     });
 
     // 3️⃣ Collect owner emails
-    const ownerEmails = dashboards.map(d => d.ownerId);
+    const ownerEmails = dashboards.map((d) => d.ownerId);
 
     // 4️⃣ Fetch owners
     const owners = await User.find(
@@ -263,7 +294,7 @@ router.get("/invited-dashboards", async (req, res) => {
     );
 
     const ownerMap = {};
-    owners.forEach(o => {
+    owners.forEach((o) => {
       ownerMap[o.email] = o.name;
     });
 
@@ -273,27 +304,26 @@ router.get("/invited-dashboards", async (req, res) => {
     });
 
     const users = await User.find(
-      { email: { $in: members.map(m => m.userId) } },
+      { email: { $in: members.map((m) => m.userId) } },
       { email: 1, name: 1 }
     );
 
     const userMap = {};
-    users.forEach(u => userMap[u.email] = u.name);
+    users.forEach((u) => (userMap[u.email] = u.name));
 
     const membersByDashboard = {};
-    members.forEach(m => {
+    members.forEach((m) => {
       if (!membersByDashboard[m.dashboardId]) {
         membersByDashboard[m.dashboardId] = [];
       }
-      membersByDashboard[m.dashboardId].push(
-        userMap[m.userId] || m.userId
-      );
+      membersByDashboard[m.dashboardId].push(userMap[m.userId] || m.userId);
     });
 
     // 6️⃣ FINAL RESPONSE
-    const result = dashboards.map(d => ({
+    const result = dashboards.map((d) => ({
       ...d.toObject(),
-      ownerName: ownerMap[d.ownerId] || d.ownerId, // ✅ OWNER NAME
+      invitationId: invitationMap[d._id.toString()], // ✅ ADD THIS
+      ownerName: ownerMap[d.ownerId] || d.ownerId,
       members: membersByDashboard[d._id] || [],
     }));
 
@@ -304,7 +334,70 @@ router.get("/invited-dashboards", async (req, res) => {
   }
 });
 
+router.get(
+  "/dashboard-members-by-dashboard",
+  async (req, res) => {
+    try {
+      const { dashboardId } = req.query;
 
+      if (!dashboardId) {
+        return res.status(400).json({
+          message: "dashboardId is required",
+        });
+      }
+
+      const members = await DashboardMember.find({
+        dashboardId: dashboardId,
+      });
+
+      res.status(200).json(members);
+    } catch (error) {
+      console.error(error);
+      res.status(500).json({
+        message: "Failed to fetch dashboard members",
+      });
+    }
+  }
+
+  
+);
+
+// ─── Set Bill Split Total (ONE-TIME) ─────────────────
+router.post("/set-bill-split-total", async (req, res) => {
+  try {
+    const { dashboardId, totalAmount } = req.body;
+
+    if (!dashboardId || totalAmount === undefined) {
+      return res.status(400).json({
+        message: "dashboardId and totalAmount are required",
+      });
+    }
+
+    // 🔒 One-time lock check
+    const existing = await DashboardBillSplit.findOne({ dashboardId });
+
+    if (existing) {
+      return res.status(400).json({
+        message: "Splitting amount already set and cannot be changed",
+      });
+    }
+
+    const record = await DashboardBillSplit.create({
+      dashboardId,
+      totalAmount,
+    });
+
+    res.status(201).json({
+      message: "Bill split total saved successfully",
+      record,
+    });
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({
+      message: "Failed to save bill split total",
+    });
+  }
+});
 
 
 

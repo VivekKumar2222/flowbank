@@ -6,7 +6,7 @@ import '../home/newPasswordscreen.dart';
 class ResetOtpScreen extends StatefulWidget {
   final String email;
 
-  const ResetOtpScreen({required this.email, Key? key}) : super(key: key);
+  const ResetOtpScreen({required this.email, super.key});
 
   @override
   _ResetOtpScreenState createState() => _ResetOtpScreenState();

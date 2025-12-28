@@ -52,8 +52,7 @@ Future<void> showAddParticipantModal(
 class AddParticipantModalContent extends StatefulWidget {
   final Function(Participant) onAdd;
 
-  const AddParticipantModalContent({Key? key, required this.onAdd})
-    : super(key: key);
+  const AddParticipantModalContent({super.key, required this.onAdd});
 
   @override
   State<AddParticipantModalContent> createState() =>
@@ -322,11 +321,9 @@ class _AddParticipantModalContentState extends State<AddParticipantModalContent>
                       (f) => f['userId'] == selectedFriendId,
                       orElse: () => null as Map<String, dynamic>,
                     );
-                    if (friend != null) {
-                      selectedName = friend['name'];
-                      selectedInitials = friend['initials'];
-                    }
-                  } else if (userIdController.text.isNotEmpty) {
+                    selectedName = friend['name'];
+                    selectedInitials = friend['initials'];
+                                    } else if (userIdController.text.isNotEmpty) {
                     selectedName = 'User - ${userIdController.text}';
                     selectedInitials = 'U';
                   }
@@ -434,10 +431,10 @@ class EditParticipantModalContent extends StatefulWidget {
   final Function(Participant) onUpdate;
 
   const EditParticipantModalContent({
-    Key? key,
+    super.key,
     required this.participant,
     required this.onUpdate,
-  }) : super(key: key);
+  });
 
   @override
   State<EditParticipantModalContent> createState() =>

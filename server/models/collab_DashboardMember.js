@@ -14,6 +14,10 @@ const dashboardMemberSchema = new mongoose.Schema(
       required: true,
     },
 
+    // userName:{
+    //   type: String,
+    // },
+
     role: {
       type: String,
       enum: ["owner", "admin", "member"],

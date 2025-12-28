@@ -5,7 +5,7 @@ const dashboardSchema = new mongoose.Schema({
 
   type: {
     type: String,
-    enum: ["shared_expense", "bill_split", "ledger_track"],
+    enum: ["Shared Expense", "Bill Splitting", "Ledger Tracking"],
     required: true,
   },
 
@@ -14,6 +14,11 @@ const dashboardSchema = new mongoose.Schema({
     type: String, // email
     required: true,
   },
+
+  // ownerName: {
+  //   type: String,
+  //   // required: false,
+  // },
 
   currency: {
     type: String,

@@ -7,11 +7,11 @@ class ParticipantCard extends StatelessWidget {
   final VoidCallback onDelete;
 
   const ParticipantCard({
-    Key? key,
+    super.key,
     required this.participant,
     required this.onEdit,
     required this.onDelete,
-  }) : super(key: key);
+  });
 
   @override
   Widget build(BuildContext context) {

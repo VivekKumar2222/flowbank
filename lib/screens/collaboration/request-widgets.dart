@@ -1,9 +1,14 @@
+import 'dart:convert';
 import 'package:flutter/material.dart';
+import 'package:http/http.dart' as http;
+import 'package:shared_preferences/shared_preferences.dart';
 
 /// ─────────────────────────────────────────
-/// REQUEST DATA MODEL (like BankAccount)
+/// REQUEST DATA MODEL
 /// ─────────────────────────────────────────
 class RequestData {
+  final String dashboardID;
+  final String? invitationID;
   final String groupName;
   final String groupType;
   final List<String> members;
@@ -11,6 +16,8 @@ class RequestData {
   final DateTime createdDate;
 
   RequestData({
+    required this.dashboardID,
+    this.invitationID,
     required this.groupName,
     required this.groupType,
     required this.members,
@@ -20,32 +27,72 @@ class RequestData {
 }
 
 /// ─────────────────────────────────────────
-/// REQUESTS ROW (Scrollable cards)
+/// REQUESTS ROW (Scrollable cards with animation)
 /// ─────────────────────────────────────────
-class RequestsRow extends StatelessWidget {
+class RequestsRow extends StatefulWidget {
   final List<RequestData> requests;
 
-  const RequestsRow({Key? key, required this.requests}) : super(key: key);
+  const RequestsRow({super.key, required this.requests});
+
+  @override
+  State<RequestsRow> createState() => _RequestsRowState();
+}
+
+class _RequestsRowState extends State<RequestsRow> {
+  final GlobalKey<AnimatedListState> _listKey = GlobalKey<AnimatedListState>();
+  late List<RequestData> _requests;
+
+  @override
+  void initState() {
+    super.initState();
+    _requests = List.from(widget.requests);
+  }
+
+  @override
+  void didUpdateWidget(covariant RequestsRow oldWidget) {
+    super.didUpdateWidget(oldWidget);
+
+    if (oldWidget.requests.length != widget.requests.length) {
+      _requests = List.from(widget.requests);
+      setState(() {});
+    }
+  }
+
+  void _removeRequest(int index) {
+    final removedItem = _requests[index];
+    _requests.removeAt(index);
+    _listKey.currentState!.removeItem(
+      index,
+      (context, animation) => SizeTransition(
+        sizeFactor: animation,
+        axis: Axis.horizontal,
+        child: Request(
+          request: removedItem,
+          onActionCompleted: () {},
+        ),
+      ),
+      duration: const Duration(milliseconds: 300),
+    );
+  }
 
   @override
   Widget build(BuildContext context) {
     return SizedBox(
       height: 118,
-      child: ListView.builder(
+      child: AnimatedList(
+        key: _listKey,
         scrollDirection: Axis.horizontal,
-        padding: const EdgeInsets.only(right: 18),
-        itemCount: requests.length,
-        itemBuilder: (context, index) {
-          final request = requests[index];
-
-          return Padding(
-            padding: const EdgeInsets.only(right: 12), // ✅ 12px gap
-            child: Request(
-              groupName: request.groupName,
-              groupType: request.groupType,
-              members: request.members,
-              ownerName: request.ownerName,
-              createdDate: request.createdDate,
+        initialItemCount: _requests.length,
+        itemBuilder: (context, index, animation) {
+          return SizeTransition(
+            sizeFactor: animation,
+            axis: Axis.horizontal,
+            child: Padding(
+              padding: const EdgeInsets.only(right: 12),
+              child: Request(
+                request: _requests[index],
+                onActionCompleted: () => _removeRequest(index),
+              ),
             ),
           );
         },
@@ -55,23 +102,53 @@ class RequestsRow extends StatelessWidget {
 }
 
 /// ─────────────────────────────────────────
-/// SINGLE REQUEST CARD (UNCHANGED UI)
+/// SINGLE REQUEST CARD
 /// ─────────────────────────────────────────
 class Request extends StatelessWidget {
-  final String groupName;
-  final String groupType;
-  final List<String> members;
-  final String ownerName;
-  final DateTime createdDate;
+  final RequestData request;
+  final VoidCallback onActionCompleted;
 
-  const Request({
-    Key? key,
-    required this.groupName,
-    required this.groupType,
-    required this.members,
-    required this.ownerName,
-    required this.createdDate,
-  }) : super(key: key);
+  const Request({super.key, required this.request, required this.onActionCompleted});
+
+  Future<String?> _getLoggedInUser() async {
+    final prefs = await SharedPreferences.getInstance();
+    return prefs.getString('userEmail'); // store logged in user email
+  }
+
+  Future<void> _join(BuildContext context) async {
+    final userEmail = await _getLoggedInUser();
+    if (userEmail == null) return;
+    if (request.invitationID == null) return;
+
+    final response = await http.post(
+      Uri.parse("http://10.0.2.2:5000/api/collab/accept-invitation"),
+      headers: {'Content-Type': 'application/json'},
+      body: jsonEncode({
+        "invitationId": request.invitationID,
+        "dashboardId": request.dashboardID,
+        "userId": userEmail,
+      }),
+    );
+
+    if (response.statusCode == 200) {
+      onActionCompleted();
+    }
+  }
+
+  Future<void> _reject(BuildContext context) async {
+
+    if (request.invitationID == null) return;
+    
+    final response = await http.post(
+      Uri.parse("http://10.0.2.2:5000/api/collab/reject-invitation"),
+      headers: {'Content-Type': 'application/json'},
+      body: jsonEncode({"invitationId": request.invitationID}),
+    );
+
+    if (response.statusCode == 200) {
+      onActionCompleted();
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -95,12 +172,18 @@ class Request extends StatelessWidget {
                 Row(
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
-                    _AvatarsRow(members: members),
+                    _AvatarsRow(members: request.members),
                     Row(
-                      children: const [
-                        _RejectButton(),
-                        SizedBox(width: 5),
-                        _JoinButton(),
+                      children: [
+                        GestureDetector(
+                          onTap: () => _reject(context),
+                          child: const _RejectButton(),
+                        ),
+                        const SizedBox(width: 5),
+                        GestureDetector(
+                          onTap: () => _join(context),
+                          child: const _JoinButton(),
+                        ),
                       ],
                     ),
                   ],
@@ -112,7 +195,7 @@ class Request extends StatelessWidget {
                 Row(
                   children: [
                     Text(
-                      groupName,
+                      request.groupName,
                       style: const TextStyle(
                         fontSize: 20,
                         fontWeight: FontWeight.w700,
@@ -121,16 +204,13 @@ class Request extends StatelessWidget {
                     ),
                     const SizedBox(width: 6),
                     Container(
-                      padding: const EdgeInsets.symmetric(
-                        horizontal: 12,
-                        vertical: 4,
-                      ),
+                      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
                       decoration: BoxDecoration(
                         color: const Color(0xFFD1E9FF),
                         borderRadius: BorderRadius.circular(24),
                       ),
                       child: Text(
-                        groupType,
+                        request.groupType,
                         style: const TextStyle(
                           fontSize: 10,
                           fontWeight: FontWeight.w600,
@@ -144,7 +224,7 @@ class Request extends StatelessWidget {
                 const SizedBox(height: 4),
 
                 Text(
-                  "Created ${_formatDate(createdDate)}. Owner: $ownerName",
+                  "Created ${_formatDate(request.createdDate)}. Owner: ${request.ownerName}",
                   style: const TextStyle(
                     fontSize: 12,
                     color: Color(0xFF2C82FF),
@@ -299,16 +379,6 @@ const _colors = [
 ];
 
 const _months = [
-  "Jan",
-  "Feb",
-  "Mar",
-  "Apr",
-  "May",
-  "Jun",
-  "Jul",
-  "Aug",
-  "Sep",
-  "Oct",
-  "Nov",
-  "Dec",
+  "Jan", "Feb", "Mar", "Apr", "May", "Jun",
+  "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"
 ];

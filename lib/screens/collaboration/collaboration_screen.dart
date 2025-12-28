@@ -17,6 +17,8 @@ import '../home/bank_transactions.dart';
 
 import '../onboarding/OnboardingScreen.dart';
 
+import '..//home/new_homescreen.dart';
+
 /// --------------------
 /// Get Saved Balance
 /// --------------------
@@ -36,8 +38,24 @@ class CollaborationScreen extends StatefulWidget {
 }
 
 class _CollaborationScreenState extends State<CollaborationScreen> {
-  int _selectedIndex = 0;
+  final int _selectedIndex = 1;
+
+    void _onBottomNavTap(int index) {
+    if (index == 0) {
+      // ✅ HOME
+      Navigator.pushAndRemoveUntil(
+        context,
+        MaterialPageRoute(builder: (_) => const HomeScreen()),
+        (route) => false,
+      );
+    } else if (index == 1) {
+      // Already on Collaboration
+      return;
+    }
+  }
+
   String? userEmail;
+  String? userName;
 
   final Color activeColor = const Color(0xFF217BFF);
   final Color inactiveColor = const Color(0xFF667085);
@@ -49,6 +67,7 @@ class _CollaborationScreenState extends State<CollaborationScreen> {
   void initState() {
     super.initState();
     _loadUserEmail();
+    _loadUserName();
   }
 
   /// --------------------
@@ -61,10 +80,23 @@ class _CollaborationScreenState extends State<CollaborationScreen> {
       userEmail = prefs.getString('userEmail') ?? 'user';
     });
 
+    
+
     if (userEmail != null) {
       await _fetchUserGroups(userEmail!);
       await _fetchInvitedGroups(userEmail!);
     }
+  }
+
+    Future<void> _loadUserName() async {
+    final prefs = await SharedPreferences.getInstance();
+
+    setState(() {
+      userName = prefs.getString('userName') ?? 'user';
+    });
+
+    
+
   }
 
   /// --------------------
@@ -88,6 +120,8 @@ Future<void> _fetchInvitedGroups(String email) async {
 
     List<GroupData> invitedGroups = data.map((dash) {
       return GroupData(
+        dashboardId: dash['_id'],
+        invitationId: dash['invitationId'],
         groupName: dash['name'],
         groupType: dash['type'],
         ownerName: dash['ownerName'], // email or map later
@@ -98,68 +132,77 @@ Future<void> _fetchInvitedGroups(String email) async {
 
     setState(() {
       invitedUserGroups = invitedGroups;
+      debugPrint("Invited groups count: ${invitedGroups.length}");
+
     });
   } catch (e) {
     debugPrint("Error fetching invited groups: $e");
   }
+
+  
 }
 
 
   Future<void> _fetchUserGroups(String email) async {
-    try {
-      // 1️⃣ Fetch dashboard members
-      final membersResponse = await http.get(
+  try {
+    // 1️⃣ dashboards user belongs to
+    final membersResponse = await http.get(
+      Uri.parse(
+        'http://10.0.2.2:5000/api/collab/dashboard-members?userId=$email',
+      ),
+    );
+
+    final List<dynamic> membersData = jsonDecode(membersResponse.body);
+    final dashboardIds =
+        membersData.map((m) => m['dashboardId'].toString()).toList();
+
+    if (dashboardIds.isEmpty) return;
+
+    // 2️⃣ fetch dashboards
+    final dashboardsResponse = await http.post(
+      Uri.parse('http://10.0.2.2:5000/api/collab/dashboards-by-ids'),
+      headers: {'Content-Type': 'application/json'},
+      body: jsonEncode({'ids': dashboardIds}),
+    );
+
+    final List<dynamic> dashboardsData =
+        jsonDecode(dashboardsResponse.body);
+
+    // 3️⃣ fetch members for EACH dashboard
+    List<GroupData> groups = [];
+
+    for (final dash in dashboardsData) {
+      final membersRes = await http.get(
         Uri.parse(
-          'http://10.0.2.2:5000/api/collab/dashboard-members?userId=$email',
+          'http://10.0.2.2:5000/api/collab/dashboard-members-by-dashboard?dashboardId=${dash['_id']}',
         ),
       );
 
-      if (membersResponse.statusCode != 200) {
-        throw Exception('Failed to load dashboard members');
-      }
-
-      final List<dynamic> membersData = jsonDecode(membersResponse.body);
-
-      // Extract dashboard IDs
-      List<String> dashboardIds = membersData
-          .map((member) => member['dashboardId'] as String)
+      final membersList = (jsonDecode(membersRes.body) as List)
+          .map((m) => m['userId'].toString())
           .toList();
 
-      if (dashboardIds.isEmpty) return;
-
-      // 2️⃣ Fetch dashboards
-      final dashboardsResponse = await http.post(
-        Uri.parse('http://10.0.2.2:5000/api/collab/dashboards-by-ids'),
-        headers: {'Content-Type': 'application/json'},
-        body: jsonEncode({'ids': dashboardIds}),
-      );
-
-      if (dashboardsResponse.statusCode != 200) {
-        throw Exception('Failed to load dashboards');
-      }
-
-      final List<dynamic> dashboardsData = jsonDecode(dashboardsResponse.body);
-
-      List<GroupData> groups = dashboardsData.map((dash) {
-        return GroupData(
+      groups.add(
+        GroupData(
+          dashboardId: dash['_id'],
+          invitationId: dash['invitationId'],
           groupName: dash['name'],
           groupType: dash['type'],
-          ownerName: dash['ownerId'],
+          ownerName: dash['ownerName'],
           createdDate: DateTime.parse(dash['createdAt']),
-          members: membersData
-              .where((m) => m['dashboardId'] == dash['_id'])
-              .map((m) => m['userId'].toString())
-              .toList(),
-        );
-      }).toList();
-
-      setState(() {
-        userGroups = groups;
-      });
-    } catch (e) {
-      debugPrint("Error fetching user groups: $e");
+          members: membersList, // ✅ ALL MEMBERS
+        ),
+      );
     }
+
+    setState(() {
+      userGroups = groups;
+    });
+  } catch (e) {
+    debugPrint("Error: $e");
   }
+}
+
 
   @override
   Widget build(BuildContext context) {
@@ -296,6 +339,8 @@ Future<void> _fetchInvitedGroups(String email) async {
             : RequestsRow(
                 requests: invitedUserGroups.map((group) {
                   return RequestData(
+                    dashboardID: group.dashboardId,
+                    invitationID: group.invitationId,
                     groupName: group.groupName,
                     groupType: group.groupType,
                     ownerName: group.ownerName,
@@ -331,11 +376,13 @@ Future<void> _fetchInvitedGroups(String email) async {
                       )
                     : GroupsRow(
                         groups: userGroups.map((group) {
-                          final ownerName = group.ownerName == userEmail
+                          final ownerName = group.ownerName == userName
                               ? "You"
                               : group.ownerName;
 
                           return GroupData(
+                            dashboardId: group.dashboardId,
+                            invitationId: group.invitationId,
                             groupName: group.groupName,
                             groupType: group.groupType,
                             members: group.members,
@@ -369,11 +416,7 @@ Future<void> _fetchInvitedGroups(String email) async {
                 type: BottomNavigationBarType.fixed,
                 selectedItemColor: activeColor,
                 unselectedItemColor: inactiveColor,
-                onTap: (index) {
-                  setState(() {
-                    _selectedIndex = index;
-                  });
-                },
+                onTap: _onBottomNavTap,
                 items: const [
                   BottomNavigationBarItem(
                     icon: Icon(Icons.home_rounded),

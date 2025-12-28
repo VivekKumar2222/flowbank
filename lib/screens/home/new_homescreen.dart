@@ -7,7 +7,6 @@ import '../home/status_card.dart';
 import '../home/status_card_box.dart';
 import '../home/user-total-balance-view.dart';
 import '../home/bank_transactions.dart';
-import '../collaboration/groups_outlook.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import '../collaboration/collaboration_screen.dart';
 

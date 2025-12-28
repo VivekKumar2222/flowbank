@@ -1,12 +1,18 @@
 import 'package:flutter/material.dart';
 import '../collaboration/members-search-list.dart';
+import '../collaboration/bill_splitting_amount_page.dart';
 
 class AddMembersPage extends StatefulWidget {
   final String dashboardId;
+  final String groupType;
+  final String currency;
+
   const AddMembersPage({
-    Key? key,
+    super.key,
     required this.dashboardId,
-  }) : super(key: key);
+    required this.groupType,
+    required this.currency,
+  });
 
   @override
   State<AddMembersPage> createState() => _AddMembersPageState();
@@ -134,25 +140,42 @@ class _AddMembersPageState extends State<AddMembersPage> {
                       const SizedBox(height: 24),
 
                       /// CONFIRM BUTTON
-                      Container(
-                        height: 48,
-                        width: double.infinity,
-                        decoration: BoxDecoration(
-                          color: const Color(0xFF217BFF),
-                          borderRadius: BorderRadius.circular(12),
-                        ),
-                        child: const Center(
-                          child: Text(
-                            "Confirm",
-                            style: TextStyle(
-                              fontFamily: "Manrope",
-                              color: Colors.white,
-                              fontSize: 16,
-                              fontWeight: FontWeight.w700,
-                            ),
-                          ),
-                        ),
-                      ),
+GestureDetector(
+  onTap: () {
+    // if (widget.groupType == "Bill Splitting") {
+    //   Navigator.push(
+    //     context,
+    //     MaterialPageRoute(
+    //       builder: (_) => BillSplittingAmountPage(
+    //         dashboardId: widget.dashboardId,
+    //         currency: widget.currency,
+    //       ),
+    //     ),
+    //   );
+    // }
+    // else: do nothing
+  },
+  child: Container(
+    height: 48,
+    width: double.infinity,
+    decoration: BoxDecoration(
+      color: const Color(0xFF217BFF),
+      borderRadius: BorderRadius.circular(12),
+    ),
+    child: const Center(
+      child: Text(
+        "Confirm",
+        style: TextStyle(
+          fontFamily: "Manrope",
+          color: Colors.white,
+          fontSize: 16,
+          fontWeight: FontWeight.w700,
+        ),
+      ),
+    ),
+  ),
+),
+
 
                       const SizedBox(height: 14),
 

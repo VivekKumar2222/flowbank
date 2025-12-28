@@ -26,7 +26,7 @@ class BankAccount {
 class UserTotal extends StatelessWidget {
   final List<BankAccount> accounts;
 
-  const UserTotal({Key? key, required this.accounts}) : super(key: key);
+  const UserTotal({super.key, required this.accounts});
 
   double get totalBalance {
     double total = 0;

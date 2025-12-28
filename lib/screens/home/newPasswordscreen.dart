@@ -6,7 +6,7 @@ class NewPasswordScreen extends StatelessWidget {
   final String email;
   final TextEditingController newPassController = TextEditingController();
 
-  NewPasswordScreen({required this.email});
+  NewPasswordScreen({super.key, required this.email});
 
   Future<void> resetPassword(BuildContext context) async {
     final response = await http.post(

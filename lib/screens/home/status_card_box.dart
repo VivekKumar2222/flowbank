@@ -9,13 +9,13 @@ class InfoCard_Box extends StatelessWidget {
   final String themeColor; // NEW PARAMETER
 
   InfoCard_Box({
-    Key? key,
+    super.key,
     required this.title,
     required this.currentValue,
     this.maxValue,
     this.icon,
     this.themeColor = "red",
-  }) : super(key: key);
+  });
 
   // Select icon
   IconData _getIcon() {

@@ -5,6 +5,8 @@ import 'package:auto_size_text/auto_size_text.dart';
 /// REQUEST DATA MODEL
 /// ─────────────────────────────────────────
 class GroupData {
+  final String dashboardId;
+  final String? invitationId;
   final String groupName;
   final String groupType;
   final List<String> members;
@@ -12,6 +14,8 @@ class GroupData {
   final DateTime createdDate;
 
   GroupData({
+    required this.dashboardId,
+    this.invitationId,
     required this.groupName,
     required this.groupType,
     required this.members,
@@ -26,7 +30,7 @@ class GroupData {
 class GroupsRow extends StatelessWidget {
   final List<GroupData> groups;
 
-  const GroupsRow({Key? key, required this.groups}) : super(key: key);
+  const GroupsRow({super.key, required this.groups});
 
   @override
   Widget build(BuildContext context) {
@@ -61,13 +65,13 @@ class Group extends StatelessWidget {
   final DateTime createdDate;
 
   const Group({
-    Key? key,
+    super.key,
     required this.groupName,
     required this.groupType,
     required this.members,
     required this.ownerName,
     required this.createdDate,
-  }) : super(key: key);
+  });
 
   @override
   Widget build(BuildContext context) {
