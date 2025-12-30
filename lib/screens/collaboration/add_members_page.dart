@@ -1,3 +1,4 @@
+import 'package:flowbank/screens/collaboration/collaboration_screen.dart';
 import 'package:flutter/material.dart';
 import '../collaboration/members-search-list.dart';
 import '../collaboration/bill_splitting_amount_page.dart';
@@ -142,18 +143,26 @@ class _AddMembersPageState extends State<AddMembersPage> {
                       /// CONFIRM BUTTON
 GestureDetector(
   onTap: () {
-    // if (widget.groupType == "Bill Splitting") {
-    //   Navigator.push(
-    //     context,
-    //     MaterialPageRoute(
-    //       builder: (_) => BillSplittingAmountPage(
-    //         dashboardId: widget.dashboardId,
-    //         currency: widget.currency,
-    //       ),
-    //     ),
-    //   );
-    // }
-    // else: do nothing
+    if (widget.groupType == "Bill Splitting") {
+      Navigator.push(
+        context,
+        MaterialPageRoute(
+          builder: (_) => BillSplittingAmountPage(
+            dashboardId: widget.dashboardId,
+            currency: widget.currency,
+          ),
+        ),
+      );
+    }
+    else {      Navigator.push(
+        context,
+        MaterialPageRoute(
+          builder: (_) => CollaborationScreen(
+            // dashboardId: widget.dashboardId,
+            // currency: widget.currency,
+          ),
+        ),
+      );}
   },
   child: Container(
     height: 48,

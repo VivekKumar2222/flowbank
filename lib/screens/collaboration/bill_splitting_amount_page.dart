@@ -188,23 +188,24 @@ class _BillSplittingAmountPageState extends State<BillSplittingAmountPage> {
                     decoration: InputDecoration(
                       hintText: "e.g. 2500",
                       prefixIcon: widget.currency == "USD"
-                          ? const Icon(
-                              Icons.attach_money_rounded,
-                              color: Color(0xFF217BFF),
-                            )
-                          : const Padding(
-                              padding: EdgeInsets.symmetric(horizontal: 14),
-                              child: Center(
-                                child: Text(
-                                  "PKR",
-                                  style: TextStyle(
-                                    color: Color(0xFF217BFF),
-                                    fontWeight: FontWeight.w700,
-                                    fontSize: 16,
-                                  ),
-                                ),
-                              ),
-                            ),
+    ? const Icon(
+        Icons.attach_money_rounded,
+        color: Color(0xFF217BFF),
+      )
+    : const SizedBox(
+        width: 56, // same visual width as an icon
+        child: Center(
+          child: Text(
+            "PKR",
+            style: TextStyle(
+              color: Color(0xFF217BFF),
+              fontWeight: FontWeight.w700,
+              fontSize: 16,
+            ),
+          ),
+        ),
+      ),
+
                       border: InputBorder.none,
                       contentPadding: const EdgeInsets.symmetric(
                         horizontal: 16,

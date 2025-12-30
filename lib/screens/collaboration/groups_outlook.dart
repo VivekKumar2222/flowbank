@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:auto_size_text/auto_size_text.dart';
+import '../collaboration/bill_splitting.dart';
 
 /// ─────────────────────────────────────────
 /// REQUEST DATA MODEL
@@ -22,6 +23,26 @@ class GroupData {
     required this.ownerName,
     required this.createdDate,
   });
+
+    GroupData copyWith({
+    String? dashboardId,
+    String? invitationId,
+    String? groupName,
+    String? groupType,
+    String? ownerName,
+    DateTime? createdDate,
+    List<String>? members,
+  }) {
+    return GroupData(
+      dashboardId: dashboardId ?? this.dashboardId,
+      invitationId: invitationId ?? this.invitationId,
+      groupName: groupName ?? this.groupName,
+      groupType: groupType ?? this.groupType,
+      ownerName: ownerName ?? this.ownerName,
+      createdDate: createdDate ?? this.createdDate,
+      members: members ?? this.members,
+    );
+  }
 }
 
 /// ─────────────────────────────────────────
@@ -43,6 +64,7 @@ class GroupsRow extends StatelessWidget {
       itemBuilder: (context, index) {
         final group = groups[index];
         return Group(
+          dashboardID: group.dashboardId,
           groupName: group.groupName,
           groupType: group.groupType,
           members: group.members,
@@ -58,6 +80,7 @@ class GroupsRow extends StatelessWidget {
 /// SINGLE GROUP CARD
 /// ─────────────────────────────────────────
 class Group extends StatelessWidget {
+  final String dashboardID;
   final String groupName;
   final String groupType;
   final List<String> members;
@@ -66,6 +89,7 @@ class Group extends StatelessWidget {
 
   const Group({
     super.key,
+    required this.dashboardID,
     required this.groupName,
     required this.groupType,
     required this.members,
@@ -75,7 +99,25 @@ class Group extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Container(
+    return InkWell(
+  borderRadius: BorderRadius.circular(20),
+onTap: () {
+  if (groupType == "Bill Splitting") {
+    Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (_) => BillSplitting(
+          dashboardId: dashboardID,
+        ),
+      ),
+    );
+  } else {
+    debugPrint("Group type: $groupType");
+  }
+},
+
+    
+    child: Container(
       width: double.infinity,
       padding: const EdgeInsets.all(12),
       decoration: BoxDecoration(
@@ -186,6 +228,7 @@ Row(
           ),
         ],
       ),
+    ),
     );
   }
 

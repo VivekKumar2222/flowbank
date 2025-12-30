@@ -1,8 +1,8 @@
 import 'dart:ui';
 import 'package:flutter/material.dart';
-import '../collaboration/create_group.dart';
+// import '../collaboration/create_group.dart';
 import '../home/section_header.dart';
-import '../onboarding/OnboardingScreen.dart';
+// import '../onboarding/OnboardingScreen.dart';
 import '../collaboration/members-view-row.dart';
 import '../collaboration/members-entries-billsplitting.dart';
 
@@ -10,7 +10,14 @@ import '../collaboration/members-entries-billsplitting.dart';
 /// Collaboration Screen
 /// --------------------
 class BillSplitting extends StatefulWidget {
-  const BillSplitting({super.key});
+  final String dashboardId;
+
+
+  const BillSplitting({
+    super.key,
+    required this.dashboardId,
+    
+    });
 
   @override
   State<BillSplitting> createState() => _BillSplittingState();
@@ -88,10 +95,10 @@ class _BillSplittingState extends State<BillSplitting> {
                 borderRadius: BorderRadius.circular(16),
               ),
               onPressed: () {
-                Navigator.push(
-                  context,
-                  MaterialPageRoute(builder: (_) => const CreateGroupPage()),
-                );
+                // Navigator.push(
+                //   context,
+                //   MaterialPageRoute(builder: (_) => const CreateGroupPage()),
+                // );
               },
               child: const Icon(Icons.add, color: Colors.white, size: 28),
             ),
@@ -219,7 +226,7 @@ class _BillSplittingState extends State<BillSplitting> {
                 SectionHeader(
                   title: "Group Members",
                   showButton: true,
-                  destination: OnboardingScreen(),
+                  // destination: OnboardingScreen(),
                 ),
                 const SizedBox(height: 16),
 
@@ -244,7 +251,7 @@ class _BillSplittingState extends State<BillSplitting> {
                 SectionHeader(
                   title: "All Entries",
                   showButton: true,
-                  destination: OnboardingScreen(),
+                  // destination: OnboardingScreen(),
                 ),
                 const SizedBox(height: 16),
 

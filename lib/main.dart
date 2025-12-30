@@ -1,4 +1,5 @@
 // import 'package:flowbank/screens/settlle_up/settle_up_screen.dart';
+import 'package:flowbank/screens/collaboration/collaboration_screen.dart';
 import 'package:flutter/material.dart';
 import 'screens/onboarding/OnboardingScreen.dart';
 // import 'screens/home/homescreen.dart';
