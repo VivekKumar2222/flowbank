@@ -11,6 +11,7 @@ import 'screens/collaboration/create_group.dart';
 import 'screens/collaboration/add_members_page.dart';
 import 'screens/collaboration/bill_splitting.dart';
 import 'screens/collaboration/bill_splitting_amount_page.dart';
+import 'screens/collaboration/add_Entries.dart';
 
 void main() {
   WidgetsFlutterBinding.ensureInitialized(); // 👈 this is required

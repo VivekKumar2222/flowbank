@@ -1,10 +1,41 @@
 import 'dart:ui';
+import 'dart:convert';
 import 'package:flutter/material.dart';
-// import '../collaboration/create_group.dart';
 import '../home/section_header.dart';
-// import '../onboarding/OnboardingScreen.dart';
 import '../collaboration/members-view-row.dart';
 import '../collaboration/members-entries-billsplitting.dart';
+import 'package:http/http.dart' as http;
+import '../collaboration/add_Entries.dart';
+import 'package:shared_preferences/shared_preferences.dart';
+
+/// --------------------
+/// Member Model
+/// --------------------
+class Member {
+  final String name;
+  final String email;
+  final String role;
+  final double totalAmount;
+  final double paidAmount;
+
+  Member({
+    required this.name,
+    required this.email,
+    required this.role,
+    required this.totalAmount,
+    required this.paidAmount,
+  });
+
+  factory Member.fromMap(Map<String, dynamic> map) {
+    return Member(
+      name: map['name'] ?? '',
+      email: map['email'] ?? '',
+      role: map['role'] ?? 'member',
+      totalAmount: (map['totalAmount'] as num?)?.toDouble() ?? 0.0,
+      paidAmount: (map['paidAmount'] as num?)?.toDouble() ?? 0.0,
+    );
+  }
+}
 
 /// --------------------
 /// Collaboration Screen
@@ -12,12 +43,10 @@ import '../collaboration/members-entries-billsplitting.dart';
 class BillSplitting extends StatefulWidget {
   final String dashboardId;
 
-
   const BillSplitting({
     super.key,
     required this.dashboardId,
-    
-    });
+  });
 
   @override
   State<BillSplitting> createState() => _BillSplittingState();
@@ -25,37 +54,202 @@ class BillSplitting extends StatefulWidget {
 
 class _BillSplittingState extends State<BillSplitting> {
   int _selectedIndex = 0;
+  bool _isExpanded = false;
+  String? ownerEmail;
+  double? totalAmount;
+  bool isLoadingTotal = true;
+  String currency = "USD"; // default
+  String? userEmail;
+  List<Member> members = [];
 
-  final List<EntryItem> demoEntries = [
-  EntryItem(
-    title: "John Doe",
-    subtitle: "Verified",
-    date: "12 Dec 2025",
-    amount: 30,
-    totalAmount: 50,
-  ),
-  EntryItem(
-    title: "Amazon",
-    subtitle: "Pending",
-    date: "10 Dec 2025",
-    amount: 50,
-    totalAmount: 50,
-  ),
-  EntryItem(
-    title: "Alice",
-    subtitle: "Not Verified",
-    date: "09 Dec 2025",
-    amount: 0,
-    totalAmount: 100,
-  ),
-  EntryItem(
-    title: "Bob",
-    subtitle: "Verified",
-    date: "08 Dec 2025",
-    amount: 120,
-    totalAmount: 100,
-  ),
-];
+  List<EntryItem> entries = [];
+  bool isLoadingEntries = true;
+
+
+  @override
+  void initState() {
+    super.initState();
+    _fetchBillSplitTotal();
+    _fetchDashboardCurrency(); 
+    _loadUserEmail();
+    _fetchOwnerEmail();
+    _fetchEntries();
+  }
+
+  Future<void> _fetchEntries() async {
+  try {
+    final response = await http.get(
+      Uri.parse(
+        "http://10.0.2.2:5000/api/collab/dashboard-entries?dashboardId=${widget.dashboardId}",
+      ),
+    );
+
+    if (response.statusCode == 200) {
+      final List data = jsonDecode(response.body);
+
+      setState(() {
+        entries = data.map((e) {
+          return EntryItem(
+            title: e["userName"], // email for now
+            subtitle: e["status"] ?? "pending",
+            date: e["createdAt"] != null
+                ? e["createdAt"].toString().substring(0, 10)
+                : "",
+            amount: (e["amount"] as num).toDouble(),
+            // totalAmount: (e["amount"] as num).toDouble(),
+          );
+        }).toList();
+
+        isLoadingEntries = false;
+      });
+    } else {
+      isLoadingEntries = false;
+    }
+  } catch (e) {
+    debugPrint("Failed to fetch entries: $e");
+    isLoadingEntries = false;
+  }
+}
+
+
+    Future<void> _loadUserEmail() async {
+    final prefs = await SharedPreferences.getInstance();
+    setState(() {
+      userEmail = prefs.getString('userEmail') ?? 'user';
+    });
+  }
+
+  /// Fetch total amount
+  Future<void> _fetchBillSplitTotal() async {
+    try {
+      final response = await http.get(
+        Uri.parse(
+          "http://10.0.2.2:5000/api/collab/bill-split-total?dashboardId=${widget.dashboardId}",
+        ),
+      );
+
+      if (response.statusCode == 200) {
+        final decoded = jsonDecode(response.body);
+        setState(() {
+          totalAmount = (decoded["totalAmount"] as num).toDouble();
+          isLoadingTotal = false;
+        });
+
+        // Fetch members & calculate split
+        await _fetchMembersAndSplit();
+      } else {
+        setState(() => isLoadingTotal = false);
+      }
+    } catch (e) {
+      debugPrint("Failed to fetch bill split total: $e");
+      setState(() => isLoadingTotal = false);
+    }
+  }
+
+  /// Fetch members and calculate split
+  Future<void> _fetchMembersAndSplit() async {
+  try {
+    // 1️⃣ Fetch Dashboard Members
+    final membersResponse = await http.get(
+      Uri.parse(
+        "http://10.0.2.2:5000/api/collab/dashboard-members-by-dashboard?dashboardId=${widget.dashboardId}",
+      ),
+    );
+
+    if (membersResponse.statusCode != 200) return;
+
+    final membersData = jsonDecode(membersResponse.body) as List;
+    if (membersData.isEmpty) return;
+
+    // 2️⃣ Extract emails
+    final emails = membersData.map((m) => m['userId']).toList();
+
+    // 3️⃣ Fetch users by emails to get names
+    final usersResponse = await http.post(
+      Uri.parse("http://10.0.2.2:5000/api/collab/users-by-emails"),
+      headers: {'Content-Type': 'application/json'},
+      body: jsonEncode({"emails": emails}),
+    );
+
+    if (usersResponse.statusCode != 200) return;
+
+    final usersData = jsonDecode(usersResponse.body) as List;
+
+    // Map email -> name
+    final userMap = {for (var u in usersData) u['email']: u['name']};
+
+    // 4️⃣ Calculate split amount
+    if (totalAmount == null) return;
+    final memberCount = membersData.length;
+    final splitAmount = totalAmount! / memberCount;
+
+    // 5️⃣ Map members with names and split
+    List<Member> tempMembers = membersData.map((m) {
+      final email = m['userId'];
+      final role = m['role'] ?? 'member';
+      final name = userMap[email] ?? email;
+
+      return Member(
+        name: name,
+        email: email,
+        role: role,
+        totalAmount: splitAmount,
+        paidAmount: role == 'owner' ? splitAmount : 0.0,
+      );
+    }).toList();
+
+    setState(() {
+      members = tempMembers;
+    });
+  } catch (e) {
+    debugPrint("Failed to fetch members and split: $e");
+  }
+}
+
+Future<void> _fetchDashboardCurrency() async {
+  try {
+    final response = await http.post(
+      Uri.parse("http://10.0.2.2:5000/api/collab/dashboards-by-ids"),
+      headers: {"Content-Type": "application/json"},
+      body: jsonEncode({
+        "ids": [widget.dashboardId],
+      }),
+    );
+
+    if (response.statusCode == 200) {
+      final decoded = jsonDecode(response.body) as List;
+
+      if (decoded.isNotEmpty) {
+        setState(() {
+          currency = decoded[0]["currency"] ?? "USD";
+        });
+      }
+    }
+  } catch (e) {
+    debugPrint("Failed to fetch dashboard currency: $e");
+  }
+}
+
+ Future<void> _fetchOwnerEmail() async {
+    try {
+      final response = await http.get(
+        Uri.parse("http://10.0.2.2:5000/api/collab/dashboard/${widget.dashboardId}"),
+        headers: {"Content-Type": "application/json"},
+      );
+
+      if (response.statusCode == 200) {
+        final data = jsonDecode(response.body);
+        setState(() {
+          ownerEmail = data['ownerId']; // 🔥 ownerId comes from your MongoDB schema
+        });
+      } else {
+        debugPrint("Failed to fetch owner: ${response.body}");
+      }
+    } catch (e) {
+      debugPrint("Error fetching owner email: $e");
+    }
+  }
+
 
 
   final Color activeColor = const Color(0xFF217BFF);
@@ -72,43 +266,156 @@ class _BillSplittingState extends State<BillSplitting> {
         backgroundColor: Colors.white,
         extendBody: true,
 
-        /// --------------------
         /// Floating Button
-        /// --------------------
         floatingActionButton: Padding(
-          padding: EdgeInsets.only(bottom: 80 + bottomInset),
-          child: Container(
-            decoration: BoxDecoration(
-              borderRadius: BorderRadius.circular(16),
-              boxShadow: [
-                BoxShadow(
-                  color: const Color(0xFF217BFF).withOpacity(0.35),
-                  blurRadius: 22,
-                  offset: const Offset(0, 10),
-                ),
-              ],
-            ),
-            child: FloatingActionButton(
-              backgroundColor: const Color(0xFF217BFF),
-              elevation: 0,
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(16),
+  padding: EdgeInsets.only(bottom: 80 + bottomInset),
+  child: Column(
+    mainAxisSize: MainAxisSize.min,
+    crossAxisAlignment: CrossAxisAlignment.end,
+    children: [
+
+      /// -------- Add Entries Button --------
+AnimatedOpacity(
+  opacity: _isExpanded ? 1 : 0,
+  duration: const Duration(milliseconds: 300),
+  child: AnimatedContainer(
+    duration: const Duration(milliseconds: 200),
+    height: _isExpanded ? 48 : 38,
+    child: Container(
+      decoration: BoxDecoration(
+        borderRadius: BorderRadius.circular(16),
+        boxShadow: [
+          BoxShadow(
+            color: const Color(0xFF217BFF).withOpacity(0.35),
+            blurRadius: 22,
+            offset: const Offset(0, 10),
+          ),
+        ],
+      ),
+      child: FloatingActionButton.extended(
+  heroTag: "add_entries",
+  backgroundColor: (ownerEmail != null && ownerEmail == userEmail)
+      ? Colors.grey.shade400 // lighter grey for disabled
+      : const Color(0xFF217BFF),
+  elevation: 0,
+  onPressed: (ownerEmail != null && ownerEmail == userEmail)
+      ? null // disables the button
+      : () {
+          setState(() => _isExpanded = false);
+          Navigator.push(
+            context,
+            MaterialPageRoute(
+              builder: (_) => AddEntriesPage(
+                dashboardId: widget.dashboardId,
               ),
-              onPressed: () {
-                // Navigator.push(
-                //   context,
-                //   MaterialPageRoute(builder: (_) => const CreateGroupPage()),
-                // );
-              },
-              child: const Icon(Icons.add, color: Colors.white, size: 28),
             ),
+          );
+        },
+  label: Text(
+    "Add Entries",
+    style: TextStyle(
+      color: (ownerEmail != null && ownerEmail == userEmail)
+          ? const Color.fromARGB(255, 255, 255, 255).withOpacity(1.0) // reduced opacity
+          : Colors.white,
+      fontWeight: FontWeight.w700,
+    ),
+  ),
+  icon: Icon(
+    Icons.receipt_long,
+    color: (ownerEmail != null && ownerEmail == userEmail)
+        ? Colors.white.withOpacity(1.0) // reduced opacity
+        : Colors.white,
+  ),
+),
+
+    ),
+  ),
+),
+
+
+      const SizedBox(height: 12),
+
+      /// -------- Add Members Button --------
+AnimatedOpacity(
+  opacity: _isExpanded ? 1 : 0,
+  duration: const Duration(milliseconds: 200),
+  child: AnimatedContainer(
+    duration: const Duration(milliseconds: 200),
+    height: _isExpanded ? 48 : 38,
+    child: Container(
+      decoration: BoxDecoration(
+        borderRadius: BorderRadius.circular(16),
+        boxShadow: [
+          BoxShadow(
+            color: const Color(0xFF217BFF).withOpacity(0.35),
+            blurRadius: 22,
+            offset: const Offset(0, 10),
+          ),
+        ],
+      ),
+      child: FloatingActionButton.extended(
+        heroTag: "add_members",
+        backgroundColor: const Color(0xFF217BFF),
+        elevation: 0,
+        onPressed: () {
+          setState(() => _isExpanded = false);
+          // TODO: Add Members action
+        },
+        label: const Text(
+          "Add Members",
+          style: TextStyle(
+            color: Colors.white,
+            fontWeight: FontWeight.w700,
           ),
         ),
-        floatingActionButtonLocation: FloatingActionButtonLocation.endDocked,
+        icon: const Icon(
+          Icons.person_add,
+          color: Colors.white,
+        ),
+      ),
+    ),
+  ),
+),
 
-        /// --------------------
+
+      const SizedBox(height: 16),
+
+      /// -------- Main FAB --------
+      Container(
+        decoration: BoxDecoration(
+          borderRadius: BorderRadius.circular(16),
+          boxShadow: [
+            BoxShadow(
+              color: const Color(0xFF217BFF).withOpacity(0.35),
+              blurRadius: 22,
+              offset: const Offset(0, 10),
+            ),
+          ],
+        ),
+        child: FloatingActionButton(
+          backgroundColor: const Color(0xFF217BFF),
+          elevation: 0,
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(16),
+          ),
+          onPressed: () {
+            setState(() {
+              _isExpanded = !_isExpanded;
+            });
+          },
+          child: Icon(
+            _isExpanded ? Icons.close : Icons.add,
+            color: Colors.white,
+            size: 28,
+          ),
+        ),
+      ),
+    ],
+  ),
+),
+floatingActionButtonLocation: FloatingActionButtonLocation.endDocked,
+
         /// App Bar
-        /// --------------------
         appBar: PreferredSize(
           preferredSize: const Size.fromHeight(120),
           child: AppBar(
@@ -165,9 +472,7 @@ class _BillSplittingState extends State<BillSplitting> {
           ),
         ),
 
-        /// --------------------
         /// Body
-        /// --------------------
         body: SingleChildScrollView(
           physics: const BouncingScrollPhysics(),
           child: Padding(
@@ -176,7 +481,6 @@ class _BillSplittingState extends State<BillSplitting> {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 const SizedBox(height: 12),
-
                 Container(
                   width: double.infinity,
                   height: 187,
@@ -184,7 +488,6 @@ class _BillSplittingState extends State<BillSplitting> {
                     color: Color(0xFF4893FF),
                     borderRadius: BorderRadius.circular(27),
                   ),
-
                   child: Column(
                     mainAxisAlignment: MainAxisAlignment.center,
                     crossAxisAlignment: CrossAxisAlignment.center,
@@ -199,7 +502,11 @@ class _BillSplittingState extends State<BillSplitting> {
                         ),
                       ),
                       Text(
-                        "\$" "3549.62",
+                        isLoadingTotal
+                            ? "—"
+                            : currency == "USD"
+    ? "\$${totalAmount?.toStringAsFixed(2) ?? "0.00"}"
+    : "${currency} ${totalAmount?.toStringAsFixed(2) ?? "0.00"}",
                         style: TextStyle(
                           color: Color(0xFFFFFFFF),
                           fontFamily: "Manrope",
@@ -208,7 +515,7 @@ class _BillSplittingState extends State<BillSplitting> {
                         ),
                       ),
                       Text(
-                        "Split between 8 group members",
+                        "Split between ${members.length} group members",
                         style: TextStyle(
                           color: Color(0xFFFFFFFF),
                           fontFamily: "Manrope",
@@ -219,52 +526,41 @@ class _BillSplittingState extends State<BillSplitting> {
                     ],
                   ),
                 ),
+                const SizedBox(height: 27),
 
-                SizedBox(height: 27),
-
-                /// Requests
+                /// Group Members
                 SectionHeader(
                   title: "Group Members",
                   showButton: true,
-                  // destination: OnboardingScreen(),
                 ),
                 const SizedBox(height: 16),
-
                 MembersViewRow(
-                  members: [
-                    {
-                      "name": "Chris David",
-                      "paidAmount": 35.0,
-                      "totalAmount": 750.0,
-                    },
-                    {
-                      "name": "Alex John",
-                      "paidAmount": 751.0,
-                      "totalAmount": 750.0,
-                    },
-                  ],
+                  members: members
+                      .map((m) => {
+                            'name': m.name,
+                            'email': m.email,
+                            'role': m.role,
+                            'totalAmount': m.totalAmount,
+                            'paidAmount': m.paidAmount,
+                          })
+                      .toList(),
                 ),
+                const SizedBox(height: 24),
 
-                SizedBox(height: 24),
-
-                /// Requests
+                /// All Entries
                 SectionHeader(
                   title: "All Entries",
                   showButton: true,
-                  // destination: OnboardingScreen(),
                 ),
                 const SizedBox(height: 16),
+                EntriesEntryList(entries: entries),
 
-                EntriesEntryList(
-          entries: demoEntries,)
               ],
             ),
           ),
         ),
 
-        /// --------------------
         /// Bottom Navigation
-        /// --------------------
         bottomNavigationBar: ClipRRect(
           borderRadius: const BorderRadius.only(
             topLeft: Radius.circular(24),

@@ -399,6 +399,133 @@ router.post("/set-bill-split-total", async (req, res) => {
   }
 });
 
+// ─── Get Bill Split Total ─────────────────
+router.get("/bill-split-total", async (req, res) => {
+  try {
+    const { dashboardId } = req.query;
+
+    if (!dashboardId) {
+      return res.status(400).json({
+        message: "dashboardId is required",
+      });
+    }
+
+    const record = await DashboardBillSplit.findOne({ dashboardId });
+
+    if (!record) {
+      return res.status(404).json({
+        message: "No bill split total found for this dashboard",
+      });
+    }
+
+    res.status(200).json({
+      dashboardId: record.dashboardId,
+      totalAmount: record.totalAmount,
+    });
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({
+      message: "Failed to fetch bill split total",
+    });
+  }
+});
+
+router.post("/users-by-emails", async (req, res) => {
+  const { emails } = req.body;
+  const users = await User.find({ email: { $in: emails } }, { email: 1, name: 1 });
+  res.json(users);
+});
+
+router.post("/dashboard-entry", async (req, res) => {
+  try {
+    const {
+      dashboardId,
+      userId,
+      amount,
+      verificationImage,
+    } = req.body;
+
+    if (!dashboardId || !userId || !amount) {
+      return res.status(400).json({ message: "Missing required fields" });
+    }
+
+    const entry = new DashboardEntry({
+      dashboardId,
+      userId,
+      amount,
+      verificationImage, // 🔐 encrypted string
+      status: "pending",
+    });
+
+    await entry.save();
+
+    res.status(201).json({
+      message: "Entry added successfully",
+      entry,
+    });
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({ message: "Server error" });
+  }
+});
+
+// module.exports = router;
+
+router.get('/dashboard/:id', async (req, res) => {
+  try {
+    const dashboard = await Dashboard.findById(req.params.id);
+    if (!dashboard) return res.status(404).json({ message: 'Dashboard not found' });
+    res.json(dashboard);
+  } catch (err) {
+    res.status(500).json({ message: err.message });
+  }
+});
+
+router.get("/dashboard-entries", async (req, res) => {
+  try {
+    let { dashboardId } = req.query;
+
+    if (!dashboardId) {
+      return res.status(400).json({ message: "dashboardId is required" });
+    }
+
+    // 1️⃣ Fetch entries
+    const entries = await DashboardEntry.find({ dashboardId }).sort({
+      createdAt: -1,
+    });
+
+    if (!entries.length) {
+      return res.status(200).json([]);
+    }
+
+    // 2️⃣ Collect unique emails
+    const emails = [...new Set(entries.map(e => e.userId))];
+
+    // 3️⃣ Fetch users
+    const users = await User.find(
+      { email: { $in: emails } },
+      { email: 1, name: 1 }
+    );
+
+    // 4️⃣ Create email → name map
+    const userMap = {};
+    users.forEach(u => {
+      userMap[u.email] = u.name;
+    });
+
+    // 5️⃣ Attach username to each entry
+    const enrichedEntries = entries.map(e => ({
+      ...e.toObject(),
+      userName: userMap[e.userId] || e.userId, // fallback
+    }));
+
+    res.status(200).json(enrichedEntries);
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ message: err.message });
+  }
+});
+
 
 
 module.exports = router;

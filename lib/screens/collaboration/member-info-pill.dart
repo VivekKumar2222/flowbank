@@ -35,7 +35,7 @@ class SimpleScreen extends StatelessWidget {
   }
 
   Color get borderColor {
-    if (paidAmount == 0) return const Color.fromARGB(148, 98, 98, 98);
+    if (paidAmount == 0) return const Color.fromARGB(78, 98, 98, 98);
     if (paidAmount < totalAmount) return const Color(0xFFD7E8FF);
     if (paidAmount == totalAmount) return const Color.fromARGB(148, 0, 103, 0);
     return const Color.fromARGB(148, 255, 33, 33);

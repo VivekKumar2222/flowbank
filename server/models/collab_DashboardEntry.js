@@ -3,40 +3,26 @@ const mongoose = require("mongoose");
 const dashboardEntrySchema = new mongoose.Schema(
   {
     dashboardId: {
-      type: mongoose.Schema.Types.ObjectId,
+      type: String,
       ref: "Dashboard",
       required: true,
     },
 
-    createdBy: {
-      type: mongoose.Schema.Types.ObjectId,
+    userId: {
+      type: String,
       ref: "User",
       required: true,
     },
 
-    entryType: {
-      type: String,
-      enum: ["expense", "bill_share", "loan"],
-      required: true,
-    },
 
     amount: { type: Number, required: true },
 
-    // for bill splitting & ledger
-    participants: [
-      {
-        userId: {
-          type: mongoose.Schema.Types.ObjectId,
-          ref: "User",
-        },
-        shareAmount: Number,
-        status: {
-          type: String,
-          enum: ["pending", "paid"],
-          default: "pending",
-        },
-      },
-    ],
+
+    verificationImage: {
+      type: String, // URL or file path
+      default: null,
+    },
+
 
     status: {
       type: String,

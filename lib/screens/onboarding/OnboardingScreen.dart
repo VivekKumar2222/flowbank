@@ -64,8 +64,7 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
                 painter: WavePainter(),
               ),
             ),
-            SafeArea(
-              child: Column(
+             Column(
                 children: [
                   // ✅ Image (NO animation)
                   AnimatedSwitcher(
@@ -81,7 +80,7 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
                     ),
                   ),
 
-                  const SizedBox(height: 10),
+                  const SizedBox(height: 4),
                   Padding(
                     padding: const EdgeInsets.symmetric(horizontal: 24),
                     child: Row(
@@ -156,7 +155,7 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
                           onboardingData[currentIndex]["desc"]!,
                           style: const TextStyle(
                             color: Color(0xFF424242),
-                            fontSize: 18.5,
+                            fontSize: 17,
                             fontWeight: FontWeight.w400,
                             height: 1.4,
                             letterSpacing: 0.25,
@@ -280,7 +279,7 @@ showLoginBottomSheet(
                   ),
                 ],
               ),
-            ),
+          
           ],
         ),
       ),

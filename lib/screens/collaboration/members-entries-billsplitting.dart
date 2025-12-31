@@ -7,14 +7,14 @@ class EntryItem {
   final String subtitle;     // Verified / Not verified
   final String date;
   final double amount;       // Paid amount
-  final double totalAmount;  // Total amount to be paid
+  // final double totalAmount;  // Total amount to be paid
 
   EntryItem({
     required this.title,
     required this.subtitle,
     required this.date,
     required this.amount,
-    required this.totalAmount,
+    // required this.totalAmount,
   });
 }
 
@@ -60,48 +60,20 @@ class _EntryTile extends StatelessWidget {
 
   const _EntryTile({required this.tx});
 
-  // ======================= STATUS HELPERS =======================
+  // ======================= BLUE THEME COLORS =======================
 
-  bool get isZero => tx.amount == 0;
-  bool get isPartial => tx.amount > 0 && tx.amount < tx.totalAmount;
-  bool get isComplete => tx.amount == tx.totalAmount;
-  bool get isOverpaid => tx.amount > tx.totalAmount;
-
-  Color get bgColor {
-    if (isOverpaid) return const Color(0xFFFFF5F5);
-    if (isComplete) return const Color(0xFFF5FFF7);
-    if (isZero) return const Color(0xFFF9F9F9);
-    return const Color(0xFFF5FAFF);
-  }
-
-  Color get borderColor {
-    if (isOverpaid) return const Color.fromARGB(148, 255, 33, 33);
-    if (isComplete) return const Color.fromARGB(148, 0, 103, 0);
-    if (isZero) return const Color.fromARGB(148, 98, 98, 98);
-    return const Color(0xFFD7E8FF);
-  }
-
-  Color get accentColor {
-    if (isOverpaid) return const Color(0xFFFF2121);
-    if (isComplete) return const Color(0xFF006700);
-    if (isZero) return const Color(0xFF626262);
-    return const Color(0xFF217BFF);
-  }
-
-  Color get avatarBg {
-    if (isOverpaid) return const Color(0xFFFFD1D1);
-    if (isComplete) return const Color(0xFFD1FFD2);
-    if (isZero) return const Color(0xFFC9C9C9);
-    return const Color(0xFFD1E9FF);
-  }
+  static const Color _bgColor = Color(0xFFF5FAFF);      // Light blue background
+  static const Color _borderColor = Color(0xFFD7E8FF);  // Soft blue border
+  static const Color _accentColor = Color(0xFF217BFF);  // Primary blue
+  static const Color _avatarBg = Color(0xFFD1E9FF);     // Avatar blue
 
   @override
   Widget build(BuildContext context) {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 12),
       decoration: BoxDecoration(
-        color: bgColor,
-        border: Border.all(color: borderColor, width: 1.2),
+        color: _bgColor,
+        border: Border.all(color: _borderColor, width: 1.2),
         borderRadius: BorderRadius.circular(16),
       ),
       child: Padding(
@@ -112,18 +84,18 @@ class _EntryTile extends StatelessWidget {
             Container(
               width: 55,
               height: 55,
-              decoration: BoxDecoration(
+              decoration: const BoxDecoration(
                 shape: BoxShape.circle,
-                color: avatarBg,
+                color: _avatarBg,
               ),
               alignment: Alignment.center,
               child: Text(
                 tx.title.substring(0, 2).toUpperCase(),
-                style: TextStyle(
+                style: const TextStyle(
                   fontWeight: FontWeight.w700,
                   fontFamily: "Manrope",
                   fontSize: 20,
-                  color: accentColor,
+                  color: _accentColor,
                 ),
               ),
             ),
@@ -137,28 +109,28 @@ class _EntryTile extends StatelessWidget {
                 children: [
                   Text(
                     tx.title,
-                    style: TextStyle(
-                      fontSize: 14.5,
+                    style: const TextStyle(
+                      fontSize: 16,
                       fontWeight: FontWeight.w700,
                       fontFamily: "Manrope",
-                      color: accentColor,
+                      color: _accentColor,
                     ),
                   ),
                   const SizedBox(height: 4),
                   Text(
                     tx.date,
-                    style: TextStyle(
-                      fontSize: 13,
+                    style: const TextStyle(
+                      fontSize: 12,
                       fontWeight: FontWeight.w500,
-                      color: accentColor,
+                      color: _accentColor,
                     ),
                   ),
                   Text(
                     tx.subtitle,
-                    style: TextStyle(
-                      fontSize: 13,
+                    style: const TextStyle(
+                      fontSize: 12,
                       fontWeight: FontWeight.w500,
-                      color: accentColor,
+                      color: _accentColor,
                     ),
                   ),
                 ],
@@ -171,23 +143,15 @@ class _EntryTile extends StatelessWidget {
               child: Row(
                 children: [
                   Text(
-                    "\$${tx.amount.toString()}",
-                    style: TextStyle(
-                      color: accentColor,
-                      fontFamily: "Manrope",
-                      fontSize: 13,
-                      fontWeight: FontWeight.w700,
-                    ),
-                  ),
-                  Text(
-                    "/${tx.totalAmount.toString()}",
+                    "\$${tx.amount}",
                     style: const TextStyle(
-                      color: Color(0xFF2A2A2A),
+                      color: _accentColor,
                       fontFamily: "Manrope",
-                      fontSize: 13,
+                      fontSize: 15,
                       fontWeight: FontWeight.w700,
                     ),
                   ),
+
                 ],
               ),
             ),
