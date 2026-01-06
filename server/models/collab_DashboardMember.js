@@ -23,6 +23,9 @@ const dashboardMemberSchema = new mongoose.Schema(
       enum: ["owner", "admin", "member"],
       default: "member",
     },
+
+
+
   },
   { timestamps: true }
 );

@@ -6,6 +6,9 @@ const EntryVerification = require("../models/collab_EntryVerification");
 const Invitation = require("../models/collab_Invitation");
 const User = require("../models/User");
 const DashboardBillSplit = require("../models/collab_BillSplitTotal");
+const LedgerAssignment = require("../models/collab_LedgerAssignments");
+const AssignedMembers = require("../models/collab_LedgerAssignedMembers");
+
 
 
 const router = express.Router();
@@ -443,6 +446,7 @@ router.post("/dashboard-entry", async (req, res) => {
       userId,
       amount,
       verificationImage,
+      assignmentId,
     } = req.body;
 
     if (!dashboardId || !userId || !amount) {
@@ -454,6 +458,7 @@ router.post("/dashboard-entry", async (req, res) => {
       userId,
       amount,
       verificationImage, // 🔐 encrypted string
+       assignmentId: assignmentId || null,
       status: "pending",
     });
 
@@ -525,6 +530,276 @@ router.get("/dashboard-entries", async (req, res) => {
     res.status(500).json({ message: err.message });
   }
 });
+
+router.post("/ledger-assignment", async (req, res) => {
+  try {
+    const { dashboardId, memberId } = req.body;
+
+    if (!dashboardId || !memberId) {
+      return res.status(400).json({ message: "dashboardId and memberId are required" });
+    }
+
+    // 1️⃣ Create ledger assignment
+    const assignment = await LedgerAssignment.create({
+      ...req.body,
+      status: "active",
+      penaltyApplied: false,
+      lastInterestAppliedAt: null,
+    });
+
+    // 2️⃣ Upsert assigned member
+    //    If member exists for this dashboard → update membersAssigned to true
+    //    If not → create a new entry
+    await AssignedMembers.findOneAndUpdate(
+      { dashboardId, memberId },   // query
+      { dashboardId, memberId, membersAssigned: true }, // update
+      { upsert: true, new: true } // create if doesn't exist
+    );
+
+    res.status(201).json({
+      message: "Assignment created and member updated successfully",
+      assignment,
+    });
+  } catch (err) {
+    res.status(400).json({ message: err.message });
+  }
+});
+
+// ─── GET Unassigned Dashboard Members ─────────────────
+router.get("/unassigned-members", async (req, res) => {
+  try {
+    const { dashboardId } = req.query;
+
+    if (!dashboardId) {
+      return res.status(400).json({ message: "dashboardId is required" });
+    }
+
+    // 1️⃣ Get assigned members for this dashboard
+    const assigned = await AssignedMembers.find(
+      { dashboardId },
+      { memberId: 1 }
+    );
+
+    const assignedMemberIds = assigned.map(a => a.memberId);
+
+    // 2️⃣ Get dashboard members who are NOT assigned
+    const unassignedMembers = await DashboardMember.find({
+      dashboardId,
+      userId: { $nin: assignedMemberIds }, // 🔥 SET DIFFERENCE
+    });
+
+    if (!unassignedMembers.length) {
+      return res.status(200).json([]);
+    }
+
+    // 3️⃣ Fetch user names
+    const emails = unassignedMembers.map(m => m.userId);
+
+    const users = await User.find(
+      { email: { $in: emails } },
+      { email: 1, name: 1 }
+    );
+
+    // 4️⃣ Map email → name
+    const userMap = {};
+    users.forEach(u => {
+      userMap[u.email] = u.name;
+    });
+
+    // 5️⃣ Attach name to members
+    const response = unassignedMembers.map(m => ({
+      dashboardId: m.dashboardId,
+      userId: m.userId,
+      name: userMap[m.userId] || m.userId, // fallback
+      role: m.role,
+    }));
+
+    res.status(200).json(response);
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({ message: "Failed to fetch unassigned members" });
+  }
+});
+
+// ─── GET Ledger Summary (Total Lent + Assigned Members Count) ─────────────────
+router.get("/ledger-summary", async (req, res) => {
+  try {
+    const { dashboardId } = req.query;
+
+    if (!dashboardId) {
+      return res.status(400).json({ message: "dashboardId is required" });
+    }
+
+    // 1️⃣ Total lent amount from LedgerAssignments
+    const totalResult = await LedgerAssignment.aggregate([
+      { $match: { dashboardId } },
+      {
+        $group: {
+          _id: null,
+          totalLent: { $sum: "$totalAmount" },
+        },
+      },
+    ]);
+
+    const totalLent =
+      totalResult.length > 0 ? totalResult[0].totalLent : 0;
+
+    // 2️⃣ Assigned members count
+    const assignedMemberCount = await AssignedMembers.countDocuments({
+      dashboardId,
+      membersAssigned: true,
+    });
+
+    res.status(200).json({
+      dashboardId,
+      totalLent,
+      assignedMemberCount,
+    });
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({
+      message: "Failed to fetch ledger summary",
+    });
+  }
+});
+
+// ─── GET Assigned Members with Total Assigned Amount ─────────────────
+router.get("/assigned-members-summary", async (req, res) => {
+  try {
+    const { dashboardId } = req.query;
+
+    if (!dashboardId) {
+      return res.status(400).json({ message: "dashboardId is required" });
+    }
+
+    const result = await LedgerAssignment.aggregate([
+      // 1️⃣ Only this dashboard
+      { $match: { dashboardId } },
+
+      // 2️⃣ Group by memberId
+      {
+        $group: {
+          _id: "$memberId",
+          totalAmount: { $sum: "$totalAmount" },
+        },
+      },
+
+      // 3️⃣ Join with AssignedMembers
+      {
+        $lookup: {
+          from: "assignedmembers",
+          localField: "_id",
+          foreignField: "memberId",
+          as: "assignedInfo",
+        },
+      },
+
+      { $unwind: "$assignedInfo" },
+
+      // 4️⃣ Join with Users (to get name)
+      {
+        $lookup: {
+          from: "users",
+          localField: "_id",
+          foreignField: "email",
+          as: "userInfo",
+        },
+      },
+
+      { $unwind: "$userInfo" },
+
+      // 5️⃣ Final shape
+      {
+        $project: {
+          _id: 0,
+          memberId: "$_id",
+          name: "$userInfo.name",
+          paidAmount: { $literal: 0 }, // 🔒 for now
+          totalAmount: 1,
+        },
+      },
+    ]);
+
+    res.status(200).json(result);
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({
+      message: "Failed to fetch assigned members summary",
+    });
+  }
+});
+
+// ─── GET Ledger Assignments for Member ─────────────────
+router.get("/member-ledger", async (req, res) => {
+  try {
+    const { dashboardId, memberId } = req.query;
+
+    if (!dashboardId || !memberId) {
+      return res.status(400).json({
+        message: "dashboardId and memberId are required",
+      });
+    }
+
+    // 1️⃣ Get assignments
+    const assignments = await LedgerAssignment.find({
+      dashboardId,
+      memberId,
+    }).sort({ createdAt: -1 });
+
+    // 2️⃣ Get member name
+    const user = await User.findOne(
+      { email: memberId },
+      { name: 1, email: 1 }
+    );
+
+    // 3️⃣ Totals
+    const totalAmount = assignments.reduce(
+      (sum, a) => sum + a.totalAmount,
+      0
+    );
+
+    const paidAmount = assignments.reduce(
+      (sum, a) => sum + a.paidAmount,
+      0
+    );
+
+    res.status(200).json({
+      member: {
+        name: user?.name || memberId,
+        email: memberId,
+      },
+      summary: {
+        totalAmount,
+        paidAmount,
+      },
+      assignments,
+    });
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({
+      message: "Failed to fetch member ledger",
+    });
+  }
+});
+
+router.get("/dashboard-entry-image/:entryId", async (req, res) => {
+  try {
+    const entry = await DashboardEntry.findById(req.params.entryId);
+
+    if (!entry) {
+      return res.status(404).json({ message: "Entry not found" });
+    }
+
+    res.status(200).json({
+      verificationImage: entry.verificationImage,
+    });
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({ message: "Server error" });
+  }
+});
+
+
 
 
 

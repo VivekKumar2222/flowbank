@@ -1,8 +1,10 @@
 import 'package:flutter/material.dart';
+import 'entry_verification.dart';
 
 // ======================= MODEL =======================
 
 class EntryItem {
+  final String entryId;
   final String title;        // Person / Organization
   final String subtitle;     // Verified / Not verified
   final String date;
@@ -10,6 +12,7 @@ class EntryItem {
   // final double totalAmount;  // Total amount to be paid
 
   EntryItem({
+    required this.entryId,
     required this.title,
     required this.subtitle,
     required this.date,
@@ -69,7 +72,23 @@ class _EntryTile extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Container(
+    return InkWell(
+    borderRadius: BorderRadius.circular(16),
+    onTap: () {
+      Navigator.push(
+        context,
+        MaterialPageRoute(
+          builder: (_) => EntryVerificationPage(
+                 entryId: tx.entryId,
+        title: tx.title,
+        subtitle: tx.subtitle,
+        date: tx.date,
+        amount: tx.amount,
+          ),
+        ),
+      );
+    },
+    child: Container(
       padding: const EdgeInsets.symmetric(horizontal: 12),
       decoration: BoxDecoration(
         color: _bgColor,
@@ -158,6 +177,7 @@ class _EntryTile extends StatelessWidget {
           ],
         ),
       ),
+    ),
     );
   }
 }

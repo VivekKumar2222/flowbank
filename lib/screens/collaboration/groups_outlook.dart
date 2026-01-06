@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:auto_size_text/auto_size_text.dart';
 import '../collaboration/bill_splitting.dart';
-
+import '../collaboration/ledger_tracking.dart';
 /// ─────────────────────────────────────────
 /// REQUEST DATA MODEL
 /// ─────────────────────────────────────────
@@ -111,8 +111,15 @@ onTap: () {
         ),
       ),
     );
-  } else {
-    debugPrint("Group type: $groupType");
+  } else if (groupType == "Ledger Tracking") {
+     Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (_) => LedgerTracking(
+          dashboardId: dashboardID,
+        ),
+      ),
+    );
   }
 },
 

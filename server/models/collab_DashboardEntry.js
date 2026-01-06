@@ -23,6 +23,13 @@ const dashboardEntrySchema = new mongoose.Schema(
       default: null,
     },
 
+    assignmentId: {
+          type: mongoose.Schema.Types.ObjectId,
+    ref: "LedgerAssignment",
+    default: null,
+
+    },
+
 
     status: {
       type: String,

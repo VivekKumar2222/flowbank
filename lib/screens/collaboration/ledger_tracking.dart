@@ -7,11 +7,34 @@ import '../collaboration/members-entries-billsplitting.dart';
 import 'package:http/http.dart' as http;
 import '../collaboration/add_Entries.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import '../collaboration/unassigned-members-view.dart';
 import '../collaboration/inPage_add_members_page.dart';
 
 /// --------------------
 /// Member Model
 /// --------------------
+
+class UnassignedMember {
+  final String name;
+  final String email;
+  final String dashboardId;
+
+  UnassignedMember({
+    required this.name,
+    required this.email,
+    required this.dashboardId,
+  });
+
+  factory UnassignedMember.fromMap(Map<String, dynamic> map) {
+    return UnassignedMember(
+      name: map['name'] ?? '',
+      email: map['userId'] ?? '',
+      dashboardId: map['dashboardId'] ?? '',
+    );
+  }
+}
+
+
 class Member {
   final String name;
   final String email;
@@ -41,19 +64,19 @@ class Member {
 /// --------------------
 /// Collaboration Screen
 /// --------------------
-class BillSplitting extends StatefulWidget {
+class LedgerTracking extends StatefulWidget {
   final String dashboardId;
 
-  const BillSplitting({
+  const LedgerTracking({
     super.key,
     required this.dashboardId,
   });
 
   @override
-  State<BillSplitting> createState() => _BillSplittingState();
+  State<LedgerTracking> createState() => _LedgerTrackingState();
 }
 
-class _BillSplittingState extends State<BillSplitting> {
+class _LedgerTrackingState extends State<LedgerTracking> {
   int _selectedIndex = 0;
   bool _isExpanded = false;
   String? ownerEmail;
@@ -62,9 +85,32 @@ class _BillSplittingState extends State<BillSplitting> {
   String currency = "USD"; // default
   String? userEmail;
   List<Member> members = [];
+  double totalLent = 0.0;
+  int assignedMemberCount = 0;
+  bool isLoadingLedgerSummary = true;
+  List<UnassignedMember> unassignedMembers = [];
+  bool isLoadingUnassigned = true;
+  List<Map<String, dynamic>> assignedMembers = [];
+  bool isLoadingAssignedMembers = true;
+  
+
 
   List<EntryItem> entries = [];
   bool isLoadingEntries = true;
+
+      final List<Map<String, dynamic>> membersData = [
+      {
+        'name': 'Ali',
+        'paidAmount': 2000,
+        'totalAmount': 6500,
+      },
+      {
+        'name': 'Sara',
+        'paidAmount': 500,
+        'totalAmount': 4000,
+      },
+    ];
+    
 
 
   @override
@@ -75,6 +121,9 @@ class _BillSplittingState extends State<BillSplitting> {
     _loadUserEmail();
     _fetchOwnerEmail();
     _fetchEntries();
+    _fetchUnassignedMembers();
+    _fetchLedgerSummary();
+    _fetchAssignedMembers();
   }
   
   Map<String, double> _calculatePaidAmountsFromEntries() {
@@ -86,6 +135,88 @@ class _BillSplittingState extends State<BillSplitting> {
   }
 
   return paidMap;
+}
+
+Future<void> _fetchAssignedMembers() async {
+  try {
+    final response = await http.get(
+      Uri.parse(
+        "http://10.0.2.2:5000/api/collab/assigned-members-summary?dashboardId=${widget.dashboardId}",
+      ),
+    );
+
+    if (response.statusCode == 200) {
+      final List data = jsonDecode(response.body);
+
+      setState(() {
+        assignedMembers = data.map((m) => {
+          "name": m["name"],
+          "paidAmount": (m["paidAmount"] as num).toDouble(),
+          "totalAmount": (m["totalAmount"] as num).toDouble(),
+        }).toList();
+
+        isLoadingAssignedMembers = false;
+      });
+    } else {
+      isLoadingAssignedMembers = false;
+    }
+  } catch (e) {
+    debugPrint("Failed to fetch assigned members: $e");
+    isLoadingAssignedMembers = false;
+  }
+}
+
+
+Future<void> _fetchUnassignedMembers() async {
+  try {
+    final response = await http.get(
+      Uri.parse(
+        "http://10.0.2.2:5000/api/collab/unassigned-members?dashboardId=${widget.dashboardId}",
+      ),
+    );
+
+    if (response.statusCode == 200) {
+      final List data = jsonDecode(response.body);
+
+      setState(() {
+        unassignedMembers = data
+            .map((m) => UnassignedMember.fromMap(m))
+            .toList();
+        isLoadingUnassigned = false;
+      });
+    } else {
+      isLoadingUnassigned = false;
+    }
+  } catch (e) {
+    debugPrint("Failed to fetch unassigned members: $e");
+    isLoadingUnassigned = false;
+  }
+}
+
+
+Future<void> _fetchLedgerSummary() async {
+  try {
+    final response = await http.get(
+      Uri.parse(
+        "http://10.0.2.2:5000/api/collab/ledger-summary?dashboardId=${widget.dashboardId}",
+      ),
+    );
+
+    if (response.statusCode == 200) {
+      final data = jsonDecode(response.body);
+
+      setState(() {
+        totalLent = (data["totalLent"] as num).toDouble();
+        assignedMemberCount = data["assignedMemberCount"];
+        isLoadingLedgerSummary = false;
+      });
+    } else {
+      isLoadingLedgerSummary = false;
+    }
+  } catch (e) {
+    debugPrint("Failed to fetch ledger summary: $e");
+    isLoadingLedgerSummary = false;
+  }
 }
 
 
@@ -389,7 +520,7 @@ AnimatedOpacity(
         heroTag: "add_members",
         backgroundColor: const Color(0xFF217BFF),
         elevation: 0,
-onPressed: (ownerEmail != null && ownerEmail == userEmail)
+        onPressed:(ownerEmail != null && ownerEmail == userEmail)
     ? () {
         setState(() => _isExpanded = false);
         Navigator.push(
@@ -402,7 +533,6 @@ onPressed: (ownerEmail != null && ownerEmail == userEmail)
         );
       }
     : null,
-
         label: const Text(
           "Add Members",
           style: TextStyle(
@@ -480,7 +610,7 @@ floatingActionButtonLocation: FloatingActionButtonLocation.endDocked,
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
                             Text(
-                              "Bill Splitting",
+                              "Ledger Tracking",
                               style: TextStyle(
                                 color: Color(0xFF667085),
                                 fontSize: 11,
@@ -535,7 +665,7 @@ floatingActionButtonLocation: FloatingActionButtonLocation.endDocked,
                     crossAxisAlignment: CrossAxisAlignment.center,
                     children: [
                       Text(
-                        "Total Amount to Split",
+                        "Total Amount to Lent",
                         style: TextStyle(
                           color: Color(0xFFFFFFFF),
                           fontFamily: "Manrope",
@@ -544,11 +674,12 @@ floatingActionButtonLocation: FloatingActionButtonLocation.endDocked,
                         ),
                       ),
                       Text(
-                        isLoadingTotal
-                            ? "—"
-                            : currency == "USD"
-    ? "\$${totalAmount?.toStringAsFixed(2) ?? "0.00"}"
-    : "${currency} ${totalAmount?.toStringAsFixed(2) ?? "0.00"}",
+                       isLoadingLedgerSummary
+    ? "--"
+    : currency == "USD"
+        ? "\$${totalLent.toStringAsFixed(2)}"
+        : "$currency ${totalLent.toStringAsFixed(2)}",
+
                         style: TextStyle(
                           color: Color(0xFFFFFFFF),
                           fontFamily: "Manrope",
@@ -557,7 +688,10 @@ floatingActionButtonLocation: FloatingActionButtonLocation.endDocked,
                         ),
                       ),
                       Text(
-                        "Split between ${members.length} group members",
+                        isLoadingLedgerSummary
+    ? "loading members..."
+    : "lent to $assignedMemberCount group members",
+ // number of members who are assigned/ who are in assigned members
                         style: TextStyle(
                           color: Color(0xFFFFFFFF),
                           fontFamily: "Manrope",
@@ -570,23 +704,30 @@ floatingActionButtonLocation: FloatingActionButtonLocation.endDocked,
                 ),
                 const SizedBox(height: 27),
 
-                /// Group Members
+                                SectionHeader(
+                  title: "Un-Assigned Members",  // all un-assigned members
+                  showButton: true,
+                ),
+
+                const SizedBox(height: 16),
+
+                UnassignedMembersView(members: unassignedMembers), // un assigned users/members
+
+                const SizedBox(height: 24),
+
+
+                
                 SectionHeader(
-                  title: "Group Members",
+                  title: "Assigned Members",
                   showButton: true,
                 ),
                 const SizedBox(height: 16),
-                MembersViewRow(
-                  members: members
-                      .map((m) => {
-                            'name': m.name,
-                            'email': m.email,
-                            'role': m.role,
-                            'totalAmount': m.totalAmount,
-                            'paidAmount': m.paidAmount,
-                          })
-                      .toList(),
-                ),
+                isLoadingAssignedMembers
+    ? const Center(child: CircularProgressIndicator())
+    : MembersViewRow(
+        members: assignedMembers,
+      ),
+
                 const SizedBox(height: 24),
 
                 /// All Entries

@@ -9,10 +9,12 @@ import 'package:http/http.dart' as http;
 
 class AddEntriesPage extends StatefulWidget {
   final String dashboardId; // ✅ constructor input
+  final String? assignmentId;
 
   const AddEntriesPage({
     super.key,
     required this.dashboardId,
+    this.assignmentId,
   });
 
   @override
@@ -49,12 +51,13 @@ final encrypt.IV _iv = encrypt.IV.fromLength(16); // 16 bytes IV
 Future<String> _encryptImage(File imageFile) async {
   final bytes = await imageFile.readAsBytes();
   final encrypter = encrypt.Encrypter(
-    encrypt.AES(_key, mode: encrypt.AESMode.cbc),
+    encrypt.AES(_key, mode: encrypt.AESMode.cbc,padding: 'PKCS7'),
   );
 
   final encrypted = encrypter.encryptBytes(bytes, iv: _iv);
-  return base64Encode(encrypted.bytes);
+  return encrypted.base64; // ✅ send base64 from the encrypt package
 }
+
 
 
   Future<void> _pickImage() async {
@@ -68,28 +71,64 @@ Future<String> _encryptImage(File imageFile) async {
     }
   }
 
-  Future<void> _submitEntry() async {
+//   Future<void> _submitEntry() async {
+//   final encryptedImage = await _encryptImage(_verificationImage!);
+
+//   final response = await http.post(
+//     Uri.parse("http://10.0.2.2:5000/api/collab/dashboard-entry"),
+//     headers: {
+//       "Content-Type": "application/json",
+//     },
+//     body: jsonEncode({
+//       "dashboardId": widget.dashboardId,
+//       "userId": userEmail,
+//       "amount": double.parse(_amountController.text),
+//       "verificationImage": encryptedImage, // 🔐 encrypted
+//     }),
+
+    
+//   );
+
+//   if (response.statusCode == 201) {
+//     Navigator.pop(context); // ✅ go back after success
+//   } else {
+//     debugPrint("Failed: ${response.body}");
+//   }
+// }
+
+Future<void> _submitEntry() async {
+  if (_verificationImage == null) return;
+
+  final amount = double.tryParse(_amountController.text);
+  if (amount == null || amount <= 0) return;
+
   final encryptedImage = await _encryptImage(_verificationImage!);
+
+  final Map<String, dynamic> body = {
+    "dashboardId": widget.dashboardId,
+    "userId": userEmail,
+    "amount": amount,
+    "verificationImage": encryptedImage,
+  };
+
+  // ✅ only attach if coming from ledger
+  if (widget.assignmentId != null) {
+    body["assignmentId"] = widget.assignmentId;
+  }
 
   final response = await http.post(
     Uri.parse("http://10.0.2.2:5000/api/collab/dashboard-entry"),
-    headers: {
-      "Content-Type": "application/json",
-    },
-    body: jsonEncode({
-      "dashboardId": widget.dashboardId,
-      "userId": userEmail,
-      "amount": double.parse(_amountController.text),
-      "verificationImage": encryptedImage, // 🔐 encrypted
-    }),
+    headers: {"Content-Type": "application/json"},
+    body: jsonEncode(body),
   );
 
   if (response.statusCode == 201) {
-    Navigator.pop(context); // ✅ go back after success
+    Navigator.pop(context);
   } else {
     debugPrint("Failed: ${response.body}");
   }
 }
+
 
 
   @override
