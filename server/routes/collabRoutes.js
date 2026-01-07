@@ -11,6 +11,7 @@ const AssignedMembers = require("../models/collab_LedgerAssignedMembers");
 
 
 
+
 const router = express.Router();
 
 // TEST ROUTE - dynamic
@@ -800,6 +801,20 @@ router.get("/dashboard-entry-image/:entryId", async (req, res) => {
 });
 
 
+router.get("/dashboard-entry/:entryId", async (req, res) => {
+  try {
+    const entry = await DashboardEntry.findById(req.params.entryId);
+
+    if (!entry) {
+      return res.status(404).json({ message: "Entry not found" });
+    }
+
+    res.status(200).json(entry);
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({ message: "Server error" });
+  }
+});
 
 
 

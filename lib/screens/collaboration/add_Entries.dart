@@ -1,14 +1,14 @@
 import 'dart:io';
 import 'dart:convert';
+import 'dart:typed_data';
+
 import 'package:flutter/material.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:shared_preferences/shared_preferences.dart';
-import 'package:encrypt/encrypt.dart' as encrypt;
 import 'package:http/http.dart' as http;
 
-
 class AddEntriesPage extends StatefulWidget {
-  final String dashboardId; // ✅ constructor input
+  final String dashboardId;
   final String? assignmentId;
 
   const AddEntriesPage({
@@ -23,16 +23,12 @@ class AddEntriesPage extends StatefulWidget {
 
 class _AddEntriesPageState extends State<AddEntriesPage> {
   final TextEditingController _amountController = TextEditingController();
-  File? _verificationImage;
 
+  File? _verificationImage;            // UI preview only
+  Uint8List? _verificationImageBytes;  // actual data sent
   final ImagePicker _picker = ImagePicker();
 
   String? userEmail;
-
-  // 🔐 Encryption setup
-final encrypt.Key _key = encrypt.Key.fromUtf8('0123456789abcdef0123456789abcdef'); // 32 chars
-final encrypt.IV _iv = encrypt.IV.fromLength(16); // 16 bytes IV
-
 
   @override
   void initState() {
@@ -47,89 +43,97 @@ final encrypt.IV _iv = encrypt.IV.fromLength(16); // 16 bytes IV
     });
   }
 
-  /// 🔐 Encrypt image bytes
-Future<String> _encryptImage(File imageFile) async {
-  final bytes = await imageFile.readAsBytes();
-  final encrypter = encrypt.Encrypter(
-    encrypt.AES(_key, mode: encrypt.AESMode.cbc,padding: 'PKCS7'),
-  );
+  /// ✔ Allow only JPEG / PNG
+  bool _isSupportedImage(Uint8List bytes) {
+    // JPEG
+    if (bytes.length >= 3 &&
+        bytes[0] == 0xFF &&
+        bytes[1] == 0xD8 &&
+        bytes[2] == 0xFF) {
+      return true;
+    }
 
-  final encrypted = encrypter.encryptBytes(bytes, iv: _iv);
-  return encrypted.base64; // ✅ send base64 from the encrypt package
-}
+    // PNG
+    if (bytes.length >= 4 &&
+        bytes[0] == 0x89 &&
+        bytes[1] == 0x50 &&
+        bytes[2] == 0x4E &&
+        bytes[3] == 0x47) {
+      return true;
+    }
 
+    return false;
+  }
 
+  void _showInvalidImageDialog() {
+    showDialog(
+      context: context,
+      builder: (_) => AlertDialog(
+        title: const Text("Invalid Image"),
+        content: const Text(
+          "Only JPEG and PNG images are allowed.\nPlease select a valid image.",
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: const Text("OK"),
+          ),
+        ],
+      ),
+    );
+  }
 
   Future<void> _pickImage() async {
     final XFile? pickedFile =
         await _picker.pickImage(source: ImageSource.gallery);
 
-    if (pickedFile != null) {
-      setState(() {
-        _verificationImage = File(pickedFile.path);
-      });
+    if (pickedFile == null) return;
+
+    final Uint8List bytes = await pickedFile.readAsBytes();
+
+    if (!_isSupportedImage(bytes)) {
+      _showInvalidImageDialog();
+      return;
+    }
+
+    setState(() {
+      _verificationImageBytes = bytes;
+      _verificationImage = File(pickedFile.path);
+    });
+  }
+
+  Future<void> _submitEntry() async {
+    if (_verificationImageBytes == null) return;
+
+    final amount = double.tryParse(_amountController.text);
+    if (amount == null || amount <= 0) return;
+
+    /// ✅ Convert image to Base64 string
+    final String base64Image = base64Encode(_verificationImageBytes!);
+
+    final Map<String, dynamic> body = {
+      "dashboardId": widget.dashboardId,
+      "userId": userEmail,
+      "amount": amount,
+      "verificationImage": base64Image, // 👈 stored as string in MongoDB
+    };
+
+    if (widget.assignmentId != null) {
+      body["assignmentId"] = widget.assignmentId;
+    }
+
+    final response = await http.post(
+      Uri.parse("http://10.0.2.2:5000/api/collab/dashboard-entry"),
+      headers: {"Content-Type": "application/json"},
+      body: jsonEncode(body),
+    );
+
+    if (response.statusCode == 201) {
+      Navigator.pop(context);
+    } else {
+      debugPrint("Failed: ${response.body}");
     }
   }
-
-//   Future<void> _submitEntry() async {
-//   final encryptedImage = await _encryptImage(_verificationImage!);
-
-//   final response = await http.post(
-//     Uri.parse("http://10.0.2.2:5000/api/collab/dashboard-entry"),
-//     headers: {
-//       "Content-Type": "application/json",
-//     },
-//     body: jsonEncode({
-//       "dashboardId": widget.dashboardId,
-//       "userId": userEmail,
-//       "amount": double.parse(_amountController.text),
-//       "verificationImage": encryptedImage, // 🔐 encrypted
-//     }),
-
-    
-//   );
-
-//   if (response.statusCode == 201) {
-//     Navigator.pop(context); // ✅ go back after success
-//   } else {
-//     debugPrint("Failed: ${response.body}");
-//   }
-// }
-
-Future<void> _submitEntry() async {
-  if (_verificationImage == null) return;
-
-  final amount = double.tryParse(_amountController.text);
-  if (amount == null || amount <= 0) return;
-
-  final encryptedImage = await _encryptImage(_verificationImage!);
-
-  final Map<String, dynamic> body = {
-    "dashboardId": widget.dashboardId,
-    "userId": userEmail,
-    "amount": amount,
-    "verificationImage": encryptedImage,
-  };
-
-  // ✅ only attach if coming from ledger
-  if (widget.assignmentId != null) {
-    body["assignmentId"] = widget.assignmentId;
-  }
-
-  final response = await http.post(
-    Uri.parse("http://10.0.2.2:5000/api/collab/dashboard-entry"),
-    headers: {"Content-Type": "application/json"},
-    body: jsonEncode(body),
-  );
-
-  if (response.statusCode == 201) {
-    Navigator.pop(context);
-  } else {
-    debugPrint("Failed: ${response.body}");
-  }
-}
-
-
 
   @override
   Widget build(BuildContext context) {
@@ -161,7 +165,6 @@ Future<void> _submitEntry() async {
             children: [
               const SizedBox(height: 20),
 
-              /// Entry Amount
               const Text(
                 "Entry Amount",
                 style: TextStyle(fontSize: 16, fontWeight: FontWeight.w600),
@@ -183,10 +186,8 @@ Future<void> _submitEntry() async {
                     border: InputBorder.none,
                     prefixIcon:
                         Icon(Icons.attach_money, color: Color(0xFF217BFF)),
-                    contentPadding: EdgeInsets.symmetric(
-                      horizontal: 16,
-                      vertical: 12,
-                    ),
+                    contentPadding:
+                        EdgeInsets.symmetric(horizontal: 16, vertical: 12),
                   ),
                   onChanged: (_) => setState(() {}),
                 ),
@@ -194,7 +195,6 @@ Future<void> _submitEntry() async {
 
               const SizedBox(height: 24),
 
-              /// Source of Verification
               const Text(
                 "Source of Verification",
                 style: TextStyle(fontSize: 16, fontWeight: FontWeight.w600),
@@ -218,11 +218,8 @@ Future<void> _submitEntry() async {
                       ? Column(
                           mainAxisAlignment: MainAxisAlignment.center,
                           children: const [
-                            Icon(
-                              Icons.upload_file,
-                              size: 40,
-                              color: Color(0xFF217BFF),
-                            ),
+                            Icon(Icons.upload_file,
+                                size: 40, color: Color(0xFF217BFF)),
                             SizedBox(height: 8),
                             Text(
                               "Upload Verification Image",
@@ -247,14 +244,12 @@ Future<void> _submitEntry() async {
         ),
       ),
 
-      /// Submit Button
       bottomNavigationBar: Padding(
         padding: const EdgeInsets.all(18),
         child: SizedBox(
           height: 56,
           child: ElevatedButton(
             onPressed: isButtonEnabled ? _submitEntry : null,
-
             style: ElevatedButton.styleFrom(
               backgroundColor: isButtonEnabled
                   ? const Color(0xFF217BFF)

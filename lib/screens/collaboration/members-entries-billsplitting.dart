@@ -80,10 +80,7 @@ class _EntryTile extends StatelessWidget {
         MaterialPageRoute(
           builder: (_) => EntryVerificationPage(
                  entryId: tx.entryId,
-        title: tx.title,
-        subtitle: tx.subtitle,
-        date: tx.date,
-        amount: tx.amount,
+        
           ),
         ),
       );

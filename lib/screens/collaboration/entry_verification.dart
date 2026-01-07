@@ -1,32 +1,75 @@
 import 'dart:convert';
-import 'dart:typed_data';
-import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
-import 'package:encrypt/encrypt.dart' as encrypt;
 
 /* ============================================================
-   ENTRY VERIFICATION PAGE
+   ENTRY VERIFICATION PAGE (FETCH BY ENTRY ID)
 ============================================================ */
 
-class EntryVerificationPage extends StatelessWidget {
+class EntryVerificationPage extends StatefulWidget {
   final String entryId;
-  final String title;
-  final String subtitle;
-  final String date;
-  final double amount;
 
   const EntryVerificationPage({
     super.key,
     required this.entryId,
-    required this.title,
-    required this.subtitle,
-    required this.date,
-    required this.amount,
   });
 
   @override
+  State<EntryVerificationPage> createState() => _EntryVerificationPageState();
+}
+
+class _EntryVerificationPageState extends State<EntryVerificationPage> {
+  bool isLoading = true;
+
+  String title = "";
+  String subtitle = "";
+  String date = "";
+  double amount = 0;
+  String verificationImage = "";
+
+  @override
+  void initState() {
+    super.initState();
+    _fetchEntry();
+  }
+
+  Future<void> _fetchEntry() async {
+    try {
+      final response = await http.get(
+        Uri.parse(
+          "http://10.0.2.2:5000/api/collab/dashboard-entry/${widget.entryId}",
+        ),
+      );
+
+      if (response.statusCode == 200) {
+        final data = jsonDecode(response.body);
+
+        setState(() {
+          title = data["userId"] ?? "Unknown";
+          subtitle = data["status"] ?? "";
+          date = data["createdAt"] ?? "";
+          amount = (data["amount"] ?? 0).toDouble();
+          verificationImage = data["verificationImage"] ?? "";
+          isLoading = false;
+        });
+
+        debugPrint("✅ ENTRY FETCHED: ${widget.entryId}");
+      } else {
+        debugPrint("❌ Entry fetch failed: ${response.body}");
+      }
+    } catch (e) {
+      debugPrint("❌ ERROR: $e");
+    }
+  }
+
+  @override
   Widget build(BuildContext context) {
+    if (isLoading) {
+      return const Scaffold(
+        body: Center(child: CircularProgressIndicator()),
+      );
+    }
+
     return Scaffold(
       backgroundColor: Colors.white,
       body: Column(
@@ -36,13 +79,14 @@ class EntryVerificationPage extends StatelessWidget {
             title: title,
             amount: amount,
           ),
-
           Expanded(
             child: Padding(
               padding: const EdgeInsets.all(20),
               child: Column(
                 children: [
-                  VerificationImage(entryId: entryId),
+                  VerificationImage(
+                    imageData: verificationImage,
+                  ),
                   const SizedBox(height: 24),
                   const _ActionButtons(),
                 ],
@@ -56,7 +100,7 @@ class EntryVerificationPage extends StatelessWidget {
 }
 
 /* ============================================================
-   HEADER
+   HEADER (UNCHANGED)
 ============================================================ */
 
 class _VerificationHeader extends StatelessWidget {
@@ -115,10 +159,7 @@ class _VerificationHeader extends StatelessWidget {
           const SizedBox(height: 24),
           const Text(
             "Amount to Verify",
-            style: TextStyle(
-              fontSize: 14,
-              color: Colors.white70,
-            ),
+            style: TextStyle(fontSize: 14, color: Colors.white70),
           ),
           const SizedBox(height: 6),
           Text(
@@ -136,127 +177,20 @@ class _VerificationHeader extends StatelessWidget {
 }
 
 /* ============================================================
-   IMAGE FETCH + DECRYPT
+   IMAGE (BASE64 FROM MONGODB)
 ============================================================ */
 
-class VerificationImage extends StatefulWidget {
-  final String entryId;
+class VerificationImage extends StatelessWidget {
+  final String imageData;
 
   const VerificationImage({
     super.key,
-    required this.entryId,
+    required this.imageData,
   });
-
-  @override
-  State<VerificationImage> createState() => _VerificationImageState();
-}
-
-class _VerificationImageState extends State<VerificationImage> {
-  Uint8List? imageBytes;
-  bool loading = true;
-
-  // 🔐 SAME KEY & IV AS ENTRY CREATION
-  final encrypt.Key _key =
-      encrypt.Key.fromUtf8('0123456789abcdef0123456789abcdef');
-  final encrypt.IV _iv = encrypt.IV.fromLength(16);
-
-  @override
-  void initState() {
-    super.initState();
-    _loadImage();
-  }
-
-Future<void> _loadImage() async {
-  try {
-    debugPrint("STEP 1: API call start");
-
-    final response = await http.get(
-      Uri.parse(
-        "http://10.0.2.2:5000/api/collab/dashboard-entry-image/${widget.entryId}",
-      ),
-    );
-
-    debugPrint("STEP 2: API response received");
-
-    if (response.statusCode == 200) {
-      final decoded = jsonDecode(response.body);
-      debugPrint("STEP 3: JSON decoded");
-
-      final encryptedString = decoded['verificationImage'];
-      debugPrint(
-        "STEP 4: encryptedString length = ${encryptedString?.length}",
-      );
-
-      if (encryptedString == null || encryptedString.isEmpty) {
-        debugPrint("STEP 4A: encryptedString is NULL or EMPTY");
-
-        setState(() {
-          loading = false;
-        });
-        return;
-      }
-
-      debugPrint("STEP 5: compute() start");
-
-final decryptedBytes = await compute(
-  decryptImageInBackground,
-  {
-    "data": encryptedString,
-    "key": _key.base64,
-    "iv": _iv.base64,
-  },
-);
-
-if (decryptedBytes.isEmpty) {
-  debugPrint("Decryption returned empty bytes");
-
-  setState(() {
-    loading = false;
-  });
-  return;
-}
-
-
-
-      debugPrint(
-        "STEP 6: compute() finished, bytes = ${decryptedBytes.length}",
-      );
-
-      if (!mounted) return;
-
-      setState(() {
-        imageBytes = decryptedBytes;
-        loading = false;
-      });
-
-      debugPrint("STEP 7: setState done");
-    } else {
-      debugPrint("STEP X: API failed ${response.statusCode}");
-      setState(() {
-        loading = false;
-      });
-    }
-  } catch (e, stack) {
-    debugPrint("EXCEPTION: $e");
-    debugPrint("$stack");
-
-    setState(() {
-      loading = false;
-    });
-  }
-}
-
 
   @override
   Widget build(BuildContext context) {
-    if (loading) {
-      return const SizedBox(
-        height: 280,
-        child: Center(child: CircularProgressIndicator()),
-      );
-    }
-
-    if (imageBytes == null) {
+    if (imageData.isEmpty) {
       return Container(
         height: 280,
         alignment: Alignment.center,
@@ -270,7 +204,7 @@ if (decryptedBytes.isEmpty) {
     return ClipRRect(
       borderRadius: BorderRadius.circular(16),
       child: Image.memory(
-        imageBytes!,
+        base64Decode(imageData),
         height: 280,
         width: double.infinity,
         fit: BoxFit.cover,
@@ -335,26 +269,5 @@ class _ActionButtons extends StatelessWidget {
         ),
       ],
     );
-  }
-}
-
-Uint8List decryptImageInBackground(Map<String, dynamic> params) {
-  try {
-    final key = encrypt.Key.fromBase64(params['key']);
-    final iv = encrypt.IV.fromBase64(params['iv']);
-
-    final encrypter = encrypt.Encrypter(
-      encrypt.AES(key, mode: encrypt.AESMode.cbc,padding: 'PKCS7'),
-    );
-
-    final decryptedBytes = encrypter.decryptBytes(
-      encrypt.Encrypted(base64Decode(params['data'])),
-      iv: iv,
-    );
-
-    return Uint8List.fromList(decryptedBytes);
-  } catch (e) {
-    debugPrint("ISOLATE DECRYPT ERROR: $e");
-    return Uint8List(0);
   }
 }

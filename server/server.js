@@ -10,6 +10,8 @@ const authRoutes = require("./routes/authRoutes");
 const collabRoutes = require("./routes/collabRoutes");
 const searchRoutes = require("./routes/userSearch");
 
+
+
 dotenv.config();
 
 // ✅ Create app FIRST before using it
@@ -45,6 +47,7 @@ app.use("/api/auth", authRoutes);
 
 app.use("/api/collab", collabRoutes);
 app.use("/api/search", searchRoutes);
+
 
 // ✅ Test route
 app.get("/", (req, res) => res.send("API is running..."));
