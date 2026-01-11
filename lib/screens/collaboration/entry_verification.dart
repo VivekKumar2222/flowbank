@@ -8,10 +8,12 @@ import 'package:http/http.dart' as http;
 
 class EntryVerificationPage extends StatefulWidget {
   final String entryId;
+  final String name;
 
   const EntryVerificationPage({
     super.key,
     required this.entryId,
+    required this.name,
   });
 
   @override
@@ -76,7 +78,7 @@ class _EntryVerificationPageState extends State<EntryVerificationPage> {
         mainAxisAlignment: MainAxisAlignment.spaceBetween,
         children: [
           _VerificationHeader(
-            title: title,
+            title: widget.name,
             amount: amount,
           ),
           Expanded(
@@ -202,14 +204,28 @@ class VerificationImage extends StatelessWidget {
     }
 
     return ClipRRect(
-      borderRadius: BorderRadius.circular(16),
-      child: Image.memory(
-        base64Decode(imageData),
+  borderRadius: BorderRadius.circular(16),
+  child: Image.network(
+    imageData,
+    height: 280,
+    width: double.infinity,
+    fit: BoxFit.cover,
+    loadingBuilder: (context, child, progress) {
+      if (progress == null) return child;
+      return const SizedBox(
         height: 280,
-        width: double.infinity,
-        fit: BoxFit.cover,
-      ),
-    );
+        child: Center(child: CircularProgressIndicator()),
+      );
+    },
+    errorBuilder: (_, __, ___) {
+      return const SizedBox(
+        height: 280,
+        child: Center(child: Text("Failed to load image")),
+      );
+    },
+  ),
+);
+
   }
 }
 

@@ -36,6 +36,33 @@ class _AddEntriesPageState extends State<AddEntriesPage> {
     _loadUserEmail();
   }
 
+  Future<String?> _uploadToCloudinary(Uint8List bytes) async {
+  final uri = Uri.parse(
+    "https://api.cloudinary.com/v1_1/dzuc4aors/image/upload",
+  );
+
+  final request = http.MultipartRequest("POST", uri)
+    ..fields["upload_preset"] = "verification_unsigned"
+    ..files.add(
+      http.MultipartFile.fromBytes(
+        "file",
+        bytes,
+        filename: "verification.jpg",
+      ),
+    );
+
+  final response = await request.send();
+
+  if (response.statusCode == 200) {
+    final resStr = await response.stream.bytesToString();
+    final data = jsonDecode(resStr);
+    return data["secure_url"];
+  }
+
+  return null;
+}
+
+
   Future<void> _loadUserEmail() async {
     final prefs = await SharedPreferences.getInstance();
     setState(() {
@@ -103,37 +130,40 @@ class _AddEntriesPageState extends State<AddEntriesPage> {
   }
 
   Future<void> _submitEntry() async {
-    if (_verificationImageBytes == null) return;
+  if (_verificationImageBytes == null) return;
 
-    final amount = double.tryParse(_amountController.text);
-    if (amount == null || amount <= 0) return;
+  final amount = double.tryParse(_amountController.text);
+  if (amount == null || amount <= 0) return;
 
-    /// ✅ Convert image to Base64 string
-    final String base64Image = base64Encode(_verificationImageBytes!);
-
-    final Map<String, dynamic> body = {
-      "dashboardId": widget.dashboardId,
-      "userId": userEmail,
-      "amount": amount,
-      "verificationImage": base64Image, // 👈 stored as string in MongoDB
-    };
-
-    if (widget.assignmentId != null) {
-      body["assignmentId"] = widget.assignmentId;
-    }
-
-    final response = await http.post(
-      Uri.parse("http://10.0.2.2:5000/api/collab/dashboard-entry"),
-      headers: {"Content-Type": "application/json"},
-      body: jsonEncode(body),
-    );
-
-    if (response.statusCode == 201) {
-      Navigator.pop(context);
-    } else {
-      debugPrint("Failed: ${response.body}");
-    }
+  final imageUrl = await _uploadToCloudinary(_verificationImageBytes!);
+  if (imageUrl == null) {
+    debugPrint("Cloudinary upload failed");
+    return;
   }
+
+  final Map<String, dynamic> body = {
+    "dashboardId": widget.dashboardId,
+    "userId": userEmail,
+    "amount": amount,
+    "verificationImage": imageUrl, // ✅ URL now
+  };
+
+  if (widget.assignmentId != null) {
+    body["assignmentId"] = widget.assignmentId;
+  }
+
+  final response = await http.post(
+    Uri.parse("http://10.0.2.2:5000/api/collab/dashboard-entry"),
+    headers: {"Content-Type": "application/json"},
+    body: jsonEncode(body),
+  );
+
+  if (response.statusCode == 201) {
+    Navigator.pop(context);
+  } else {
+    debugPrint("Failed: ${response.body}");
+  }
+}
 
   @override
   Widget build(BuildContext context) {
