@@ -23,6 +23,16 @@ const dashboardEntrySchema = new mongoose.Schema(
       default: null,
     },
 
+        ocrVerified: {
+      type: Boolean,
+      default: false,
+    },
+
+    ocrVerification: {
+      type: Object, // stores full OCR response
+      default: null,
+    },
+
     assignmentId: {
           type: mongoose.Schema.Types.ObjectId,
     ref: "LedgerAssignment",
@@ -36,6 +46,8 @@ const dashboardEntrySchema = new mongoose.Schema(
       enum: ["pending", "approved", "rejected", "settled"],
       default: "pending",
     },
+
+    
 
     dueDate: Date,
     description: String,

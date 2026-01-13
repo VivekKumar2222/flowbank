@@ -22,7 +22,8 @@ class EntryVerificationPage extends StatefulWidget {
 
 class _EntryVerificationPageState extends State<EntryVerificationPage> {
   bool isLoading = true;
-
+  bool? ocrVerified;
+  int? ocrScore;
   String title = "";
   String subtitle = "";
   String date = "";
@@ -45,6 +46,23 @@ class _EntryVerificationPageState extends State<EntryVerificationPage> {
 
       if (response.statusCode == 200) {
         final data = jsonDecode(response.body);
+
+          final ocrResponse = await http.post(
+  Uri.parse("http://10.0.2.2:5000/api/collab/verify-entry-ocr"),
+  headers: {"Content-Type": "application/json"},
+  body: jsonEncode({"entryId": widget.entryId}),
+);
+
+if (ocrResponse.statusCode == 200) {
+  final ocrData = jsonDecode(ocrResponse.body);
+
+  setState(() {
+    ocrVerified = ocrData["verified"];
+    ocrScore = ocrData["ocr"]?["totalScore"];
+  });
+}
+
+
 
         setState(() {
           title = data["userId"] ?? "Unknown";
@@ -90,7 +108,14 @@ class _EntryVerificationPageState extends State<EntryVerificationPage> {
                     imageData: verificationImage,
                   ),
                   const SizedBox(height: 24),
-                  const _ActionButtons(),
+                  if (ocrVerified != null)
+  _OcrStatusBox(
+    verified: ocrVerified!,
+    score: ocrScore!,
+  ),
+  const SizedBox(height: 16),
+
+                   _ActionButtons(entryId: widget.entryId,),
                 ],
               ),
             ),
@@ -203,38 +228,85 @@ class VerificationImage extends StatelessWidget {
       );
     }
 
-    return ClipRRect(
-  borderRadius: BorderRadius.circular(16),
-  child: Image.network(
-    imageData,
-    height: 280,
-    width: double.infinity,
-    fit: BoxFit.cover,
-    loadingBuilder: (context, child, progress) {
-      if (progress == null) return child;
-      return const SizedBox(
-        height: 280,
-        child: Center(child: CircularProgressIndicator()),
-      );
-    },
-    errorBuilder: (_, __, ___) {
-      return const SizedBox(
-        height: 280,
-        child: Center(child: Text("Failed to load image")),
-      );
-    },
-  ),
-);
-
+    return GestureDetector(
+      onTap: () {
+        Navigator.of(context).push(
+          PageRouteBuilder(
+            opaque: false,
+            pageBuilder: (_, __, ___) =>
+                _FullImageViewer(imageUrl: imageData),
+          ),
+        );
+      },
+      child: Hero(
+        tag: imageData,
+        child: ClipRRect(
+          borderRadius: BorderRadius.circular(16),
+          child: Image.network(
+            imageData,
+            height: 280,
+            width: double.infinity,
+            fit: BoxFit.cover,
+            loadingBuilder: (context, child, progress) {
+              if (progress == null) return child;
+              return const SizedBox(
+                height: 280,
+                child: Center(child: CircularProgressIndicator()),
+              );
+            },
+            errorBuilder: (_, __, ___) {
+              return const SizedBox(
+                height: 280,
+                child: Center(child: Text("Failed to load image")),
+              );
+            },
+          ),
+        ),
+      ),
+    );
   }
 }
+
+class _FullImageViewer extends StatelessWidget {
+  final String imageUrl;
+
+  const _FullImageViewer({required this.imageUrl});
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      backgroundColor: Colors.black.withOpacity(0.95),
+      body: GestureDetector(
+        onTap: () => Navigator.pop(context),
+        child: Center(
+          child: Hero(
+            tag: imageUrl,
+            child: InteractiveViewer(
+              panEnabled: true,
+              minScale: 1,
+              maxScale: 4,
+              child: Image.network(imageUrl),
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+
 
 /* ============================================================
    ACTION BUTTONS (UNCHANGED)
 ============================================================ */
 
 class _ActionButtons extends StatelessWidget {
-  const _ActionButtons();
+
+  final String entryId;
+  const _ActionButtons({
+    
+    required this.entryId,}
+  );
 
   @override
   Widget build(BuildContext context) {
@@ -242,7 +314,21 @@ class _ActionButtons extends StatelessWidget {
       children: [
         Expanded(
           child: ElevatedButton(
-            onPressed: () {},
+            onPressed: () async {
+  await http.post(
+    Uri.parse("http://10.0.2.2:5000/api/collab/update-entry-status"),
+    headers: {"Content-Type": "application/json"},
+    body: jsonEncode({
+      "entryId": entryId,
+      "status": "rejected",
+    }),
+  );
+
+  ScaffoldMessenger.of(context).showSnackBar(
+    const SnackBar(content: Text("Entry rejected")),
+  );
+},
+
             style: ElevatedButton.styleFrom(
               backgroundColor: const Color(0xFFD2D2D2),
               elevation: 0,
@@ -264,7 +350,21 @@ class _ActionButtons extends StatelessWidget {
         const SizedBox(width: 16),
         Expanded(
           child: ElevatedButton(
-            onPressed: () {},
+            onPressed: () async {
+  await http.post(
+    Uri.parse("http://10.0.2.2:5000/api/collab/update-entry-status"),
+    headers: {"Content-Type": "application/json"},
+    body: jsonEncode({
+      "entryId": entryId,
+      "status": "approved",
+    }),
+  );
+
+  ScaffoldMessenger.of(context).showSnackBar(
+    const SnackBar(content: Text("Entry approved")),
+  );
+},
+
             style: ElevatedButton.styleFrom(
               backgroundColor: const Color(0xFF4893FF),
               padding: const EdgeInsets.symmetric(vertical: 16),
@@ -287,3 +387,101 @@ class _ActionButtons extends StatelessWidget {
     );
   }
 }
+
+class _OcrStatusBox extends StatefulWidget {
+  final bool verified;
+  final int score;
+
+  const _OcrStatusBox({
+    required this.verified,
+    required this.score,
+  });
+
+  @override
+  State<_OcrStatusBox> createState() => _OcrStatusBoxState();
+}
+
+class _OcrStatusBoxState extends State<_OcrStatusBox>
+    with SingleTickerProviderStateMixin {
+  late AnimationController _controller;
+  late Animation<double> _glow;
+
+  @override
+  void initState() {
+    super.initState();
+
+    _controller = AnimationController(
+      vsync: this,
+      duration: const Duration(seconds: 5),
+    )..repeat(reverse: true);
+
+    _glow = Tween(begin: 0.1, end: 0.5).animate(
+      CurvedAnimation(parent: _controller, curve: Curves.easeInOut),
+    );
+  }
+
+  @override
+  void dispose() {
+    _controller.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final baseColor =
+        widget.verified ? const Color(0xFF1B8E4B) : const Color(0xFFC62828);
+    final bgColor =
+        widget.verified ? const Color(0xFFE7F6EC) : const Color(0xFFFDECEC);
+
+    return AnimatedBuilder(
+      animation: _glow,
+      builder: (_, __) {
+        return Container(
+          padding: const EdgeInsets.all(2), // Border thickness
+          decoration: BoxDecoration(
+            borderRadius: BorderRadius.circular(14),
+            boxShadow: [
+              BoxShadow(
+                color: baseColor.withOpacity(_glow.value),
+                blurRadius: 18,
+                spreadRadius: 1,
+              ),
+            ],
+          ),
+          child: Container(
+            padding:
+                const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+            decoration: BoxDecoration(
+              color: bgColor,
+              borderRadius: BorderRadius.circular(12),
+              border: Border.all(color: baseColor, width: 1.5),
+            ),
+            child: Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                Text(
+                  widget.verified ? "Verified by AI" : "Not Matching",
+                  style: TextStyle(
+                    fontSize: 16,
+                    fontWeight: FontWeight.w700,
+                    color: baseColor,
+                  ),
+                ),
+                Text(
+                  "Score: ${widget.score}",
+                  style: TextStyle(
+                    fontSize: 14,
+                    fontWeight: FontWeight.w600,
+                    color: baseColor,
+                  ),
+                ),
+              ],
+            ),
+          ),
+        );
+      },
+    );
+  }
+}
+
+

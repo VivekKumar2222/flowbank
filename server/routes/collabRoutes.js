@@ -1,3 +1,5 @@
+const axios = require("axios");
+
 const express = require("express");
 const Dashboard = require("../models/collab_Dashboard");
 const DashboardEntry = require("../models/collab_DashboardEntry");
@@ -813,6 +815,111 @@ router.get("/dashboard-entry/:entryId", async (req, res) => {
   } catch (error) {
     console.error(error);
     res.status(500).json({ message: "Server error" });
+  }
+});
+
+router.post("/verify-entry-ocr", async (req, res) => {
+  try {
+    const { entryId } = req.body;
+
+    if (!entryId) {
+      return res.status(400).json({ message: "entryId is required" });
+    }
+
+    const entry = await DashboardEntry.findById(entryId);
+    if (!entry) {
+      return res.status(404).json({ message: "Entry not found" });
+    }
+
+    const senderUser = await User.findOne({ email: entry.userId }, { name: 1 });
+    const senderName = senderUser?.name || entry.userId;
+
+    const dashboard = await Dashboard.findById(entry.dashboardId);
+    if (!dashboard) {
+      return res.status(404).json({ message: "Dashboard not found" });
+    }
+
+    const receiverUser = await User.findOne({ email: dashboard.ownerId }, { name: 1 });
+    const receiverName = receiverUser?.name || dashboard.ownerId;
+
+    const amountNumber = Number(entry.amount || 0);
+    const imageUrl = entry.verificationImage;
+    const dateStr = entry.createdAt ? entry.createdAt.toISOString().split("T")[0] : null;
+
+    // ❌ Validate before OCR
+    if (!imageUrl || !dateStr) {
+      return res.status(400).json({ message: "Missing image or date for OCR" });
+    }
+
+    let ocrData;
+    try {
+      const ocrResponse = await axios.post("http://127.0.0.1:8000/ocr/verify", {
+        image_url: imageUrl,
+        sender_name: senderName,
+        receiver_name: receiverName,
+        amount: amountNumber,
+        date: dateStr,
+      });
+
+      ocrData = ocrResponse.data;
+    } catch (ocrError) {
+      console.error("OCR server error:", ocrError.message);
+      return res.status(500).json({
+        message: "OCR server failed",
+        error: ocrError.message,
+      });
+    }
+
+    entry.ocrVerification = ocrData;
+    entry.ocrVerified = Boolean(ocrData?.verified);
+    await entry.save();
+
+    res.status(200).json({
+      verified: entry.ocrVerified,
+      ocr: ocrData,
+      meta: { senderName, receiverName, amount: amountNumber },
+    });
+  } catch (error) {
+    console.error("OCR verification error:", error);
+    res.status(500).json({ message: "Server error", error: error.message });
+  }
+});
+
+// ─── Update Entry Status (Verify / Reject) ─────────────────
+router.post("/update-entry-status", async (req, res) => {
+  try {
+    const { entryId, status } = req.body;
+
+    if (!entryId || !status) {
+      return res.status(400).json({
+        message: "entryId and status are required",
+      });
+    }
+
+    if (!["approved", "rejected"].includes(status)) {
+      return res.status(400).json({
+        message: "Invalid status value",
+      });
+    }
+
+    const entry = await DashboardEntry.findById(entryId);
+    if (!entry) {
+      return res.status(404).json({ message: "Entry not found" });
+    }
+
+    entry.status = status;
+    await entry.save();
+
+    res.status(200).json({
+      message: "Entry status updated",
+      entryId,
+      status,
+    });
+  } catch (error) {
+    console.error("Update status error:", error);
+    res.status(500).json({
+      message: "Failed to update entry status",
+    });
   }
 });
 
