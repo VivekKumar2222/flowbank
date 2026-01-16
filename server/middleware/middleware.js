@@ -1,8 +1,9 @@
-import jwt from "jsonwebtoken";
-import User from "../models/User.js";
-import { generateAccessToken } from "../utils/jwt.js";
+const jwt = require("jsonwebtoken");
+const User = require("../models/User");
+const { generateAccessToken } = require("../utils/jwt");
 
-export const protect = async (req, res, next) => {
+
+const protect = async (req, res, next) => {
   let token;
 
   //Get access token from Authorization header
@@ -13,12 +14,12 @@ export const protect = async (req, res, next) => {
   if (!token) {
     return res.status(401).json({ message: "No token, authorization denied" });
   }
-
+  
   try {
     //Verify access token
     const decoded = jwt.verify(token, process.env.JWT_SECRET);
     req.user = await User.findById(decoded.id).select("-password");
-
+    console.log("access token verified");
     if (!req.user) {
       return res.status(401).json({ message: "User not found" });
     }
@@ -53,7 +54,7 @@ export const protect = async (req, res, next) => {
       sameSite: "strict",
       maxAge: 30 * 60 * 1000, // 30 min
     });
-//console.log(`New access token issued via refresh token: ${newAccessToken}`);
+        console.log(`New access token issued via refresh token: ${newAccessToken}`);
         // Send new token in response header
         res.setHeader("x-access-token", newAccessToken);
 
@@ -71,11 +72,6 @@ export const protect = async (req, res, next) => {
 };
 
 
-export const authorizeRoles = (...roles) => {
-  return (req, res, next) => {
-    if (!roles.includes(req.user.role)) {
-      return res.status(403).json({ message: "Access denied" });
-    }
-    next();
-  };
-};
+
+
+module.exports = protect;

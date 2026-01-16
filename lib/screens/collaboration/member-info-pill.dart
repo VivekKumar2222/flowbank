@@ -6,7 +6,7 @@ class SimpleScreen extends StatelessWidget {
   final String? memberId;
   final String name;
   final double paidAmount;
-  final double totalAmount;
+  final double? totalAmount;
   final String? groupType;
 
   const SimpleScreen({
@@ -15,7 +15,7 @@ class SimpleScreen extends StatelessWidget {
     this.memberId,
     required this.name,
     required this.paidAmount,
-    required this.totalAmount,
+    this.totalAmount,
     this.groupType,
   });
 
@@ -27,26 +27,32 @@ class SimpleScreen extends StatelessWidget {
   }
 
   // Determine colors based on payment status
-  Color get bgColor {
-    if (paidAmount == 0) return const Color(0xFFC9C9C9);
-    if (paidAmount < totalAmount) return const Color(0xFFD1E9FF);
-    if (paidAmount == totalAmount) return const Color(0xFFD1FFD2);
-    return const Color(0xFFFFD1D1);
-  }
+  bool get hasTotal => totalAmount != null;
 
-  Color get textColor {
-    if (paidAmount == 0) return const Color(0xFF626262);
-    if (paidAmount < totalAmount) return const Color(0xFF217BFF);
-    if (paidAmount == totalAmount) return const Color(0xFF006700);
-    return const Color(0xFFFF2121);
-  }
+Color get bgColor {
+  if (!hasTotal) return const Color(0xFFD1E9FF); // 🔵 blue default
+  if (paidAmount == 0) return const Color(0xFFC9C9C9);
+  if (paidAmount < totalAmount!) return const Color(0xFFD1E9FF);
+  if (paidAmount == totalAmount!) return const Color(0xFFD1FFD2);
+  return const Color(0xFFFFD1D1); // 🔴 only when total exists
+}
 
-  Color get borderColor {
-    if (paidAmount == 0) return const Color.fromARGB(78, 98, 98, 98);
-    if (paidAmount < totalAmount) return const Color(0xFFD7E8FF);
-    if (paidAmount == totalAmount) return const Color.fromARGB(148, 0, 103, 0);
-    return const Color.fromARGB(148, 255, 33, 33);
-  }
+Color get textColor {
+  if (!hasTotal) return const Color(0xFF217BFF);
+  if (paidAmount == 0) return const Color(0xFF626262);
+  if (paidAmount < totalAmount!) return const Color(0xFF217BFF);
+  if (paidAmount == totalAmount!) return const Color(0xFF006700);
+  return const Color(0xFFFF2121);
+}
+
+Color get borderColor {
+  if (!hasTotal) return const Color(0xFFD7E8FF);
+  if (paidAmount == 0) return const Color.fromARGB(78, 98, 98, 98);
+  if (paidAmount < totalAmount!) return const Color(0xFFD7E8FF);
+  if (paidAmount == totalAmount!) return const Color.fromARGB(148, 0, 103, 0);
+  return const Color.fromARGB(148, 255, 33, 33);
+}
+
 
   @override
   Widget build(BuildContext context) {
@@ -119,15 +125,17 @@ class SimpleScreen extends StatelessWidget {
                       fontWeight: FontWeight.w700,
                     ),
                   ),
-                  Text(
-                    "/${totalAmount.toString()}",
-                    style: const TextStyle(
-                      color: Color(0xFF2A2A2A),
-                      fontFamily: "Manrope",
-                      fontSize: 13,
-                      fontWeight: FontWeight.w700,
-                    ),
-                  ),
+                  if (totalAmount != null)
+  Text(
+    "/${totalAmount!.toStringAsFixed(2)}",
+    style: const TextStyle(
+      color: Color(0xFF2A2A2A),
+      fontFamily: "Manrope",
+      fontSize: 13,
+      fontWeight: FontWeight.w700,
+    ),
+  ),
+
                 ],
               ),
             ],

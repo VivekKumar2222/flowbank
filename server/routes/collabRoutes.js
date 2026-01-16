@@ -1014,6 +1014,44 @@ router.post("/update-entry-status", async (req, res) => {
   }
 });
 
+// ─── GET Shared Expenses Total (Approved Entries Only) ─────────────────
+router.get("/shared-expenses-total", async (req, res) => {
+  try {
+    const { dashboardId } = req.query;
+
+    if (!dashboardId) {
+      return res.status(400).json({ message: "dashboardId is required" });
+    }
+
+    const result = await DashboardEntry.aggregate([
+      {
+        $match: {
+          dashboardId,
+          status: "approved", // ✅ ONLY approved
+        },
+      },
+      {
+        $group: {
+          _id: null,
+          totalAmount: { $sum: "$amount" },
+        },
+      },
+    ]);
+
+    const totalAmount =
+      result.length > 0 ? result[0].totalAmount : 0;
+
+    res.status(200).json({
+      dashboardId,
+      totalAmount,
+    });
+  } catch (error) {
+    console.error("Shared expenses total error:", error);
+    res.status(500).json({ message: "Failed to calculate shared expenses" });
+  }
+});
+
+
 
 
 module.exports = router;

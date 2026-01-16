@@ -16,14 +16,14 @@ class Member {
   final String name;
   final String email;
   final String role;
-  final double totalAmount;
+  
   final double paidAmount;
 
   Member({
     required this.name,
     required this.email,
     required this.role,
-    required this.totalAmount,
+    
     required this.paidAmount,
   });
 
@@ -32,7 +32,7 @@ class Member {
       name: map['name'] ?? '',
       email: map['email'] ?? '',
       role: map['role'] ?? 'member',
-      totalAmount: (map['totalAmount'] as num?)?.toDouble() ?? 0.0,
+      
       paidAmount: (map['paidAmount'] as num?)?.toDouble() ?? 0.0,
     );
   }
@@ -70,7 +70,7 @@ class _SharedExpensesState extends State<SharedExpenses> {
   @override
   void initState() {
     super.initState();
-    _fetchBillSplitTotal();
+    _fetchSharedExpensesTotal();
     _fetchDashboardCurrency(); 
     _loadUserEmail();
     _fetchOwnerEmail();
@@ -87,6 +87,30 @@ class _SharedExpensesState extends State<SharedExpenses> {
 
   return paidMap;
 }
+
+Future<void> _fetchSharedExpensesTotal() async {
+  try {
+    final response = await http.get(
+      Uri.parse(
+        "http://10.0.2.2:5000/api/collab/shared-expenses-total?dashboardId=${widget.dashboardId}",
+      ),
+    );
+
+    if (response.statusCode == 200) {
+      final decoded = jsonDecode(response.body);
+      setState(() {
+        totalAmount = (decoded["totalAmount"] as num).toDouble();
+        isLoadingTotal = false;
+      });
+    } else {
+      setState(() => isLoadingTotal = false);
+    }
+  } catch (e) {
+    debugPrint("Failed to fetch shared expenses total: $e");
+    setState(() => isLoadingTotal = false);
+  }
+}
+
 
 
   Future<void> _fetchEntries() async {
@@ -139,31 +163,7 @@ class _SharedExpensesState extends State<SharedExpenses> {
   }
 
   /// Fetch total amount
-  Future<void> _fetchBillSplitTotal() async {
-    try {
-      final response = await http.get(
-        Uri.parse(
-          "http://10.0.2.2:5000/api/collab/bill-split-total?dashboardId=${widget.dashboardId}",
-        ),
-      );
 
-      if (response.statusCode == 200) {
-        final decoded = jsonDecode(response.body);
-        setState(() {
-          totalAmount = (decoded["totalAmount"] as num).toDouble();
-          isLoadingTotal = false;
-        });
-
-        // Fetch members & calculate split
-        await _fetchMembersAndSplit();
-      } else {
-        setState(() => isLoadingTotal = false);
-      }
-    } catch (e) {
-      debugPrint("Failed to fetch bill split total: $e");
-      setState(() => isLoadingTotal = false);
-    }
-  }
 
   /// Fetch members and calculate split
   Future<void> _fetchMembersAndSplit() async {
@@ -199,8 +199,7 @@ class _SharedExpensesState extends State<SharedExpenses> {
 
     // 4️⃣ Calculate split amount
     if (totalAmount == null) return;
-    final memberCount = membersData.length;
-    final splitAmount = totalAmount! / memberCount;
+    
 
     // 5️⃣ Map members with names and split
 final paidMap = _calculatePaidAmountsFromEntries();
@@ -210,21 +209,13 @@ List<Member> tempMembers = membersData.map((m) {
   final role = m['role'] ?? 'member';
   final name = userMap[email] ?? email;
 
-  double paidAmount;
-
-  if (role == 'owner') {
-    // 🔒 Owner always fully paid
-    paidAmount = splitAmount;
-  } else {
-    // 🔢 Sum of all entries made by this user
-    paidAmount = paidMap[name] ?? 0.0;
-  }
+  final paidAmount = paidMap[name] ?? 0.0;
 
   return Member(
     name: name,
     email: email,
     role: role,
-    totalAmount: splitAmount,
+    
     paidAmount: paidAmount,
   );
 }).toList();
@@ -326,13 +317,9 @@ AnimatedOpacity(
       ),
       child: FloatingActionButton.extended(
   heroTag: "add_entries",
-  backgroundColor: (ownerEmail != null && ownerEmail == userEmail)
-      ? Colors.grey.shade400 // lighter grey for disabled
-      : const Color(0xFF217BFF),
+  backgroundColor: const Color(0xFF217BFF),
   elevation: 0,
-  onPressed: (ownerEmail != null && ownerEmail == userEmail)
-      ? null // disables the button
-      : () {
+  onPressed:() {
           setState(() => _isExpanded = false);
           Navigator.push(
             context,
@@ -346,9 +333,7 @@ AnimatedOpacity(
   label: Text(
     "Add Entries",
     style: TextStyle(
-      color: (ownerEmail != null && ownerEmail == userEmail)
-          ? const Color.fromARGB(255, 255, 255, 255).withOpacity(1.0) // reduced opacity
-          : Colors.white,
+      color: Colors.white,
       fontWeight: FontWeight.w700,
     ),
   ),
@@ -387,7 +372,9 @@ AnimatedOpacity(
       ),
       child: FloatingActionButton.extended(
         heroTag: "add_members",
-        backgroundColor: const Color(0xFF217BFF),
+        backgroundColor: (ownerEmail != null && ownerEmail == userEmail)
+        ? const Color(0xFF217BFF)
+        : Colors.grey.shade400,
         elevation: 0,
 onPressed: (ownerEmail != null && ownerEmail == userEmail)
     ? () {
@@ -410,9 +397,11 @@ onPressed: (ownerEmail != null && ownerEmail == userEmail)
             fontWeight: FontWeight.w700,
           ),
         ),
-        icon: const Icon(
+        icon: Icon(
           Icons.person_add,
-          color: Colors.white,
+          color: (ownerEmail != null && ownerEmail == userEmail)
+          ? Colors.white
+          :const Color.fromARGB(255, 255, 255, 255).withOpacity(1.0) // reduced opacity,
         ),
       ),
     ),
@@ -480,7 +469,7 @@ floatingActionButtonLocation: FloatingActionButtonLocation.endDocked,
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
                             Text(
-                              "Bill Splitting",
+                              "Shared Expenses",
                               style: TextStyle(
                                 color: Color(0xFF667085),
                                 fontSize: 11,
@@ -535,7 +524,7 @@ floatingActionButtonLocation: FloatingActionButtonLocation.endDocked,
                     crossAxisAlignment: CrossAxisAlignment.center,
                     children: [
                       Text(
-                        "Total Amount to Split",
+                        "Total Amount Entered and approved",
                         style: TextStyle(
                           color: Color(0xFFFFFFFF),
                           fontFamily: "Manrope",
@@ -557,7 +546,7 @@ floatingActionButtonLocation: FloatingActionButtonLocation.endDocked,
                         ),
                       ),
                       Text(
-                        "Split between ${members.length} group members",
+                        "${members.length} group members",
                         style: TextStyle(
                           color: Color(0xFFFFFFFF),
                           fontFamily: "Manrope",
@@ -582,7 +571,7 @@ floatingActionButtonLocation: FloatingActionButtonLocation.endDocked,
                             'name': m.name,
                             'email': m.email,
                             'role': m.role,
-                            'totalAmount': m.totalAmount,
+                            // 'totalAmount': m.totalAmount,
                             'paidAmount': m.paidAmount,
                           })
                       .toList(),

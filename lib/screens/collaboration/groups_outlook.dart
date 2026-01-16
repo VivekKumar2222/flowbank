@@ -6,6 +6,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 import 'dart:convert';
 import 'package:http/http.dart' as http;
 import '../collaboration/ledger_Member_screen.dart';
+import '../collaboration/shared_Expenses.dart';
 
 
 /// ─────────────────────────────────────────
@@ -198,6 +199,14 @@ print("🔍 EQUAL? ${userEmail == ownerId}");
               ),
             );
           }
+        }
+        else {
+          Navigator.push(
+              context,
+              MaterialPageRoute(
+                builder: (_) => SharedExpenses(dashboardId: widget.dashboardID)
+              ),
+            );
         }
       },
       child: Container(

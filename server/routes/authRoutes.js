@@ -6,6 +6,7 @@ const router = express.Router();
 const otpGenerator = require("otp-generator");
 const jwt = require("jsonwebtoken");
 const {generateAccessToken, generateRefreshToken} = require("../utils/jwt.js");
+const protect = require("../middleware/middleware.js")
 
 
 // OTP storage in memory
@@ -359,10 +360,10 @@ router.post("/complete-profile", async (req, res) => {
 });
 
 // ============= REQUEST PASSWORD RESET OTP =============
-router.post("/request-password-reset", async (req, res) => {
+router.post("/request-password-reset", protect ,async (req, res) => {
   try {
     const { email } = req.body;
-
+    console.log("API hitting JWT")
     const user = await User.findOne({ email });
     if (!user) return res.status(404).json({ message: "User not found" });
 

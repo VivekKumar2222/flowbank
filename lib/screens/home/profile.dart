@@ -1,8 +1,10 @@
+import 'package:flowbank/api/api_service.dart';
 import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:http/http.dart' as http;
 import 'dart:convert';
 import '../home/resetOTPscreen.dart';
+
 
 class ProfileScreen extends StatefulWidget {
   const ProfileScreen({super.key});
@@ -14,7 +16,7 @@ class ProfileScreen extends StatefulWidget {
 class _ProfileScreenState extends State<ProfileScreen> {
   String userName = "";
   String userEmail = "";
-
+  String jwttoken = "";
   @override
   void initState() {
     super.initState();
@@ -27,18 +29,20 @@ class _ProfileScreenState extends State<ProfileScreen> {
     setState(() {
       userName = prefs.getString("userName") ?? "User";
       userEmail = prefs.getString("userEmail") ?? "No email";
+      jwttoken = prefs.getString("accessToken") ?? "Not found";
     });
   }
+
+  
 
   Future<void> sendResetOTP(BuildContext context) async {
   final prefs = await SharedPreferences.getInstance();
   final email = prefs.getString("userEmail");
 
-  final response = await http.post(
-    Uri.parse("http://10.0.2.2:5000/api/auth/request-password-reset"),
-    headers: {"Content-Type": "application/json"},
-    body: jsonEncode({"email": email}),
-  );
+ final response = await ApiService.post(
+  "/api/auth/request-password-reset",
+  {"email": email},
+);
 
   final data = jsonDecode(response.body);
 

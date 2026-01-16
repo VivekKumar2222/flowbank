@@ -1,6 +1,6 @@
 import 'dart:ui';
 import 'package:flutter/material.dart';
-
+import '../home/profile.dart';
 import '../home/section_header.dart';
 import '../onboarding/OnboardingScreen.dart';
 import '../home/status_card.dart';
@@ -106,12 +106,23 @@ class _HomeScreenState extends State<HomeScreen> {
                                 ),
                               ],
                             ),
-                            const Padding(
-                              padding: EdgeInsets.only(bottom: 8),
-                              child: CircleAvatar(
-                                radius: 28,
-                                backgroundImage: NetworkImage(
-                                  "https://i.pravatar.cc/150?img=3",
+                            Padding(
+                              padding: const EdgeInsets.only(bottom: 8),
+                              child: InkWell(
+                                onTap: () {
+    Navigator.push(
+      context,
+       MaterialPageRoute(
+        builder: (context) => ProfileScreen(),
+      ),
+    );
+  },
+                                child: const CircleAvatar(
+                                  radius: 28,
+                                  
+                                  backgroundImage: NetworkImage(
+                                    "https://i.pravatar.cc/150?img=3",
+                                  ),
                                 ),
                               ),
                             ),
