@@ -70,8 +70,26 @@ class _EntryTile extends StatelessWidget {
   static const Color _accentColor = Color(0xFF217BFF);  // Primary blue
   static const Color _avatarBg = Color(0xFFD1E9FF);     // Avatar blue
 
+    // ======================= GREEN THEME COLORS =======================
+
+  static const Color _greenBgColor = Color(0xFFF5FFF7);
+  static const Color _greenBorderColor = Color(0xFFDAEEDC);
+  static const Color _greenAccentColor = Color(0xFF006700);
+  static const Color _greenAvatarBg = Color(0xFFD1FFD2);
+
+    bool get isApproved =>
+      tx.subtitle.toLowerCase() == "approved" ||
+      tx.subtitle.toLowerCase() == "verified";
+
+
   @override
   Widget build(BuildContext context) {
+
+        final bgColor = isApproved ? _greenBgColor : _bgColor;
+    final borderColor = isApproved ? _greenBorderColor : _borderColor;
+    final accentColor = isApproved ? _greenAccentColor : _accentColor;
+    final avatarBg = isApproved ? _greenAvatarBg : _avatarBg;
+
     return InkWell(
     borderRadius: BorderRadius.circular(16),
     onTap: () {
@@ -89,8 +107,8 @@ class _EntryTile extends StatelessWidget {
     child: Container(
       padding: const EdgeInsets.symmetric(horizontal: 12),
       decoration: BoxDecoration(
-        color: _bgColor,
-        border: Border.all(color: _borderColor, width: 1.2),
+        color: bgColor,
+        border: Border.all(color: borderColor, width: 1.2),
         borderRadius: BorderRadius.circular(16),
       ),
       child: Padding(
@@ -101,18 +119,18 @@ class _EntryTile extends StatelessWidget {
             Container(
               width: 55,
               height: 55,
-              decoration: const BoxDecoration(
+              decoration: BoxDecoration(
                 shape: BoxShape.circle,
-                color: _avatarBg,
+                color: avatarBg,
               ),
               alignment: Alignment.center,
               child: Text(
                 tx.title.substring(0, 2).toUpperCase(),
-                style: const TextStyle(
+                style: TextStyle(
                   fontWeight: FontWeight.w700,
                   fontFamily: "Manrope",
                   fontSize: 20,
-                  color: _accentColor,
+                  color: accentColor,
                 ),
               ),
             ),
@@ -126,28 +144,28 @@ class _EntryTile extends StatelessWidget {
                 children: [
                   Text(
                     tx.title,
-                    style: const TextStyle(
+                    style: TextStyle(
                       fontSize: 16,
                       fontWeight: FontWeight.w700,
                       fontFamily: "Manrope",
-                      color: _accentColor,
+                      color: accentColor,
                     ),
                   ),
                   const SizedBox(height: 4),
                   Text(
                     tx.date,
-                    style: const TextStyle(
+                    style: TextStyle(
                       fontSize: 12,
                       fontWeight: FontWeight.w500,
-                      color: _accentColor,
+                      color: accentColor,
                     ),
                   ),
                   Text(
                     tx.subtitle,
-                    style: const TextStyle(
+                    style: TextStyle(
                       fontSize: 12,
                       fontWeight: FontWeight.w500,
-                      color: _accentColor,
+                      color: accentColor,
                     ),
                   ),
                 ],
@@ -161,8 +179,8 @@ class _EntryTile extends StatelessWidget {
                 children: [
                   Text(
                     "\$${tx.amount}",
-                    style: const TextStyle(
-                      color: _accentColor,
+                    style: TextStyle(
+                      color: accentColor,
                       fontFamily: "Manrope",
                       fontSize: 15,
                       fontWeight: FontWeight.w700,

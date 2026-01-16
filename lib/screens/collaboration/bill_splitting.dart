@@ -547,7 +547,7 @@ floatingActionButtonLocation: FloatingActionButtonLocation.endDocked,
                         isLoadingTotal
                             ? "—"
                             : currency == "USD"
-    ? "\$${totalAmount?.toStringAsFixed(2) ?? "0.00"}"
+    ? "\$${totalAmount?.toStringAsFixed(2) ?? "0.00"}"  // for GPT: the total amount should be the total of all the approved entries
     : "${currency} ${totalAmount?.toStringAsFixed(2) ?? "0.00"}",
                         style: TextStyle(
                           color: Color(0xFFFFFFFF),

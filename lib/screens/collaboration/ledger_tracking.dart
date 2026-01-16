@@ -151,8 +151,11 @@ Future<void> _fetchAssignedMembers() async {
       setState(() {
         assignedMembers = data.map((m) => {
           "name": m["name"],
+          "memberId": m["memberId"],
           "paidAmount": (m["paidAmount"] as num).toDouble(),
           "totalAmount": (m["totalAmount"] as num).toDouble(),
+          "dashboardId": widget.dashboardId,
+
         }).toList();
 
         isLoadingAssignedMembers = false;
@@ -726,6 +729,7 @@ floatingActionButtonLocation: FloatingActionButtonLocation.endDocked,
     ? const Center(child: CircularProgressIndicator())
     : MembersViewRow(
         members: assignedMembers,
+        groupType: "Ledger Tracking"
       ),
 
                 const SizedBox(height: 24),

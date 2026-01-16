@@ -6,6 +6,7 @@ import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:encrypt/encrypt.dart' as encrypt;
+import '../collaboration/add_Entries.dart';
 
 /* ============================================================
    MODELS
@@ -183,8 +184,7 @@ class _LedgerMemberScreenState extends State<LedgerMemberScreen> {
 
     return Scaffold(
       backgroundColor: Colors.white,
-      body: SafeArea(
-        child: SingleChildScrollView(
+      body: SingleChildScrollView(
           child: Column(
             children: [
               _Header(member: member!),
@@ -194,11 +194,11 @@ class _LedgerMemberScreenState extends State<LedgerMemberScreen> {
             ],
           ),
         ),
-      ),
+      
 
       floatingActionButton: FloatingActionButton(
         backgroundColor: activeColor,
-        onPressed: () {},
+        onPressed: (){},
         child: const Icon(Icons.add, size: 28, color: Colors.white,),
       ),
 
@@ -255,15 +255,16 @@ class _Header extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final topPadding = MediaQuery.of(context).padding.top;
 final double progress =
     member.total == 0 ? 0.0 : (member.paid / member.total).clamp(0.0, 1.0);
 
 
     return Container(
       width: double.infinity,
-      padding: const EdgeInsets.fromLTRB(20, 24, 20, 28),
+      padding: EdgeInsets.fromLTRB(20, topPadding + 24, 20, 28),
       decoration: const BoxDecoration(
-        color: Color(0xFF6EA8FF),
+        color: Color(0xFF4893FF),
         borderRadius: BorderRadius.only(
           bottomLeft: Radius.circular(28),
           bottomRight: Radius.circular(28),
@@ -306,7 +307,7 @@ final double progress =
             style: TextStyle(color: Colors.white70, fontSize: 13),
           ),
           const SizedBox(height: 6),
-          Text(
+          Text( // for GPT: here in the member.paid we will show every approved entry by the member for this particular dashboard
             "${member.paid.toInt()}/${member.total.toInt()}",
             style: const TextStyle(
               fontSize: 36,
@@ -366,7 +367,7 @@ class _Assignments extends StatelessWidget {
   }
 }
 
-class _AssignmentCard extends StatelessWidget {
+class _AssignmentCard extends StatelessWidget { // for GPT: this will show the paid amount for each assignment. So from entry we will fetch all the approved entries for this particular assignment and show it here as total
   final LedgerAssignment assignment;
   final String dashboardId;
 

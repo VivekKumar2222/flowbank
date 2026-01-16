@@ -10,6 +10,7 @@ const User = require("../models/User");
 const DashboardBillSplit = require("../models/collab_BillSplitTotal");
 const LedgerAssignment = require("../models/collab_LedgerAssignments");
 const AssignedMembers = require("../models/collab_LedgerAssignedMembers");
+const { updateLedgerAmounts } = require("../utils/ledgerCalculator");
 
 
 
@@ -679,7 +680,7 @@ router.get("/assigned-members-summary", async (req, res) => {
       // 1️⃣ Only this dashboard
       { $match: { dashboardId } },
 
-      // 2️⃣ Group by memberId
+      // 2️⃣ Group assignments per member
       {
         $group: {
           _id: "$memberId",
@@ -687,19 +688,7 @@ router.get("/assigned-members-summary", async (req, res) => {
         },
       },
 
-      // 3️⃣ Join with AssignedMembers
-      {
-        $lookup: {
-          from: "assignedmembers",
-          localField: "_id",
-          foreignField: "memberId",
-          as: "assignedInfo",
-        },
-      },
-
-      { $unwind: "$assignedInfo" },
-
-      // 4️⃣ Join with Users (to get name)
+      // 3️⃣ Join USERS (for name)
       {
         $lookup: {
           from: "users",
@@ -708,8 +697,35 @@ router.get("/assigned-members-summary", async (req, res) => {
           as: "userInfo",
         },
       },
-
       { $unwind: "$userInfo" },
+
+      // 4️⃣ Join ENTRIES (approved only)
+      {
+        $lookup: {
+          from: "dashboardentries",
+          let: { memberEmail: "$_id" },
+          pipeline: [
+            {
+              $match: {
+                $expr: {
+                  $and: [
+                    { $eq: ["$dashboardId", dashboardId] },
+                    { $eq: ["$userId", "$$memberEmail"] },
+                    { $eq: ["$status", "approved"] }, // ✅ ONLY approved
+                  ],
+                },
+              },
+            },
+            {
+              $group: {
+                _id: null,
+                paidAmount: { $sum: "$amount" },
+              },
+            },
+          ],
+          as: "paidInfo",
+        },
+      },
 
       // 5️⃣ Final shape
       {
@@ -717,8 +733,10 @@ router.get("/assigned-members-summary", async (req, res) => {
           _id: 0,
           memberId: "$_id",
           name: "$userInfo.name",
-          paidAmount: { $literal: 0 }, // 🔒 for now
           totalAmount: 1,
+          paidAmount: {
+            $ifNull: [{ $arrayElemAt: ["$paidInfo.paidAmount", 0] }, 0],
+          },
         },
       },
     ]);
@@ -743,27 +761,98 @@ router.get("/member-ledger", async (req, res) => {
       });
     }
 
-    // 1️⃣ Get assignments
-    const assignments = await LedgerAssignment.find({
-      dashboardId,
-      memberId,
-    }).sort({ createdAt: -1 });
+    /* ─────────────────────────────────────────────
+       1️⃣ Assignments + PAID AMOUNT (from entries)
+    ───────────────────────────────────────────── */
 
-    // 2️⃣ Get member name
-    const user = await User.findOne(
-      { email: memberId },
-      { name: 1, email: 1 }
-    );
+    const assignments = await LedgerAssignment.aggregate([
+      {
+        $match: {
+          dashboardId,
+          memberId,
+        },
+      },
+      {
+        $lookup: {
+          from: "dashboardentries",
+          let: { assignmentId: "$_id" },
+          pipeline: [
+            {
+              $match: {
+                $expr: {
+                  $and: [
+                    { $eq: ["$dashboardId", dashboardId] },
+                    { $eq: ["$assignmentId", "$$assignmentId"] },
+                    { $eq: ["$userId", memberId] },
+                    { $eq: ["$status", "approved"] },
+                  ],
+                },
+              },
+            },
+            {
+              $group: {
+                _id: null,
+                paidAmount: { $sum: "$amount" },
+              },
+            },
+          ],
+          as: "paidInfo",
+        },
+      },
+      {
+        $addFields: {
+          paidAmount: {
+            $ifNull: [{ $arrayElemAt: ["$paidInfo.paidAmount", 0] }, 0],
+          },
+        },
+      },
+      {
+        $project: {
+          paidInfo: 0,
+        },
+      },
+      { $sort: { createdAt: -1 } },
+    ]);
 
-    // 3️⃣ Totals
+    /* ─────────────────────────────────────────────
+       2️⃣ MEMBER TOTAL PAID (ALL ENTRIES)
+    ───────────────────────────────────────────── */
+
+    const paidResult = await DashboardEntry.aggregate([
+      {
+        $match: {
+          dashboardId,
+          userId: memberId,
+          status: "approved",
+        },
+      },
+      {
+        $group: {
+          _id: null,
+          totalPaid: { $sum: "$amount" },
+        },
+      },
+    ]);
+
+    const totalPaid =
+      paidResult.length > 0 ? paidResult[0].totalPaid : 0;
+
+    /* ─────────────────────────────────────────────
+       3️⃣ TOTAL ASSIGNED AMOUNT
+    ───────────────────────────────────────────── */
+
     const totalAmount = assignments.reduce(
       (sum, a) => sum + a.totalAmount,
       0
     );
 
-    const paidAmount = assignments.reduce(
-      (sum, a) => sum + a.paidAmount,
-      0
+    /* ─────────────────────────────────────────────
+       4️⃣ MEMBER INFO
+    ───────────────────────────────────────────── */
+
+    const user = await User.findOne(
+      { email: memberId },
+      { name: 1 }
     );
 
     res.status(200).json({
@@ -773,7 +862,7 @@ router.get("/member-ledger", async (req, res) => {
       },
       summary: {
         totalAmount,
-        paidAmount,
+        paidAmount: totalPaid,
       },
       assignments,
     });
@@ -784,6 +873,8 @@ router.get("/member-ledger", async (req, res) => {
     });
   }
 });
+
+
 
 router.get("/dashboard-entry-image/:entryId", async (req, res) => {
   try {

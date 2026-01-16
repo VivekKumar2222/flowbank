@@ -2,6 +2,12 @@ import 'package:flutter/material.dart';
 import 'package:auto_size_text/auto_size_text.dart';
 import '../collaboration/bill_splitting.dart';
 import '../collaboration/ledger_tracking.dart';
+import 'package:shared_preferences/shared_preferences.dart';
+import 'dart:convert';
+import 'package:http/http.dart' as http;
+import '../collaboration/ledger_Member_screen.dart';
+
+
 /// ─────────────────────────────────────────
 /// REQUEST DATA MODEL
 /// ─────────────────────────────────────────
@@ -24,7 +30,7 @@ class GroupData {
     required this.createdDate,
   });
 
-    GroupData copyWith({
+  GroupData copyWith({
     String? dashboardId,
     String? invitationId,
     String? groupName,
@@ -46,7 +52,7 @@ class GroupData {
 }
 
 /// ─────────────────────────────────────────
-/// REQUESTS LIST (SAFE INSIDE ANY LAYOUT)
+/// REQUESTS LIST
 /// ─────────────────────────────────────────
 class GroupsRow extends StatelessWidget {
   final List<GroupData> groups;
@@ -56,8 +62,8 @@ class GroupsRow extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return ListView.separated(
-      shrinkWrap: true, // ✅ prevents unbounded height
-      physics: const NeverScrollableScrollPhysics(), // ✅ safe inside scroll
+      shrinkWrap: true,
+      physics: const NeverScrollableScrollPhysics(),
       padding: const EdgeInsets.only(bottom: 18),
       itemCount: groups.length,
       separatorBuilder: (_, __) => const SizedBox(height: 10),
@@ -79,7 +85,7 @@ class GroupsRow extends StatelessWidget {
 /// ─────────────────────────────────────────
 /// SINGLE GROUP CARD
 /// ─────────────────────────────────────────
-class Group extends StatelessWidget {
+class Group extends StatefulWidget {
   final String dashboardID;
   final String groupName;
   final String groupType;
@@ -98,144 +104,200 @@ class Group extends StatelessWidget {
   });
 
   @override
+  State<Group> createState() => _GroupState();
+}
+
+class _GroupState extends State<Group> {
+  String? userEmail;
+  String? ownerId;
+
+  @override
+  void initState() {
+    super.initState();
+    _loadUserEmail();
+    _loadOwnerId();
+    
+  }
+
+Future<void> _loadOwnerId() async {
+  final response = await http.get(
+    Uri.parse("http://10.0.2.2:5000/api/collab/dashboard/${widget.dashboardID}"),
+  );
+
+  print("🟥 FULL DASHBOARD RESPONSE: ${response.body}");
+
+  if (response.statusCode == 200) {
+    final data = jsonDecode(response.body);
+
+    // ✅ TRY NESTED STRUCTURE
+    final fetchedOwnerId =
+        data["ownerId"] ??
+        data["dashboard"]?["ownerId"] ??
+        data["data"]?["ownerId"] ??
+        data["owner"] ??
+        data["ownerEmail"];
+
+    print("🟢 RESOLVED OWNER ID: $fetchedOwnerId");
+
+    if (!mounted) return;
+    setState(() {
+      ownerId = fetchedOwnerId;
+    });
+  }
+}
+
+
+
+  Future<void> _loadUserEmail() async {
+    final prefs = await SharedPreferences.getInstance();
+    if (!mounted) return;
+      final email = prefs.getString('userEmail');
+
+  print("🟢 USER EMAIL FROM PREFS: $email");
+    setState(() {
+      userEmail = prefs.getString('userEmail');
+    });
+  }
+
+  @override
   Widget build(BuildContext context) {
     return InkWell(
-  borderRadius: BorderRadius.circular(20),
-onTap: () {
-  if (groupType == "Bill Splitting") {
-    Navigator.push(
-      context,
-      MaterialPageRoute(
-        builder: (_) => BillSplitting(
-          dashboardId: dashboardID,
-        ),
-      ),
-    );
-  } else if (groupType == "Ledger Tracking") {
-     Navigator.push(
-      context,
-      MaterialPageRoute(
-        builder: (_) => LedgerTracking(
-          dashboardId: dashboardID,
-        ),
-      ),
-    );
-  }
-},
+      borderRadius: BorderRadius.circular(20),
+      onTap: () {
+        print("🔍 USER EMAIL: $userEmail");
+print("🔍 OWNER ID: $ownerId");
+print("🔍 EQUAL? ${userEmail == ownerId}");
 
-    
-    child: Container(
-      width: double.infinity,
-      padding: const EdgeInsets.all(12),
-      decoration: BoxDecoration(
-        color: const Color(0xFFF5FAFF),
-        borderRadius: BorderRadius.circular(20),
-        border: Border.all(
-          color: const Color(0xFFD7E8FF),
-          width: 1.2,
-        ),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          /// ───────── TOP ROW ─────────
-          Row(
-            children: [
-              _AvatarsRow(members: members),
-              const Spacer(),
-              Row(
-                children: [
-                  // const _RejectButton(),
-                  // const SizedBox(width: 5),
-                  // const _JoinButton(),
-                  // const SizedBox(width: 6),
-                  const Icon(
-                    Icons.chevron_right_rounded,
-                    size: 28,
-                    color: Color(0xFF2C82FF),
-                  ),
-                ],
-              ),
-            ],
-          ),
-
-          const SizedBox(height: 14),
-
-          /// ───────── TITLE + TAG ─────────
-Row(
-  children: [
-    Flexible(
-      child: LayoutBuilder(
-        builder: (context, constraints) {
-          const maxFontSize = 20.0;
-          const minFontSize = 14.0;
-
-          double fontSize = maxFontSize;
-
-          final textPainter = TextPainter(
-            text: TextSpan(
-              text: groupName,
-              style: const TextStyle(
-                fontWeight: FontWeight.w700,
-                fontSize: maxFontSize,
+        if (widget.groupType == "Bill Splitting") {
+          Navigator.push(
+            context,
+            MaterialPageRoute(
+              builder: (_) => BillSplitting(
+                dashboardId: widget.dashboardID,
               ),
             ),
-            maxLines: 1,
-            textDirection: TextDirection.ltr,
           );
-
-          textPainter.layout(maxWidth: constraints.maxWidth);
-
-          if (textPainter.didExceedMaxLines) {
-            fontSize = minFontSize;
+        } else if (widget.groupType == "Ledger Tracking") {
+          if (userEmail != null && userEmail == ownerId) {
+            Navigator.push(
+              context,
+              MaterialPageRoute(
+                builder: (_) => LedgerTracking(
+                  dashboardId: widget.dashboardID,
+                ),
+              ),
+            );
+          } else {
+                       Navigator.push(
+              context,
+              MaterialPageRoute(
+                builder: (_) => LedgerMemberScreen(
+                  dashboardId: widget.dashboardID,
+                  memberId: userEmail ?? '',
+                ),
+              ),
+            );
           }
-
-          return Text(
-            groupName,
-            maxLines: 1,
-            overflow: TextOverflow.ellipsis,
-            style: TextStyle(
-              fontSize: fontSize,
-              fontWeight: FontWeight.w700,
-              color: const Color(0xFF2C82FF),
+        }
+      },
+      child: Container(
+        width: double.infinity,
+        padding: const EdgeInsets.all(12),
+        decoration: BoxDecoration(
+          color: const Color(0xFFF5FAFF),
+          borderRadius: BorderRadius.circular(20),
+          border: Border.all(
+            color: const Color(0xFFD7E8FF),
+            width: 1.2,
+          ),
+        ),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              children: [
+                _AvatarsRow(members: widget.members),
+                const Spacer(),
+                const Icon(
+                  Icons.chevron_right_rounded,
+                  size: 28,
+                  color: Color(0xFF2C82FF),
+                ),
+              ],
             ),
-          );
-        },
-      ),
-    ),
-    const SizedBox(width: 6),
-    Container(
-      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
-      decoration: BoxDecoration(
-        color: const Color(0xFFD1E9FF),
-        borderRadius: BorderRadius.circular(24),
-      ),
-      child: Text(
-        groupType,
-        style: const TextStyle(
-          fontSize: 10,
-          fontWeight: FontWeight.w600,
-          color: Color(0xFF2C82FF),
+            const SizedBox(height: 14),
+            Row(
+              children: [
+                Flexible(
+                  child: LayoutBuilder(
+                    builder: (context, constraints) {
+                      const maxFontSize = 20.0;
+                      const minFontSize = 14.0;
+
+                      double fontSize = maxFontSize;
+
+                      final textPainter = TextPainter(
+                        text: TextSpan(
+                          text: widget.groupName,
+                          style: const TextStyle(
+                            fontWeight: FontWeight.w700,
+                            fontSize: maxFontSize,
+                          ),
+                        ),
+                        maxLines: 1,
+                        textDirection: TextDirection.ltr,
+                      );
+
+                      textPainter.layout(maxWidth: constraints.maxWidth);
+
+                      if (textPainter.didExceedMaxLines) {
+                        fontSize = minFontSize;
+                      }
+
+                      return Text(
+                        widget.groupName,
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: TextStyle(
+                          fontSize: fontSize,
+                          fontWeight: FontWeight.w700,
+                          color: const Color(0xFF2C82FF),
+                        ),
+                      );
+                    },
+                  ),
+                ),
+                const SizedBox(width: 6),
+                Container(
+                  padding:
+                      const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
+                  decoration: BoxDecoration(
+                    color: const Color(0xFFD1E9FF),
+                    borderRadius: BorderRadius.circular(24),
+                  ),
+                  child: Text(
+                    widget.groupType,
+                    style: const TextStyle(
+                      fontSize: 10,
+                      fontWeight: FontWeight.w600,
+                      color: Color(0xFF2C82FF),
+                    ),
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: 4),
+            Text(
+              "Created ${_formatDate(widget.createdDate)}. Owner: ${widget.ownerName}",
+              style: const TextStyle(
+                fontSize: 12,
+                color: Color(0xFF2C82FF),
+                fontWeight: FontWeight.w500,
+              ),
+            ),
+          ],
         ),
       ),
-    ),
-  ],
-),
-
-
-          const SizedBox(height: 4),
-
-          Text(
-            "Created ${_formatDate(createdDate)}. Owner: $ownerName",
-            style: const TextStyle(
-              fontSize: 12,
-              color: Color(0xFF2C82FF),
-              fontWeight: FontWeight.w500,
-            ),
-          ),
-        ],
-      ),
-    ),
     );
   }
 
@@ -309,56 +371,6 @@ class _AvatarsRow extends StatelessWidget {
     return parts.length == 1
         ? parts.first[0].toUpperCase()
         : (parts[0][0] + parts[1][0]).toUpperCase();
-  }
-}
-
-/// ─────────────────────────────────────────
-/// BUTTONS
-/// ─────────────────────────────────────────
-class _RejectButton extends StatelessWidget {
-  const _RejectButton();
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 3.5),
-      decoration: BoxDecoration(
-        borderRadius: BorderRadius.circular(20),
-        border: Border.all(color: const Color(0xFF2F73FF), width: 1.5),
-      ),
-      child: const Text(
-        "Reject",
-        style: TextStyle(
-          color: Color(0xFF2F73FF),
-          fontWeight: FontWeight.w600,
-          fontSize: 12,
-        ),
-      ),
-    );
-  }
-}
-
-class _JoinButton extends StatelessWidget {
-  const _JoinButton();
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 3.5),
-      decoration: BoxDecoration(
-        color: const Color(0xFF2ECC71).withOpacity(0.15),
-        borderRadius: BorderRadius.circular(20),
-        border: Border.all(color: const Color(0xFF2ECC71), width: 1.5),
-      ),
-      child: const Text(
-        "Join",
-        style: TextStyle(
-          color: Color(0xFF2ECC71),
-          fontWeight: FontWeight.w700,
-          fontSize: 12,
-        ),
-      ),
-    );
   }
 }
 

@@ -1,15 +1,22 @@
 import 'package:flutter/material.dart';
+import '../collaboration/create-assignment.dart';
 
 class SimpleScreen extends StatelessWidget {
+  final String? dashboardId;
+  final String? memberId;
   final String name;
   final double paidAmount;
   final double totalAmount;
+  final String? groupType;
 
   const SimpleScreen({
     super.key,
+    this.dashboardId,
+    this.memberId,
     required this.name,
     required this.paidAmount,
     required this.totalAmount,
+    this.groupType,
   });
 
   String _getInitials(String name) {
@@ -45,7 +52,19 @@ class SimpleScreen extends StatelessWidget {
   Widget build(BuildContext context) {
     final initials = _getInitials(name);
 
-    return Container(
+    return InkWell(
+  borderRadius: BorderRadius.circular(100),
+  onTap: () {
+    if (groupType == "Ledger Tracking") {
+      Navigator.push(
+        context,
+        MaterialPageRoute(
+          builder: (_) => CreateAssignmentPage(dashboardId: dashboardId ?? '', membersId: memberId ?? ''),
+        ),
+      );
+    }
+  },
+    child: Container(
       padding: const EdgeInsets.only(right: 24),
       decoration: BoxDecoration(
         color: const Color(0xFFFFFFFF),
@@ -115,6 +134,7 @@ class SimpleScreen extends StatelessWidget {
           )
         ],
       ),
+    ),
     );
   }
 }

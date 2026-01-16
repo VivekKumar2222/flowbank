@@ -39,7 +39,9 @@ app.use(morgan("dev"));
 // ✅ Connect MongoDB
 mongoose
   .connect(process.env.MONGO_URI)
-  .then(() => console.log("✅ MongoDB Connected"))
+  .then(() => {console.log("✅ MongoDB Connected");
+    require("./cron/ledgerCron");
+  })
   .catch((err) => console.error("❌ MongoDB connection error:", err));
 
 // ✅ Routes

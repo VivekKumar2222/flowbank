@@ -1,12 +1,15 @@
+import 'package:flowbank/screens/collaboration/create_group.dart';
 import 'package:flutter/material.dart';
 import '../collaboration/member-info-pill.dart';
 
 class MembersViewRow extends StatelessWidget {
   final List<Map<String, dynamic>> members;
+  final String? groupType;
 
   const MembersViewRow({
     super.key,
     required this.members,
+    this.groupType,
   });
 
   @override
@@ -30,9 +33,12 @@ class MembersViewRow extends StatelessWidget {
                 right: index == members.length - 1 ? 0 : 16,
               ),
               child: SimpleScreen(
+                dashboardId: member['dashboardId'],
+                memberId: member['memberId'],
                 name: member['name'],
                 paidAmount: member['paidAmount'],
                 totalAmount: member['totalAmount'],
+                groupType: groupType,
               ),
             );
           }),

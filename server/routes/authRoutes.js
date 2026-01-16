@@ -4,6 +4,9 @@ const User = require("../models/User");
 const  sendEmail  = require("../utils/mailer.js"); // make sure you export {sendEmail} properly
 const router = express.Router();
 const otpGenerator = require("otp-generator");
+const jwt = require("jsonwebtoken");
+const {generateAccessToken, generateRefreshToken} = require("../utils/jwt.js");
+
 
 // OTP storage in memory
 const otpStore = new Map();
@@ -84,14 +87,38 @@ router.post("/verify-otp", async (req, res) => {
     // Remove from OTP store
     otpStore.delete(email);
 
+    // Generate tokens
+const accessToken = generateAccessToken(newUser);
+const refreshToken = generateRefreshToken(newUser);
+
+// Set cookies
+res.cookie("accessToken", accessToken, {
+  httpOnly: true,
+  secure: process.env.NODE_ENV === "production",
+  sameSite: "strict",
+  maxAge: 30 * 60 * 1000, // 30 minutes
+});
+
+res.cookie("refreshToken", refreshToken, {
+  httpOnly: true,
+  secure: process.env.NODE_ENV === "production",
+  sameSite: "strict",
+  maxAge: 7 * 24 * 60 * 60 * 1000, // 7 days
+});
+
+
+
     res.status(201).json({
   message: "Signup completed and email verified successfully!",
+  accessToken,
   user: {
     _id: newUser._id,
     name: newUser.name,
     email: newUser.email,
   },
 });
+
+
 
 
   } catch (err) {
@@ -125,14 +152,37 @@ router.post("/verify-login-otp", async (req, res) => {
    const user = await User.findOne({ email });
 if (!user) return res.status(404).json({ message: "User not found" });
 
+// Generate tokens
+const accessToken = generateAccessToken(user);
+const refreshToken = generateRefreshToken(user);
+
+// Set cookies
+res.cookie("accessToken", accessToken, {
+  httpOnly: true,
+  secure: process.env.NODE_ENV === "production",
+  sameSite: "strict",
+  maxAge: 30 * 60 * 1000,
+});
+
+res.cookie("refreshToken", refreshToken, {
+  httpOnly: true,
+  secure: process.env.NODE_ENV === "production",
+  sameSite: "strict",
+  maxAge: 7 * 24 * 60 * 60 * 1000,
+});
+
+
 res.json({
   message: "Login successful!",
+  accessToken,
   user: {
     _id: user._id,
     name: user.name,
     email: user.email,
   },
 });
+
+
 
   } catch (err) {
     console.error("Verify Login OTP error:", err);

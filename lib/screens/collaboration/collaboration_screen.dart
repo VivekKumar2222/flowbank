@@ -227,22 +227,33 @@ class _CollaborationScreenState extends State<CollaborationScreen> {
             flexibleSpace: SafeArea(
               bottom: false,
               child: Padding(
-                padding: const EdgeInsets.fromLTRB(18, 0, 26, 16),
-                child: Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                  children: const [
-                    Text(
-                      "CollaBorations",
-                      style: TextStyle(
-                        color: Color(0xFF0179FE),
-                        fontSize: 28,
-                        fontWeight: FontWeight.w700,
-                      ),
+                padding: const EdgeInsets.only(
+                      left: 18,
+                      right: 26,
+                      bottom: 16,
                     ),
-                    CircleAvatar(
-                      radius: 28,
-                      backgroundImage:
-                          NetworkImage("https://i.pravatar.cc/150?img=3"),
+                child: Column(
+                  mainAxisAlignment: MainAxisAlignment.end,
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      crossAxisAlignment: CrossAxisAlignment.end,
+                      children: const [
+                        Text(
+                          "CollaBorations",
+                          style: TextStyle(
+                            color: Color(0xFF0179FE),
+                            fontSize: 28,
+                            fontWeight: FontWeight.w700,
+                          ),
+                        ),
+                        CircleAvatar(
+                          radius: 28,
+                          backgroundImage:
+                              NetworkImage("https://i.pravatar.cc/150?img=3"),
+                        ),
+                      ],
                     ),
                   ],
                 ),
