@@ -1,4 +1,5 @@
 import 'dart:convert';
+import 'package:flowbank/api/api_service.dart';
 import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:http/http.dart' as http;
@@ -69,10 +70,9 @@ class _CreateGroupPageState extends State<CreateGroupPage> {
     };
 
     try {
-      final response = await http.post(
-        Uri.parse("http://10.0.2.2:5000/api/collab/create-dashboard"),
-        headers: {"Content-Type": "application/json"},
-        body: jsonEncode(body),
+      final response = await ApiService.post(
+        "/api/collab/create-dashboard",
+        body,
       );
 
       
@@ -90,11 +90,11 @@ class _CreateGroupPageState extends State<CreateGroupPage> {
           "role": "owner",
         };
 
-              final response2 = await http.post(
-        Uri.parse("http://10.0.2.2:5000/api/collab/add-member"),
-        headers: {"Content-Type": "application/json"},
-        body: jsonEncode(body2),
-      );
+              final response2 = await ApiService.post(
+              "/api/collab/add-member",
+              body2,
+               );
+
 
       if (response2.statusCode != 201) {
   throw Exception("Failed to add creator as owner");

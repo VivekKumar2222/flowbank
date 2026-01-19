@@ -2,6 +2,7 @@ import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
 import 'package:shared_preferences/shared_preferences.dart';
+import 'package:flowbank/api/api_service.dart';
 
 /// ─────────────────────────────────────────
 /// REQUEST DATA MODEL
@@ -120,14 +121,13 @@ class Request extends StatelessWidget {
     if (userEmail == null) return;
     if (request.invitationID == null) return;
 
-    final response = await http.post(
-      Uri.parse("http://10.0.2.2:5000/api/collab/accept-invitation"),
-      headers: {'Content-Type': 'application/json'},
-      body: jsonEncode({
+    final response = await ApiService.post(
+      "/api/collab/accept-invitation",
+      {
         "invitationId": request.invitationID,
         "dashboardId": request.dashboardID,
         "userId": userEmail,
-      }),
+      },
     );
 
     if (response.statusCode == 200) {
@@ -139,10 +139,9 @@ class Request extends StatelessWidget {
 
     if (request.invitationID == null) return;
     
-    final response = await http.post(
-      Uri.parse("http://10.0.2.2:5000/api/collab/reject-invitation"),
-      headers: {'Content-Type': 'application/json'},
-      body: jsonEncode({"invitationId": request.invitationID}),
+    final response = await ApiService.post(
+      "/api/collab/reject-invitation",
+      {"invitationId": request.invitationID},
     );
 
     if (response.statusCode == 200) {

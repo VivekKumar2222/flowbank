@@ -1,10 +1,13 @@
 const express = require("express");
 const router = express.Router();
 const User = require("../models/User");
+const jwt = require("jsonwebtoken");
+const {generateAccessToken, generateRefreshToken} = require("../utils/jwt.js");
+const protect = require("../middleware/middleware.js")
 
 /// SEARCH USERS BY NAME
 /// GET /users/search?name=char
-router.get("/search", async (req, res) => {
+router.get("/search", protect, async (req, res) => {
   try {
     const { name } = req.query;
 

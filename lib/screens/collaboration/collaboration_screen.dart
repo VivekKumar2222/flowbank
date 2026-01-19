@@ -1,6 +1,6 @@
 import 'dart:convert';
 import 'dart:ui';
-
+import 'package:flowbank/api/api_service.dart';
 import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:http/http.dart' as http;
@@ -23,6 +23,8 @@ class CollaborationScreen extends StatefulWidget {
 }
 
 class _CollaborationScreenState extends State<CollaborationScreen> {
+  bool _pageLoading = true;
+
   final int _selectedIndex = 1;
 
   String? userEmail;
@@ -55,10 +57,20 @@ class _CollaborationScreenState extends State<CollaborationScreen> {
 
     setState(() {
       userEmail = email;
+      _pageLoading = true;
     });
 
-    await _fetchUserGroups(email);
-    await _fetchInvitedGroups(email);
+    await Future.wait([
+    _fetchUserGroups(email),
+    _fetchInvitedGroups(email),
+  ]);
+
+  if (!mounted) return;
+
+  setState(() {
+    _pageLoading = false;
+  }); 
+  
   }
 
   /// --------------------
@@ -81,11 +93,10 @@ class _CollaborationScreenState extends State<CollaborationScreen> {
     _loadingInvites = true;
 
     try {
-      final response = await http.get(
-        Uri.parse(
-          'http://10.0.2.2:5000/api/collab/invited-dashboards?userId=$email',
-        ),
-      );
+      final response = await ApiService.get(
+  "/api/collab/invited-dashboards?userId=$email",
+);
+
 
       if (response.statusCode != 200) {
         throw Exception("Failed to load invited dashboards");
@@ -125,11 +136,10 @@ class _CollaborationScreenState extends State<CollaborationScreen> {
     _loadingGroups = true;
 
     try {
-      final membersResponse = await http.get(
-        Uri.parse(
-          'http://10.0.2.2:5000/api/collab/dashboard-members?userId=$email',
-        ),
-      );
+      final membersResponse = await ApiService.get(
+  "/api/collab/dashboard-members?userId=$email",
+);
+
 
       final List<dynamic> membersData = jsonDecode(membersResponse.body);
       final dashboardIds =
@@ -137,21 +147,20 @@ class _CollaborationScreenState extends State<CollaborationScreen> {
 
       if (dashboardIds.isEmpty) return;
 
-      final dashboardsResponse = await http.post(
-        Uri.parse('http://10.0.2.2:5000/api/collab/dashboards-by-ids'),
-        headers: {'Content-Type': 'application/json'},
-        body: jsonEncode({'ids': dashboardIds}),
-      );
+      final dashboardsResponse = await ApiService.post(
+  "/api/collab/dashboards-by-ids",
+  {"ids": dashboardIds},
+);
+
 
       final List<dynamic> dashboardsData =
           jsonDecode(dashboardsResponse.body);
 
       final futures = dashboardsData.map((dash) async {
-        final membersRes = await http.get(
-          Uri.parse(
-            'http://10.0.2.2:5000/api/collab/dashboard-members-by-dashboard?dashboardId=${dash['_id']}',
-          ),
-        );
+        final membersRes = await ApiService.get(
+  "/api/collab/dashboard-members-by-dashboard?dashboardId=${dash['_id']}",
+);
+
 
         final membersList = (jsonDecode(membersRes.body) as List)
             .map((m) => m['userId'].toString())
@@ -186,8 +195,43 @@ class _CollaborationScreenState extends State<CollaborationScreen> {
     super.dispose();
   }
 
+  Widget _loadingScreen() {
+  return Scaffold(
+    backgroundColor: Colors.white,
+    body: Center(
+      child: Column(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          SizedBox(
+            width: 180,
+            child: LinearProgressIndicator(
+              minHeight: 6,
+              backgroundColor: Colors.blue.shade100,
+              valueColor: const AlwaysStoppedAnimation(Color(0xFF217BFF)),
+              borderRadius: BorderRadius.circular(12),
+            ),
+          ),
+          const SizedBox(height: 18),
+          const Text(
+            "Loading content",
+            style: TextStyle(
+              fontSize: 16,
+              fontWeight: FontWeight.w600,
+              color: Color(0xFF217BFF),
+            ),
+          ),
+        ],
+      ),
+    ),
+  );
+}
+
+
   @override
   Widget build(BuildContext context) {
+    if (_pageLoading) {
+    return _loadingScreen();
+  }
     final double bottomInset = MediaQuery.of(context).viewPadding.bottom;
 
     return SafeArea(

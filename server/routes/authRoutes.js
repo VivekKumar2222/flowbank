@@ -60,22 +60,24 @@ router.post("/verify-otp", async (req, res) => {
   try {
     const { email, otp } = req.body;
 
-    // Check OTP existence
+    // 1️⃣ Check OTP existence
     const record = otpStore.get(email);
-    if (!record) return res.status(400).json({ message: "OTP not found or expired." });
+    if (!record) {
+      return res.status(400).json({ message: "OTP not found or expired." });
+    }
 
-    // Validate OTP expiry
+    // 2️⃣ Validate expiry
     if (Date.now() > record.expiry) {
       otpStore.delete(email);
       return res.status(400).json({ message: "OTP expired. Please sign up again." });
     }
 
-    // Validate OTP match
+    // 3️⃣ Validate OTP
     if (otp !== record.otp) {
       return res.status(400).json({ message: "Invalid OTP." });
     }
 
-    // ✅ Create and save user now
+    // 4️⃣ Create user
     const hashedPassword = await bcrypt.hash(record.password, 10);
     const newUser = new User({
       name: record.name,
@@ -83,50 +85,49 @@ router.post("/verify-otp", async (req, res) => {
       password: hashedPassword,
       isVerified: true,
     });
-    await newUser.save();
 
-    // Remove from OTP store
+    await newUser.save();
     otpStore.delete(email);
 
-    // Generate tokens
-const accessToken = generateAccessToken(newUser);
-const refreshToken = generateRefreshToken(newUser);
+    // 5️⃣ Generate JWT tokens
+    const accessToken = generateAccessToken(newUser);
+    const refreshToken = generateRefreshToken(newUser);
 
-// Set cookies
-res.cookie("accessToken", accessToken, {
-  httpOnly: true,
-  secure: process.env.NODE_ENV === "production",
-  sameSite: "strict",
-  maxAge: 30 * 60 * 1000, // 30 minutes
-});
+    // 6️⃣ Set cookies
+    res.cookie("accessToken", accessToken, {
+      httpOnly: true,
+      secure: process.env.NODE_ENV === "production",
+      sameSite: "strict",
+      maxAge: 30 * 60 * 1000, // 30 minutes
+    });
 
-res.cookie("refreshToken", refreshToken, {
-  httpOnly: true,
-  secure: process.env.NODE_ENV === "production",
-  sameSite: "strict",
-  maxAge: 7 * 24 * 60 * 60 * 1000, // 7 days
-});
+    res.cookie("refreshToken", refreshToken, {
+      httpOnly: true,
+      secure: process.env.NODE_ENV === "production",
+      sameSite: "strict",
+      maxAge: 7 * 24 * 60 * 60 * 1000, // 7 days
+    });
 
-
-
+    // 7️⃣ Send response
     res.status(201).json({
-  message: "Signup completed and email verified successfully!",
-  accessToken,
-  user: {
-    _id: newUser._id,
-    name: newUser.name,
-    email: newUser.email,
-  },
-});
-
-
-
+      message: "Signup successful!",
+      accessToken,
+      user: {
+        _id: newUser._id,
+        name: newUser.name,
+        email: newUser.email,
+      },
+    });
 
   } catch (err) {
     console.error("Verify OTP error:", err);
-    res.status(500).json({ message: "Server error", error: err.message });
+    res.status(500).json({
+      message: "Server error",
+      error: err.message,
+    });
   }
 });
+
 
 router.post("/verify-login-otp", async (req, res) => {
   try {

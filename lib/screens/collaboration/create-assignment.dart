@@ -5,6 +5,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 import 'dart:convert';
 import 'package:encrypt/encrypt.dart' as encrypt;
 import 'package:http/http.dart' as http;
+import 'package:flowbank/api/api_service.dart';
 
 
 class CreateAssignmentPage extends StatefulWidget {
@@ -57,12 +58,9 @@ final encrypt.IV _iv = encrypt.IV.fromLength(16);
 
   Future<void> _fetchDashboardCurrency() async {
   try {
-    final response = await http.post(
-      Uri.parse("http://10.0.2.2:5000/api/collab/dashboards-by-ids"),
-      headers: {"Content-Type": "application/json"},
-      body: jsonEncode({
-        "ids": [widget.dashboardId],
-      }),
+    final response = await ApiService.post(
+      "/api/collab/dashboards-by-ids",
+      {"ids": [widget.dashboardId],},
     );
 
     if (response.statusCode == 200) {
@@ -146,10 +144,9 @@ if (encryptedImage != null) {
 
 
   try {
-    final response = await http.post(
-      Uri.parse("http://10.0.2.2:5000/api/collab/ledger-assignment"),
-      headers: {"Content-Type": "application/json"},
-      body: jsonEncode(body),
+    final response = await ApiService.post(
+      "/api/collab/ledger-assignment",
+      body,
     );
 
     if (response.statusCode == 201) {

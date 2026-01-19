@@ -2,7 +2,7 @@ import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
 import '../collaboration/collaboration_screen.dart';
-
+import 'package:flowbank/api/api_service.dart';
 
 class BillSplittingAmountPage extends StatefulWidget {
   final String dashboardId;
@@ -39,15 +39,10 @@ class _BillSplittingAmountPageState extends State<BillSplittingAmountPage> {
   setState(() => isLoading = true);
 
   try {
-    final response = await http.post(
-      Uri.parse(
-        "http://10.0.2.2:5000/api/collab/set-bill-split-total",
-      ),
-      headers: {"Content-Type": "application/json"},
-      body: jsonEncode({
-        "dashboardId": widget.dashboardId,
-        "totalAmount": amount,
-      }),
+    final response = await ApiService.post(
+      "/api/collab/set-bill-split-total",
+      {"dashboardId": widget.dashboardId,
+        "totalAmount": amount,},
     );
 
     if (response.statusCode == 201) {

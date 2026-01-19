@@ -69,10 +69,15 @@ class _OtpScreenState extends State<OtpScreen> {
       final data = jsonDecode(response.body);
       final user = data['user'];
       if (user != null && user['_id'] != null) {
+        print("before prefs");
         final prefs = await SharedPreferences.getInstance();
+        print("after prefs");
+        print(data['accessToken']);
+        
         await prefs.setString('userId', user['_id']);
         await prefs.setString('userName', user['name'] ?? '');
         await prefs.setString('userEmail', user['email'] ?? '');
+        await prefs.setString('accessToken', data['accessToken'] ?? '');
       }
 
       Navigator.pushReplacement(

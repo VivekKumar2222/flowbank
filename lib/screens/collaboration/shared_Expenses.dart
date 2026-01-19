@@ -8,6 +8,7 @@ import 'package:http/http.dart' as http;
 import '../collaboration/add_Entries.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import '../collaboration/inPage_add_members_page.dart';
+import 'package:flowbank/api/api_service.dart';
 
 /// --------------------
 /// Member Model
@@ -90,10 +91,9 @@ class _SharedExpensesState extends State<SharedExpenses> {
 
 Future<void> _fetchSharedExpensesTotal() async {
   try {
-    final response = await http.get(
-      Uri.parse(
-        "http://10.0.2.2:5000/api/collab/shared-expenses-total?dashboardId=${widget.dashboardId}",
-      ),
+    final response = await ApiService.get(
+      "/api/collab/shared-expenses-total?dashboardId=${widget.dashboardId}"
+      
     );
 
     if (response.statusCode == 200) {
@@ -115,10 +115,9 @@ Future<void> _fetchSharedExpensesTotal() async {
 
   Future<void> _fetchEntries() async {
   try {
-    final response = await http.get(
-      Uri.parse(
-        "http://10.0.2.2:5000/api/collab/dashboard-entries?dashboardId=${widget.dashboardId}",
-      ),
+    final response = await ApiService.get(
+      "/api/collab/dashboard-entries?dashboardId=${widget.dashboardId}"
+      
     );
 
     if (response.statusCode == 200) {
@@ -169,10 +168,10 @@ Future<void> _fetchSharedExpensesTotal() async {
   Future<void> _fetchMembersAndSplit() async {
   try {
     // 1️⃣ Fetch Dashboard Members
-    final membersResponse = await http.get(
-      Uri.parse(
-        "http://10.0.2.2:5000/api/collab/dashboard-members-by-dashboard?dashboardId=${widget.dashboardId}",
-      ),
+    final membersResponse = await ApiService.get(
+      
+        "/api/collab/dashboard-members-by-dashboard?dashboardId=${widget.dashboardId}"
+      
     );
 
     if (membersResponse.statusCode != 200) return;
@@ -184,10 +183,9 @@ Future<void> _fetchSharedExpensesTotal() async {
     final emails = membersData.map((m) => m['userId']).toList();
 
     // 3️⃣ Fetch users by emails to get names
-    final usersResponse = await http.post(
-      Uri.parse("http://10.0.2.2:5000/api/collab/users-by-emails"),
-      headers: {'Content-Type': 'application/json'},
-      body: jsonEncode({"emails": emails}),
+    final usersResponse = await ApiService.post(
+      "/api/collab/users-by-emails",
+      {"emails": emails},
     );
 
     if (usersResponse.statusCode != 200) return;
@@ -231,13 +229,11 @@ List<Member> tempMembers = membersData.map((m) {
 
 Future<void> _fetchDashboardCurrency() async {
   try {
-    final response = await http.post(
-      Uri.parse("http://10.0.2.2:5000/api/collab/dashboards-by-ids"),
-      headers: {"Content-Type": "application/json"},
-      body: jsonEncode({
-        "ids": [widget.dashboardId],
-      }),
-    );
+    final response = await ApiService.post(
+  "/api/collab/dashboards-by-ids",
+  {"ids": [widget.dashboardId],},
+);
+
 
     if (response.statusCode == 200) {
       final decoded = jsonDecode(response.body) as List;
@@ -255,10 +251,10 @@ Future<void> _fetchDashboardCurrency() async {
 
  Future<void> _fetchOwnerEmail() async {
     try {
-      final response = await http.get(
-        Uri.parse("http://10.0.2.2:5000/api/collab/dashboard/${widget.dashboardId}"),
-        headers: {"Content-Type": "application/json"},
-      );
+      final response = await ApiService.get(
+  "/api/collab/dashboard/${widget.dashboardId}",
+);
+
 
       if (response.statusCode == 200) {
         final data = jsonDecode(response.body);

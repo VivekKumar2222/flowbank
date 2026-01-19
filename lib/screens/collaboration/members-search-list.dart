@@ -2,6 +2,7 @@ import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
 import 'package:shared_preferences/shared_preferences.dart';
+import 'package:flowbank/api/api_service.dart';
 
 /// --------------------
 /// MEMBER MODEL
@@ -44,7 +45,7 @@ class MembersSearchList extends StatefulWidget {
 }
 
 class _MembersSearchListState extends State<MembersSearchList> {
-  static const String baseUrl = "http://10.0.2.2:5000";
+  
 
   String? userEmail; // Logged-in user email
   String? fromUserId; // fromUser ID from backend
@@ -72,11 +73,11 @@ class _MembersSearchListState extends State<MembersSearchList> {
       return [];
     }
 
-    final uri = Uri.parse(
-      "$baseUrl/api/search/search?name=${widget.searchName}",
-    );
+    
 
-    final response = await http.get(uri);
+    final response = await ApiService.get(
+      "/api/search/search?name=${widget.searchName}"
+      );
 
     if (response.statusCode == 200) {
       final List data = jsonDecode(response.body);
@@ -89,7 +90,7 @@ class _MembersSearchListState extends State<MembersSearchList> {
   Future<void> sendInvitation(Member member) async {
     if (fromUserId == null) return;
 
-    final uri = Uri.parse("$baseUrl/api/collab/invite");
+    
 
     final body = {
       "dashboardId": widget.dashboardID,
@@ -98,10 +99,9 @@ class _MembersSearchListState extends State<MembersSearchList> {
       "status": "pending",
     };
 
-    final response = await http.post(
-      uri,
-      headers: {"Content-Type": "application/json"},
-      body: jsonEncode(body),
+    final response = await ApiService.post(
+      "/api/collab/invite",
+      body,
     );
 
     if (response.statusCode == 201) {

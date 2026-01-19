@@ -7,7 +7,7 @@ import 'dart:convert';
 import 'package:http/http.dart' as http;
 import '../collaboration/ledger_Member_screen.dart';
 import '../collaboration/shared_Expenses.dart';
-
+import 'package:flowbank/api/api_service.dart';
 
 /// ─────────────────────────────────────────
 /// REQUEST DATA MODEL
@@ -121,8 +121,8 @@ class _GroupState extends State<Group> {
   }
 
 Future<void> _loadOwnerId() async {
-  final response = await http.get(
-    Uri.parse("http://10.0.2.2:5000/api/collab/dashboard/${widget.dashboardID}"),
+  final response = await ApiService.get(
+    "/api/collab/dashboard/${widget.dashboardID}"
   );
 
   print("🟥 FULL DASHBOARD RESPONSE: ${response.body}");

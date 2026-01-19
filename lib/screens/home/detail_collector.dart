@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 import '../home/new_homescreen.dart';
 import '../home/country_dropdown.dart';
 import 'package:dropdown_button2/dropdown_button2.dart';
+import 'package:flowbank/api/api_service.dart';
 
 class DetailCollector extends StatefulWidget {
   final String email;
@@ -36,16 +37,15 @@ class _DetailCollectorState extends State<DetailCollector> {
 
     setState(() => isLoading = true);
 
-    final response = await http.post(
-      Uri.parse("http://10.0.2.2:5000/api/auth/complete-profile"),
-      headers: {"Content-Type": "application/json"},
-      body: jsonEncode({
+    final response = await ApiService.post(
+      "/api/auth/complete-profile",
+      {
         "email": widget.email,
         "phone": phone,
         "city": city,
         "postalCode": postalCode,
         "country": country,
-      }),
+      },
     );
 
     setState(() => isLoading = false);

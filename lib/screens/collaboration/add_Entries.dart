@@ -1,11 +1,12 @@
 import 'dart:io';
 import 'dart:convert';
 import 'dart:typed_data';
-
+import 'package:flowbank/api/api_service.dart';
 import 'package:flutter/material.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:http/http.dart' as http;
+import 'package:flowbank/api/api_service.dart';
 
 class AddEntriesPage extends StatefulWidget {
   final String dashboardId;
@@ -152,11 +153,11 @@ class _AddEntriesPageState extends State<AddEntriesPage> {
     body["assignmentId"] = widget.assignmentId;
   }
 
-  final response = await http.post(
-    Uri.parse("http://10.0.2.2:5000/api/collab/dashboard-entry"),
-    headers: {"Content-Type": "application/json"},
-    body: jsonEncode(body),
-  );
+  final response = await ApiService.post(
+  "/api/collab/dashboard-entry",
+  body,
+);
+
 
   if (response.statusCode == 201) {
     Navigator.pop(context);

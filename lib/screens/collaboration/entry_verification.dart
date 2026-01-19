@@ -1,6 +1,7 @@
 import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
+import 'package:flowbank/api/api_service.dart';
 
 /* ============================================================
    ENTRY VERIFICATION PAGE (FETCH BY ENTRY ID)
@@ -38,19 +39,17 @@ class _EntryVerificationPageState extends State<EntryVerificationPage> {
 
   Future<void> _fetchEntry() async {
     try {
-      final response = await http.get(
-        Uri.parse(
-          "http://10.0.2.2:5000/api/collab/dashboard-entry/${widget.entryId}",
-        ),
+      final response = await ApiService.get(
+        "/api/collab/dashboard-entry/${widget.entryId}"
+        
       );
 
       if (response.statusCode == 200) {
         final data = jsonDecode(response.body);
 
-          final ocrResponse = await http.post(
-  Uri.parse("http://10.0.2.2:5000/api/collab/verify-entry-ocr"),
-  headers: {"Content-Type": "application/json"},
-  body: jsonEncode({"entryId": widget.entryId}),
+          final ocrResponse = await ApiService.post(
+  "/api/collab/verify-entry-ocr",
+  {"entryId": widget.entryId},
 );
 
 if (ocrResponse.statusCode == 200) {
@@ -315,13 +314,12 @@ class _ActionButtons extends StatelessWidget {
         Expanded(
           child: ElevatedButton(
             onPressed: () async {
-  await http.post(
-    Uri.parse("http://10.0.2.2:5000/api/collab/update-entry-status"),
-    headers: {"Content-Type": "application/json"},
-    body: jsonEncode({
+  await ApiService.post(
+    "/api/collab/update-entry-status",
+    {
       "entryId": entryId,
       "status": "rejected",
-    }),
+    },
   );
 
   ScaffoldMessenger.of(context).showSnackBar(
@@ -351,13 +349,12 @@ class _ActionButtons extends StatelessWidget {
         Expanded(
           child: ElevatedButton(
             onPressed: () async {
-  await http.post(
-    Uri.parse("http://10.0.2.2:5000/api/collab/update-entry-status"),
-    headers: {"Content-Type": "application/json"},
-    body: jsonEncode({
+  await ApiService.post(
+    "/api/collab/update-entry-status",
+    {
       "entryId": entryId,
       "status": "approved",
-    }),
+    },
   );
 
   ScaffoldMessenger.of(context).showSnackBar(

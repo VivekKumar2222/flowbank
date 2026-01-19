@@ -7,6 +7,7 @@ import 'package:http/http.dart' as http;
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:encrypt/encrypt.dart' as encrypt;
 import '../collaboration/add_Entries.dart';
+import 'package:flowbank/api/api_service.dart';
 
 /* ============================================================
    MODELS
@@ -136,12 +137,11 @@ class _LedgerMemberScreenState extends State<LedgerMemberScreen> {
   Future<void> fetchLedger() async {
   
 
-    final res = await http.get(
-      Uri.parse(
-        "http://10.0.2.2:5000/api/collab/member-ledger"
-        "?dashboardId=${widget.dashboardId}&memberId=${widget.memberId}",
-      ),
-    );
+    final res = await ApiService.get(
+  "/api/collab/member-ledger"
+  "?dashboardId=${widget.dashboardId}&memberId=${widget.memberId}",
+);
+
 
     final data = jsonDecode(res.body);
 
