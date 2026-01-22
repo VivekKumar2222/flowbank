@@ -61,6 +61,7 @@ final encrypt.IV _iv = encrypt.IV.fromLength(16);
     final response = await ApiService.post(
       "/api/collab/dashboards-by-ids",
       {"ids": [widget.dashboardId],},
+      context
     );
 
     if (response.statusCode == 200) {
@@ -147,6 +148,7 @@ if (encryptedImage != null) {
     final response = await ApiService.post(
       "/api/collab/ledger-assignment",
       body,
+      context
     );
 
     if (response.statusCode == 201) {

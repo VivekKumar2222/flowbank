@@ -128,6 +128,7 @@ class Request extends StatelessWidget {
         "dashboardId": request.dashboardID,
         "userId": userEmail,
       },
+      context
     );
 
     if (response.statusCode == 200) {
@@ -142,6 +143,7 @@ class Request extends StatelessWidget {
     final response = await ApiService.post(
       "/api/collab/reject-invitation",
       {"invitationId": request.invitationID},
+      context
     );
 
     if (response.statusCode == 200) {

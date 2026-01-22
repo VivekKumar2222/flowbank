@@ -2,6 +2,8 @@ import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
 import 'package:flowbank/api/api_service.dart';
+import 'package:shared_preferences/shared_preferences.dart';
+
 
 /* ============================================================
    ENTRY VERIFICATION PAGE (FETCH BY ENTRY ID)
@@ -30,17 +32,60 @@ class _EntryVerificationPageState extends State<EntryVerificationPage> {
   String date = "";
   double amount = 0;
   String verificationImage = "";
+  String ownerEmail = "";
+  String userEmail = "";
+  bool isOwner = false;
+
 
   @override
   void initState() {
     super.initState();
-    _fetchEntry();
+    _initData();
   }
+
+  Future<void> _initData() async {
+  await _loadUserEmail();
+  await _fetchOwner(widget.entryId);
+
+  setState(() {
+    isOwner = ownerEmail.trim() == userEmail.trim();
+  });
+
+  debugPrint("👑 OWNER EMAIL: $ownerEmail");
+  debugPrint("🙋 USER EMAIL: $userEmail");
+  debugPrint("✅ IS OWNER: $isOwner");
+
+  await _fetchEntry();
+}
+
+
+  Future<void> _fetchOwner(String entryId) async {
+  final response = await ApiService.get(
+    "/api/collab/entry-owner/$entryId",
+    context
+  );
+
+  if (response.statusCode == 200) {
+    final data = jsonDecode(response.body);
+
+    ownerEmail = data['ownerId'] ?? "";
+    print(ownerEmail);
+    
+  }
+}
+
+Future<void> _loadUserEmail() async {
+  final prefs = await SharedPreferences.getInstance();
+  userEmail = prefs.getString('userEmail') ?? '';
+}
+
+
 
   Future<void> _fetchEntry() async {
     try {
       final response = await ApiService.get(
-        "/api/collab/dashboard-entry/${widget.entryId}"
+        "/api/collab/dashboard-entry/${widget.entryId}",
+        context
         
       );
 
@@ -50,6 +95,7 @@ class _EntryVerificationPageState extends State<EntryVerificationPage> {
           final ocrResponse = await ApiService.post(
   "/api/collab/verify-entry-ocr",
   {"entryId": widget.entryId},
+  context
 );
 
 if (ocrResponse.statusCode == 200) {
@@ -81,12 +127,41 @@ if (ocrResponse.statusCode == 200) {
     }
   }
 
+  Widget _loadingScreen() {
+  return Scaffold(
+    backgroundColor: Colors.white,
+    body: Center(
+      child: Column(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          SizedBox(
+            width: 180,
+            child: LinearProgressIndicator(
+              minHeight: 6,
+              backgroundColor: Colors.blue.shade100,
+              valueColor: const AlwaysStoppedAnimation(Color(0xFF217BFF)),
+              borderRadius: BorderRadius.circular(12),
+            ),
+          ),
+          const SizedBox(height: 18),
+          const Text(
+            "Loading content",
+            style: TextStyle(
+              fontSize: 16,
+              fontWeight: FontWeight.w600,
+              color: Color(0xFF217BFF),
+            ),
+          ),
+        ],
+      ),
+    ),
+  );
+}
+
   @override
   Widget build(BuildContext context) {
     if (isLoading) {
-      return const Scaffold(
-        body: Center(child: CircularProgressIndicator()),
-      );
+      return _loadingScreen();
     }
 
     return Scaffold(
@@ -114,7 +189,9 @@ if (ocrResponse.statusCode == 200) {
   ),
   const SizedBox(height: 16),
 
-                   _ActionButtons(entryId: widget.entryId,),
+                   _ActionButtons(
+                    entryId: widget.entryId,
+                    isOwner: isOwner,),
                 ],
               ),
             ),
@@ -302,9 +379,12 @@ class _FullImageViewer extends StatelessWidget {
 class _ActionButtons extends StatelessWidget {
 
   final String entryId;
+  final bool isOwner;
   const _ActionButtons({
     
-    required this.entryId,}
+    required this.entryId,
+    required this.isOwner,
+    }
   );
 
   @override
@@ -312,74 +392,86 @@ class _ActionButtons extends StatelessWidget {
     return Row(
       children: [
         Expanded(
-          child: ElevatedButton(
-            onPressed: () async {
-  await ApiService.post(
-    "/api/collab/update-entry-status",
-    {
-      "entryId": entryId,
-      "status": "rejected",
-    },
-  );
+  child: Opacity(
+    opacity: isOwner ? 1 : 0.4,
+    child: ElevatedButton(
+      onPressed: isOwner
+          ? () async {
+              await ApiService.post(
+                "/api/collab/update-entry-status",
+                {
+                  "entryId": entryId,
+                  "status": "rejected",
+                },
+                context
+              );
 
-  ScaffoldMessenger.of(context).showSnackBar(
-    const SnackBar(content: Text("Entry rejected")),
-  );
-},
-
-            style: ElevatedButton.styleFrom(
-              backgroundColor: const Color(0xFFD2D2D2),
-              elevation: 0,
-              padding: const EdgeInsets.symmetric(vertical: 16),
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(12),
-              ),
-            ),
-            child: const Text(
-              "Reject",
-              style: TextStyle(
-                fontSize: 16,
-                fontWeight: FontWeight.w600,
-                color: Color(0xFF737373),
-              ),
-            ),
-          ),
+              ScaffoldMessenger.of(context).showSnackBar(
+                const SnackBar(content: Text("Entry rejected")),
+              );
+            }
+          : null,
+      style: ElevatedButton.styleFrom(
+        backgroundColor: const Color(0xFFD2D2D2),
+        elevation: 0,
+        padding: const EdgeInsets.symmetric(vertical: 16),
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(12),
         ),
+      ),
+      child: const Text(
+        "Reject",
+        style: TextStyle(
+          fontSize: 16,
+          fontWeight: FontWeight.w600,
+          color: Color(0xFF737373),
+        ),
+      ),
+    ),
+  ),
+),
+
         const SizedBox(width: 16),
         Expanded(
-          child: ElevatedButton(
-            onPressed: () async {
-  await ApiService.post(
-    "/api/collab/update-entry-status",
-    {
-      "entryId": entryId,
-      "status": "approved",
-    },
-  );
+  child: Opacity(
+    opacity: isOwner ? 1 : 0.4,
+    child: ElevatedButton(
+      onPressed: isOwner
+          ? () async {
+              await ApiService.post(
+                "/api/collab/update-entry-status",
+                {
+                  "entryId": entryId,
+                  "status": "approved",
+                },
+                context
+              );
 
-  ScaffoldMessenger.of(context).showSnackBar(
-    const SnackBar(content: Text("Entry approved")),
-  );
-},
-
-            style: ElevatedButton.styleFrom(
-              backgroundColor: const Color(0xFF4893FF),
-              padding: const EdgeInsets.symmetric(vertical: 16),
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(12),
-              ),
-              elevation: 0,
-            ),
-            child: const Text(
-              "Verify",
-              style: TextStyle(
-                fontSize: 16,
-                fontWeight: FontWeight.w700,
-                color: Colors.white,
-              ),
-            ),
-          ),
+              ScaffoldMessenger.of(context).showSnackBar(
+                const SnackBar(content: Text("Entry approved")),
+              );
+            }
+          : null,
+      style: ElevatedButton.styleFrom(
+        backgroundColor: const Color(0xFF4893FF),
+        padding: const EdgeInsets.symmetric(vertical: 16),
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(12),
         ),
+        elevation: 0,
+      ),
+      child: const Text(
+        "Verify",
+        style: TextStyle(
+          fontSize: 16,
+          fontWeight: FontWeight.w700,
+          color: Colors.white,
+        ),
+      ),
+    ),
+  ),
+),
+
       ],
     );
   }

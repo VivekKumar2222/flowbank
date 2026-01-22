@@ -4,6 +4,8 @@ import 'package:http/http.dart' as http;
 // import '../home/homescreen.dart';
 // import '../authentication/otpscreen.dart';
 import '../authentication/otpscreen_login.dart';
+import '../authentication/email-for-password-reset.dart';
+import  'package:flowbank/api/api_service.dart';
 
 Future<void> showLoginBottomSheet(
   BuildContext context, {
@@ -139,13 +141,13 @@ Future<void> showLoginBottomSheet(
                             return;
                           }
 
-                          final response = await http.post(
-                            Uri.parse("http://10.0.2.2:5000/api/auth/login"),
-                            headers: {"Content-Type": "application/json"},
-                            body: jsonEncode({
+                          final response = await ApiService.post(
+                            "/api/auth/login",
+                            {
                               "email": email,
                               "password": password,
-                            }),
+                            },
+                            context
                           );
 
                           if (response.statusCode == 200) {
@@ -185,7 +187,25 @@ Future<void> showLoginBottomSheet(
                         ),
                       ),
                     ),
-                    const SizedBox(height: 14),
+                    const SizedBox(height: 0),
+                    Center(
+  child: TextButton(
+    onPressed: () {
+      // TODO: Navigate to forgot password screen
+      Navigator.push(context, MaterialPageRoute(builder: (_) => const ResetPasswordEmailScreen() ));
+    },
+    child: const Text(
+      "Forgot password?",
+      style: TextStyle(
+        color: Color(0xFF1E88E5),
+        fontSize: 14.5,
+        fontWeight: FontWeight.w500,
+      ),
+    ),
+  ),
+),
+
+                    
                   ],
                 ),
               ),
@@ -208,4 +228,24 @@ Future<void> showLoginBottomSheet(
       );
     },
   );
+
+  // Widget _buildActionButton(String label, Color color, IconData icon, VoidCallback onTap) {
+  //   return GestureDetector(
+  //     onTap: onTap,
+  //     child: Container(
+  //       padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
+  //       decoration: BoxDecoration(
+  //         color: color.withOpacity(0.1),
+  //         borderRadius: BorderRadius.circular(12),
+  //       ),
+  //       child: Row(
+  //         children: [
+  //           Icon(icon, color: color, size: 18),
+  //           const SizedBox(width: 8),
+  //           Text(label, style: TextStyle(color: color, fontWeight: FontWeight.w600)),
+  //         ],
+  //       ),
+  //     ),
+  //   );
+  // }
 }

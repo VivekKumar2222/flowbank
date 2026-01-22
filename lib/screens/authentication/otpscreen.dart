@@ -7,6 +7,7 @@ import '../home/new_homescreen.dart';
 import '../home/detail_collector.dart';
 import 'dart:async';
 import 'package:shared_preferences/shared_preferences.dart';
+import 'package:flowbank/api/api_service.dart';
 
 class OtpScreen extends StatefulWidget {
   final String email;
@@ -54,13 +55,13 @@ class _OtpScreenState extends State<OtpScreen> {
   Future<void> verifyOtp() async {
     setState(() => isLoading = true);
 
-    final response = await http.post(
-      Uri.parse("http://10.0.2.2:5000/api/auth/verify-otp"),
-      headers: {"Content-Type": "application/json"},
-      body: jsonEncode({
+    final response = await ApiService.post(
+      "/api/auth/verify-otp",
+      {
         "email": widget.email,
         "otp": otpController.text.trim(),
-      }),
+      },
+      context
     );
 
     setState(() => isLoading = false);
@@ -232,12 +233,10 @@ class _OtpScreenState extends State<OtpScreen> {
                   TextButton(
                     onPressed: canResend
                         ? () async {
-                            final response = await http.post(
-                              Uri.parse(
-                                "http://10.0.2.2:5000/api/auth/resend-otp",
-                              ),
-                              headers: {"Content-Type": "application/json"},
-                              body: jsonEncode({"email": widget.email}),
+                            final response = await ApiService.post(
+                              "/api/auth/resend-otp",
+                              {"email": widget.email},
+                              context,
                             );
 
                             final data = jsonDecode(response.body);

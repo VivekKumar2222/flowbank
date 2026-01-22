@@ -156,6 +156,7 @@ class _AddEntriesPageState extends State<AddEntriesPage> {
   final response = await ApiService.post(
   "/api/collab/dashboard-entry",
   body,
+  context
 );
 
 

@@ -122,7 +122,8 @@ class _GroupState extends State<Group> {
 
 Future<void> _loadOwnerId() async {
   final response = await ApiService.get(
-    "/api/collab/dashboard/${widget.dashboardID}"
+    "/api/collab/dashboard/${widget.dashboardID}",
+    context
   );
 
   print("🟥 FULL DASHBOARD RESPONSE: ${response.body}");

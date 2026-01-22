@@ -92,7 +92,8 @@ class _SharedExpensesState extends State<SharedExpenses> {
 Future<void> _fetchSharedExpensesTotal() async {
   try {
     final response = await ApiService.get(
-      "/api/collab/shared-expenses-total?dashboardId=${widget.dashboardId}"
+      "/api/collab/shared-expenses-total?dashboardId=${widget.dashboardId}",
+      context
       
     );
 
@@ -116,7 +117,8 @@ Future<void> _fetchSharedExpensesTotal() async {
   Future<void> _fetchEntries() async {
   try {
     final response = await ApiService.get(
-      "/api/collab/dashboard-entries?dashboardId=${widget.dashboardId}"
+      "/api/collab/dashboard-entries?dashboardId=${widget.dashboardId}",
+      context
       
     );
 
@@ -170,7 +172,8 @@ Future<void> _fetchSharedExpensesTotal() async {
     // 1️⃣ Fetch Dashboard Members
     final membersResponse = await ApiService.get(
       
-        "/api/collab/dashboard-members-by-dashboard?dashboardId=${widget.dashboardId}"
+        "/api/collab/dashboard-members-by-dashboard?dashboardId=${widget.dashboardId}",
+        context
       
     );
 
@@ -186,6 +189,7 @@ Future<void> _fetchSharedExpensesTotal() async {
     final usersResponse = await ApiService.post(
       "/api/collab/users-by-emails",
       {"emails": emails},
+      context
     );
 
     if (usersResponse.statusCode != 200) return;
@@ -232,6 +236,7 @@ Future<void> _fetchDashboardCurrency() async {
     final response = await ApiService.post(
   "/api/collab/dashboards-by-ids",
   {"ids": [widget.dashboardId],},
+  context
 );
 
 
@@ -253,6 +258,7 @@ Future<void> _fetchDashboardCurrency() async {
     try {
       final response = await ApiService.get(
   "/api/collab/dashboard/${widget.dashboardId}",
+  context
 );
 
 

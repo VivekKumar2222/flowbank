@@ -1,10 +1,11 @@
-import 'package:flowbank/api/api_service.dart';
 import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
-import 'package:http/http.dart' as http;
 import 'dart:convert';
 import '../home/resetOTPscreen.dart';
-
+import 'package:flowbank/api/api_service.dart';
+import 'package:flowbank/screens/home/section_header.dart';
+import 'package:flowbank/screens/home/user-total-balance-view.dart';
+import '../onboarding/OnboardingScreen.dart';
 
 class ProfileScreen extends StatefulWidget {
   const ProfileScreen({super.key});
@@ -16,7 +17,24 @@ class ProfileScreen extends StatefulWidget {
 class _ProfileScreenState extends State<ProfileScreen> {
   String userName = "";
   String userEmail = "";
-  String jwttoken = "";
+
+  String _getInitials(String name) {
+  List<String> names = name.split(" ");
+  String initials = "";
+  for (var part in names) {
+    if (part.isNotEmpty) {
+      initials += part[0].toUpperCase();
+    }
+  }
+  return initials;
+}
+
+
+  // Color Palette
+  final Color primaryBlue = const Color(0xFF1A73E8);
+  final Color cloudBlue = const Color(0xFFF0F7FF);
+  final Color secondaryPurple = const Color(0xFF6C63FF);
+
   @override
   void initState() {
     super.initState();
@@ -25,124 +43,89 @@ class _ProfileScreenState extends State<ProfileScreen> {
 
   Future<void> _loadUserData() async {
     final prefs = await SharedPreferences.getInstance();
-
     setState(() {
       userName = prefs.getString("userName") ?? "User";
       userEmail = prefs.getString("userEmail") ?? "No email";
-      jwttoken = prefs.getString("accessToken") ?? "Not found";
     });
   }
 
-  
+  Future<void> logout(BuildContext context) async {
 
-  Future<void> sendResetOTP(BuildContext context) async {
+     Navigator.push(
+    context,
+    MaterialPageRoute(builder: (_) => _loadingScreen()),
+  );
+
+  // ⏳ Wait 2.5 seconds
+  await Future.delayed(const Duration(seconds: 2));
+
   final prefs = await SharedPreferences.getInstance();
-  final email = prefs.getString("userEmail");
 
- final response = await ApiService.post(
-  "/api/auth/request-password-reset",
-  {"email": email},
-);
+  // 🔥 Clear auth + user data
+  await prefs.remove('accessToken');
+  await prefs.remove('userName');
+  await prefs.remove('userEmail');
 
-  final data = jsonDecode(response.body);
+  // (Optional but safe)
+  // await prefs.clear();
 
-  if (response.statusCode == 200) {
-    Navigator.push(
-      context,
-      MaterialPageRoute(builder: (_) => ResetOtpScreen(email: email!)),
-    );
-  } else {
-    ScaffoldMessenger.of(context)
-        .showSnackBar(SnackBar(content: Text(data["message"])));
-  }
+  // 🚀 Navigate to onboarding / login
+  Navigator.pushAndRemoveUntil(
+    context,
+    MaterialPageRoute(builder: (_) => const OnboardingScreen()),
+    (route) => false,
+  );
 }
 
 
-  Widget _buildBankCard({
-  required String title,
-  required String amount,
-  required String holder,
-  required String expiry,
-  required Color cardColor,
-  required Color accentColor,
-}) {
-  return Container(
-    width: 260,
-    margin: const EdgeInsets.only(right: 16),
-    padding: const EdgeInsets.all(20),
-    decoration: BoxDecoration(
-      color: cardColor,
-      borderRadius: BorderRadius.circular(20),
-    ),
-    child: Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      mainAxisAlignment: MainAxisAlignment.spaceBetween,
-      children: [
-        Text(
-          title,
-          style: const TextStyle(
-            color: Colors.white,
-            fontSize: 16,
-            fontWeight: FontWeight.w600,
-          ),
-        ),
+  Future<void> sendResetOTP(BuildContext context) async {
+    final prefs = await SharedPreferences.getInstance();
+    final email = prefs.getString("userEmail");
 
-        Text(
-          amount,
-          style: const TextStyle(
-            color: Colors.white,
-            fontSize: 22,
-            fontWeight: FontWeight.bold,
-          ),
-        ),
+    final response = await ApiService.post(
+      "/api/auth/request-password-reset",
+      {"email": email},
+      context
+    );
 
-        Row(
-          mainAxisAlignment: MainAxisAlignment.spaceBetween,
-          children: [
-            Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                const Text(
-                  "CARD HOLDER",
-                  style: TextStyle(
-                    color: Colors.white60,
-                    fontSize: 10,
-                  ),
-                ),
-                Text(
-                  holder,
-                  style: const TextStyle(
-                    color: Colors.white,
-                    fontSize: 12,
-                    fontWeight: FontWeight.w600,
-                  ),
-                ),
-              ],
+    if (response.statusCode == 200) {
+      Navigator.push(
+        context,
+        MaterialPageRoute(builder: (_) => ResetOtpScreen(email: email!)),
+      );
+    } else {
+      final data = jsonDecode(response.body);
+      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(data["message"])));
+    }
+  }
+
+  Widget _loadingScreen() {
+  return Scaffold(
+    backgroundColor: Colors.white,
+    body: Center(
+      child: Column(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          SizedBox(
+            width: 180,
+            child: LinearProgressIndicator(
+              minHeight: 6,
+              backgroundColor: Colors.blue.shade100,
+              valueColor: const AlwaysStoppedAnimation(Color(0xFF217BFF)),
+              borderRadius: BorderRadius.circular(12),
             ),
-
-            Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                const Text(
-                  "EXPIRY",
-                  style: TextStyle(
-                    color: Colors.white60,
-                    fontSize: 10,
-                  ),
-                ),
-                Text(
-                  expiry,
-                  style: const TextStyle(
-                    color: Colors.white,
-                    fontSize: 12,
-                    fontWeight: FontWeight.w600,
-                  ),
-                ),
-              ],
+          ),
+          const SizedBox(height: 18),
+          const Text(
+            "Logging out",
+            style: TextStyle(
+              fontSize: 16,
+              fontWeight: FontWeight.w600,
+              color: Color(0xFF217BFF),
             ),
-          ],
-        ),
-      ],
+          ),
+        ],
+      ),
     ),
   );
 }
@@ -152,198 +135,263 @@ class _ProfileScreenState extends State<ProfileScreen> {
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: Colors.white,
-      body: SafeArea(
-        child: SingleChildScrollView(
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              // Profile header with avatar and buttons
-              Padding(
-                padding: const EdgeInsets.symmetric(
-                  horizontal: 24,
-                  vertical: 24,
-                ),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.center,
-                  children: [
-                    // Profile avatar
-                    Container(
-                      width: 80,
-                      height: 80,
-                      decoration: BoxDecoration(
-                        shape: BoxShape.circle,
-                        border: Border.all(
-                          color: const Color(0xFFE0E0E0),
-                          width: 2,
-                        ),
-                      ),
-                      child: ClipOval(
-                        child: Image.network(
-                          'https://hebbkx1anhila5yf.public.blob.vercel-storage.com/image-4QvDEYBhfqhVp1tgHRD4nqHqAHo06K.png',
-                          fit: BoxFit.cover,
-                        ),
-                      ),
-                    ),
-                    const SizedBox(height: 20),
-
-                    // Action buttons
-                    Row(
-                      mainAxisAlignment: MainAxisAlignment.center,
-                      children: [
-                        Container(
-                          padding: const EdgeInsets.symmetric(
-                            horizontal: 20,
-                            vertical: 10,
-                          ),
-                          decoration: BoxDecoration(
-                            border: Border.all(
-                              color: const Color(0xFFE91E63),
-                              width: 1.5,
-                            ),
-                            borderRadius: BorderRadius.circular(20),
-                            color: Colors.transparent,
-                          ),
-                          child: const Text(
-                            'Delete',
-                            style: TextStyle(
-                              color: Color(0xFFE91E63),
-                              fontSize: 14,
-                              fontWeight: FontWeight.w600,
-                            ),
-                          ),
-                        ),
-                        const SizedBox(width: 12),
-GestureDetector(
-  onTap: () => sendResetOTP(context),
-  child: Container(
-    padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 10),
-    decoration: BoxDecoration(
-      border: Border.all(color: Color(0xFF1E88E5), width: 1.5),
-      borderRadius: BorderRadius.circular(20),
-      color: Colors.transparent,
-    ),
-    child: const Text(
-      'Reset Password',
-      style: TextStyle(
-        color: Color(0xFF1E88E5),
-        fontSize: 14,
-        fontWeight: FontWeight.w600,
+      appBar: AppBar(
+        backgroundColor: Colors.white,
+        elevation: 0,
+        title: const Text("Profile", style: TextStyle(color: Colors.black, fontWeight: FontWeight.bold)),
+        centerTitle: true,
+        actions: [
+          // IconButton(
+          //   icon: Icon(Icons.settings_outlined, color: primaryBlue),
+          //   onPressed: () {},
+          // )
+        ],
       ),
-    ),
-  ),
-)
-
-                      ],
+      body: SingleChildScrollView(
+        child: Column(
+          children: [
+            const SizedBox(height: 20),
+            // Avatar Section
+            Center(
+              child: Stack(
+                children: [
+                  Container(
+                    decoration: BoxDecoration(
+                      shape: BoxShape.circle,
+                      border: Border.all(color: cloudBlue, width: 5),
                     ),
-                  ],
-                ),
-              ),
-
-              // User info
-              Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 24),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.center,
-                  children: [
-                    Text(
-                      userName,
-                      style: const TextStyle(
-                        color: Colors.black,
-                        fontSize: 24,
-                        fontWeight: FontWeight.w600,
-                      ),
-                    ),
-                    const SizedBox(height: 4),
-                    Text(
-                      userEmail,
-                      style: const TextStyle(
-                        color: Color(0xFF666666),
-                        fontSize: 14,
-                        fontWeight: FontWeight.w400,
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-
-              const SizedBox(height: 32),
-
-              // My Banks header
-              Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 24),
-                child: Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                  children: [
-                    const Text(
-                      'My Banks',
-                      style: TextStyle(
-                        color: Colors.black,
-                        fontSize: 16,
-                        fontWeight: FontWeight.w600,
-                      ),
-                    ),
-                    Container(
-                      padding: const EdgeInsets.symmetric(
-                        horizontal: 12,
-                        vertical: 6,
-                      ),
-                      decoration: BoxDecoration(
-                        color: Colors.transparent,
-                        borderRadius: BorderRadius.circular(8),
-                      ),
-                      child: const Row(
-                        children: [
-                          Icon(
-                            Icons.add,
-                            color: Color(0xFF9CA3AF),
-                            size: 16,
-                          ),
-                          SizedBox(width: 4),
-                          Text(
-                            'Add bank',
-                            style: TextStyle(
-                              color: Color(0xFF9CA3AF),
-                              fontSize: 12,
-                              fontWeight: FontWeight.w500,
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-
-              const SizedBox(height: 16),
-
-              // Bank cards carousel
-              SizedBox(
-                height: 160,
-                child: ListView(
-                  padding: const EdgeInsets.symmetric(horizontal: 24),
-                  scrollDirection: Axis.horizontal,
-                  children: [
-                    _buildBankCard(
-                      title: 'JS Mastery Pro.',
-                      amount: '\$1000.12',
-                      holder: userName.toUpperCase(),
-                      expiry: '06/24',
-                      cardColor: const Color(0xFF2C3E50),
-                      accentColor: const Color(0xFFE91E63),
-                    ),
-                  ],
-                ),
-              ),
-
-              const SizedBox(height: 32),
-
-              // ... rest of your code ...
-            ],
+                    child: Center(
+  child: Stack(
+    children: [
+      Container(
+        decoration: BoxDecoration(
+          shape: BoxShape.circle,
+          border: Border.all(color: cloudBlue, width: 5),
+        ),
+        child: CircleAvatar(
+          radius: 50,
+          backgroundColor: const Color(0xFFD1E9FF), // custom background color
+          child: Text(
+            _getInitials(userName),
+            style: const TextStyle(
+              color: Color(0xFF217BFF), // custom text color
+              fontSize: 30,
+              fontWeight: FontWeight.bold,
+            ),
           ),
+        ),
+      ),
+      Positioned(
+        bottom: 0,
+        right: 0,
+        child: Container(
+          padding: const EdgeInsets.all(4),
+          // decoration: BoxDecoration(color: primaryBlue, shape: BoxShape.circle),
+          // child: const Icon(Icons.edit, color: Colors.white, size: 18),
+        ),
+      ),
+    ],
+  ),
+),
+
+                  ),
+                  Positioned(
+                    bottom: 0,
+                    right: 0,
+                    child: Container(
+                      padding: const EdgeInsets.all(4),
+                      // decoration: BoxDecoration(color: primaryBlue, shape: BoxShape.circle),
+                      // child: const Icon(Icons.edit, color: Colors.white, size: 18),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            const SizedBox(height: 16),
+            Text(userName, style: const TextStyle(fontSize: 22, fontWeight: FontWeight.bold)),
+            Text(userEmail, style: TextStyle(color: Colors.grey[600], fontSize: 14)),
+            
+            const SizedBox(height: 24),
+
+            // Action Buttons
+            Row(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                _buildActionButton(
+                  "Reset Password", 
+                  primaryBlue, 
+                  Icons.lock_reset, 
+                  () => sendResetOTP(context)
+                ),
+                const SizedBox(width: 12),
+                _buildActionButton(
+                  "Delete", 
+                  Colors.redAccent, 
+                  Icons.delete_outline, 
+                  () => logout(context)
+                ),
+
+                
+              ],
+            ),
+
+            SizedBox(height: 12,),
+
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 44),
+              child: _buildActionButton(
+                "Log Out", 
+                const Color.fromARGB(255, 38, 38, 38), 
+                Icons.logout, 
+                () => logout(context),
+                ),
+            ),
+
+            const SizedBox(height: 40),
+
+            // Bank Section Header
+            // Padding(
+            //   padding: const EdgeInsets.symmetric(horizontal: 24),
+            //   child: Row(
+            //     mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            //     children: [
+            //       const Text("My Banks", style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
+            //       TextButton.icon(
+            //         onPressed: () {},
+            //         icon: Icon(Icons.add, size: 18, color: secondaryPurple),
+            //         label: Text("Add bank", style: TextStyle(color: secondaryPurple)),
+            //       )
+            //     ],
+            //   ),
+            // ),
+
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 18),
+              child: SectionHeader(
+                        title: "Connected Accounts",
+                        showButton: true,
+                        
+                      ),
+            ),
+
+            const SizedBox(height: 12),
+
+            // Modernized Bank Card
+            // SizedBox(
+            //   height: 190,
+            //   child: ListView(
+            //     padding: const EdgeInsets.only(left: 24),
+            //     scrollDirection: Axis.horizontal,
+            //     children: [
+            //       // _buildModernBankCard(
+            //       //   "JS Mastery Pro.",
+            //       //   "\$1,000.12",
+            //       //   userName.toUpperCase(),
+            //       //   "06/24",
+            //       // ),
+            //     ],
+            //   ),
+            // ),
+
+            UserTotal(
+                accounts: [
+                  BankAccount(
+                    bankName: "JS Mastery Pro",
+                    cardHolder: "Adrian Hajdin",
+                    amount: 1000.12,
+                    dateConnected: "06/24",
+                    gradientColors: [Color(0xFFB28DFF), Color(0xFFF3B0FF)],
+                  ),
+                  BankAccount(
+                    bankName: "Sky Bank",
+                    cardHolder: "John Doe",
+                    amount: 1600.00,
+                    dateConnected: "07/23",
+                    gradientColors: [Color(0xFF2193FF), Color(0xFF6DD5ED)],
+                  ),
+                ],
+              ),
+
+
+          ],
         ),
       ),
     );
   }
 
-  // keep your existing _buildBankCard and _buildBudgetItem
+  Widget _buildActionButton(String label, Color color, IconData icon, VoidCallback onTap) {
+    return GestureDetector(
+      onTap: onTap,
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
+        decoration: BoxDecoration(
+          color: color.withOpacity(0.1),
+          borderRadius: BorderRadius.circular(12),
+        ),
+        child: Row(
+          children: [
+            Icon(icon, color: color, size: 18),
+            const SizedBox(width: 8),
+            Text(label, style: TextStyle(color: color, fontWeight: FontWeight.w600)),
+          ],
+        ),
+      ),
+    );
+  }
+
+  // Widget _buildModernBankCard(String title, String amount, String holder, String expiry) {
+  //   return Container(
+  //     width: 300,
+  //     margin: const EdgeInsets.only(right: 16),
+  //     padding: const EdgeInsets.all(24),
+  //     decoration: BoxDecoration(
+  //       gradient: LinearGradient(
+  //         colors: [primaryBlue, secondaryPurple],
+  //         begin: Alignment.topLeft,
+  //         end: Alignment.bottomRight,
+  //       ),
+  //       borderRadius: BorderRadius.circular(24),
+  //       boxShadow: [
+  //         BoxShadow(
+  //           color: primaryBlue.withOpacity(0.3),
+  //           blurRadius: 20,
+  //           offset: const Offset(0, 10),
+  //         )
+  //       ],
+  //     ),
+  //     child: Column(
+  //       crossAxisAlignment: CrossAxisAlignment.start,
+  //       children: [
+  //         Row(
+  //           mainAxisAlignment: MainAxisAlignment.spaceBetween,
+  //           children: [
+  //             Text(title, style: const TextStyle(color: Colors.white70, fontSize: 14)),
+  //             const Icon(Icons.contactless, color: Colors.white54),
+  //           ],
+  //         ),
+  //         const Spacer(),
+  //         Text(amount, style: const TextStyle(color: Colors.white, fontSize: 28, fontWeight: FontWeight.bold)),
+  //         const Spacer(),
+  //         Row(
+  //           mainAxisAlignment: MainAxisAlignment.spaceBetween,
+  //           children: [
+  //             // _cardInfoLabel("CARD HOLDER", holder),
+  //             // _cardInfoLabel("EXPIRY", expiry),
+  //           ],
+  //         )
+  //       ],
+  //     ),
+  //   );
+  // }
+
+  // Widget _cardInfoLabel(String label, String value) {
+  //   return Column(
+  //     crossAxisAlignment: CrossAxisAlignment.start,
+  //     children: [
+  //       Text(label, style: const TextStyle(color: Colors.white54, fontSize: 9)),
+  //       const SizedBox(height: 4),
+  //       Text(value, style: const TextStyle(color: Colors.white, fontSize: 12, fontWeight: FontWeight.w600)),
+  //     ],
+  //   );
+  // }
 }

@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
 import 'dart:convert';
+import '../onboarding/OnboardingScreen.dart';
+import 'package:flowbank/api/api_service.dart';
 
 class NewPasswordScreen extends StatelessWidget {
   final String email;
@@ -9,19 +11,25 @@ class NewPasswordScreen extends StatelessWidget {
   NewPasswordScreen({super.key, required this.email});
 
   Future<void> resetPassword(BuildContext context) async {
-    final response = await http.post(
-      Uri.parse("http://10.0.2.2:5000/api/auth/reset-password"),
-      headers: {"Content-Type": "application/json"},
-      body: jsonEncode({
+    final response = await ApiService.post(
+      "/api/auth/reset-password",
+      {
         "email": email,
         "newPassword": newPassController.text,
-      }),
+      },
+
+      context,
     );
 
     final data = jsonDecode(response.body);
 
     if (response.statusCode == 200) {
-      Navigator.popUntil(context, (route) => route.isFirst);
+      Navigator.pushAndRemoveUntil(
+  context,
+  MaterialPageRoute(builder: (_) => const OnboardingScreen()),
+  (route) => false,
+);
+
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text("Password reset successful")),
       );

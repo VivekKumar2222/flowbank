@@ -1,4 +1,7 @@
 // utils/ledgerCalculator.js
+const Notification = require("../models/notifications");
+const  sendEmail  = require("../utils/mailer.js"); // make sure you export {sendEmail} properly
+
 
 function getCyclesPassed(from, to, cycle) {
   const diff = to - from;
@@ -61,6 +64,27 @@ async function updateLedgerAmounts(ledger) {
 
     ledger.penaltyApplied = true;
     penaltyWasApplied = true;
+
+    await Notification.create({
+    userId: ledger.memberId, // 👈 who needs to pay
+    type: "Penalty",
+    title: "Payment Overdue",
+    body: `Your payment was due on ${
+      ledger.dueDate.toISOString().split("T")[0]
+    }. A penalty has been applied.`,
+    dueDate: ledger.dueDate,
+    relatedId: ledger._id,
+  });
+
+  const html = `
+        <p>You missed an assignment,</p>
+        <p>Your payment was due on <b>${ledger.dueDate.toISOString().split("T")[0]}</b></p>
+        <p>A penalty has been applied.</p>
+        <p>Penalty applied: ${ledger.penaltyAmount} ${ledger.penaltyType === "percentage" ? '%' : ''}</p>
+        <p>New total amount: ${ledger.totalAmount.toFixed(2)}</p>
+
+      `;
+      await sendEmail(ledger.memberId, "FlowBank Alert Notification", html);
   }
 
   // 💾 SAVE if anything changed

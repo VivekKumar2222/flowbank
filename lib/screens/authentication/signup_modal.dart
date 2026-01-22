@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
 // import '../home/homescreen.dart';
 import '../authentication/otpscreen.dart';
+import 'package:flowbank/api/api_service.dart';
 
 Future<void> showSignUpBottomSheet(
   BuildContext context, {
@@ -261,16 +262,14 @@ Future<void> showSignUpBottomSheet(
                           print("Sending data: $fullName, $email, $password");
 
                           try {
-                            final response = await http.post(
-                              Uri.parse(
-                                "http://10.0.2.2:5000/api/auth/signup",
-                              ),
-                              headers: {"Content-Type": "application/json"},
-                              body: jsonEncode({
+                            final response = await ApiService.post(
+                              "/api/auth/signup",
+                             {
                                 "name": fullName,
                                 "email": email,
                                 "password": password,
-                              }),
+                              },
+                              context
                             );
 
                             print("Response status: ${response.statusCode}");

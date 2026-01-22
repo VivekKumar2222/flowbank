@@ -16,7 +16,7 @@ import 'screens/collaboration/ledger_tracking.dart';
 import 'screens/collaboration/create-assignment.dart';
 import 'screens/collaboration/ledger_Member_screen.dart';
 import 'screens/collaboration/entry_verification.dart';
-
+import 'screens/authentication/email-for-password-reset.dart';
 void main() {
   WidgetsFlutterBinding.ensureInitialized(); // 👈 this is required
   runApp(

@@ -391,6 +391,36 @@ router.post("/request-password-reset", protect ,async (req, res) => {
   }
 });
 
+router.post("/request-password-reset-tokenless", async (req, res) => {
+  try {
+    const { email } = req.body;
+    console.log("API hitting JWT")
+    const user = await User.findOne({ email });
+    if (!user) return res.status(404).json({ message: "User not found" });
+
+    // Generate OTP
+    const otp = generateOTP();
+    const expiry = Date.now() + 5 * 60 * 1000;
+
+    otpStore.set(email, { otp, expiry, action: "reset-password" });
+
+    const html = `
+      <p>Hello ${user.name},</p>
+      <p>Your OTP for resetting your FlowBank password is:</p>
+      <h2>${otp}</h2>
+      <p>This OTP expires in 5 minutes.</p>
+    `;
+
+    await sendEmail(email, "FlowBank Password Reset", html);
+
+    res.json({ message: "OTP sent to email." });
+
+  } catch (err) {
+    console.error("Reset Password OTP Error:", err);
+    res.status(500).json({ message: "Server error" });
+  }
+});
+
 
 // ============= VERIFY RESET PASSWORD OTP =============
 router.post("/verify-reset-otp", (req, res) => {

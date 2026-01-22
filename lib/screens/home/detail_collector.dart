@@ -46,6 +46,7 @@ class _DetailCollectorState extends State<DetailCollector> {
         "postalCode": postalCode,
         "country": country,
       },
+      context
     );
 
     setState(() => isLoading = false);

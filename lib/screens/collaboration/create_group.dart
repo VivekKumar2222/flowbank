@@ -73,6 +73,7 @@ class _CreateGroupPageState extends State<CreateGroupPage> {
       final response = await ApiService.post(
         "/api/collab/create-dashboard",
         body,
+        context
       );
 
       
@@ -93,6 +94,7 @@ class _CreateGroupPageState extends State<CreateGroupPage> {
               final response2 = await ApiService.post(
               "/api/collab/add-member",
               body2,
+              context
                );
 
 

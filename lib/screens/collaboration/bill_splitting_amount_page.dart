@@ -43,6 +43,7 @@ class _BillSplittingAmountPageState extends State<BillSplittingAmountPage> {
       "/api/collab/set-bill-split-total",
       {"dashboardId": widget.dashboardId,
         "totalAmount": amount,},
+        context
     );
 
     if (response.statusCode == 201) {

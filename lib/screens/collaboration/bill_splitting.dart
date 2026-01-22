@@ -55,6 +55,7 @@ class BillSplitting extends StatefulWidget {
 }
 
 class _BillSplittingState extends State<BillSplitting> {
+  bool _pageLoading = true;
   int _selectedIndex = 0;
   bool _isExpanded = false;
   String? ownerEmail;
@@ -71,12 +72,29 @@ class _BillSplittingState extends State<BillSplitting> {
   @override
   void initState() {
     super.initState();
-    _fetchBillSplitTotal();
-    _fetchDashboardCurrency(); 
-    _loadUserEmail();
-    _fetchOwnerEmail();
-    _fetchEntries();
+    _initializePage();
   }
+
+  Future<void> _initializePage() async {
+    
+  setState(() => _pageLoading = true);
+
+  await _loadUserEmail();
+  await _fetchDashboardCurrency();
+  await _fetchOwnerEmail();
+  await _fetchBillSplitTotal();
+  await _fetchEntries();
+  await _fetchMembersAndSplit();
+    
+    
+    
+if (!mounted) return;
+  setState(() => _pageLoading = false);
+    
+
+  
+}
+
   
   Map<String, double> _calculatePaidAmountsFromEntries() {
   final Map<String, double> paidMap = {};
@@ -94,6 +112,7 @@ class _BillSplittingState extends State<BillSplitting> {
   try {
     final response = await ApiService.get(
   "/api/collab/dashboard-entries?dashboardId=${widget.dashboardId}",
+  context
 );
 
 
@@ -124,9 +143,9 @@ class _BillSplittingState extends State<BillSplitting> {
     isLoadingEntries = false;
   }
 
-  if (!isLoadingTotal) {
-  await _fetchMembersAndSplit();
-}
+//   if (!isLoadingTotal) {
+//   await _fetchMembersAndSplit();
+// }
 
 }
 
@@ -135,7 +154,7 @@ class _BillSplittingState extends State<BillSplitting> {
     final prefs = await SharedPreferences.getInstance();
     setState(() {
       userEmail = prefs.getString('userEmail') ?? 'user';
-    });
+    }); 
   }
 
   /// Fetch total amount
@@ -143,6 +162,7 @@ class _BillSplittingState extends State<BillSplitting> {
     try {
       final response = await ApiService.get(
   "/api/collab/bill-split-total?dashboardId=${widget.dashboardId}",
+  context
 );
 
 
@@ -154,7 +174,7 @@ class _BillSplittingState extends State<BillSplitting> {
         });
 
         // Fetch members & calculate split
-        await _fetchMembersAndSplit();
+        // await _fetchMembersAndSplit();
       } else {
         setState(() => isLoadingTotal = false);
       }
@@ -170,6 +190,7 @@ class _BillSplittingState extends State<BillSplitting> {
     // 1️⃣ Fetch Dashboard Members
     final membersResponse = await ApiService.get(
   "/api/collab/dashboard-members-by-dashboard?dashboardId=${widget.dashboardId}",
+  context
 );
 
 
@@ -185,6 +206,7 @@ class _BillSplittingState extends State<BillSplitting> {
     final usersResponse = await ApiService.post(
   "/api/collab/users-by-emails",
   {"emails": emails},
+  context
 );
 
 
@@ -243,6 +265,7 @@ Future<void> _fetchDashboardCurrency() async {
   {
     "ids": [widget.dashboardId],
   },
+  context
 );
 
 
@@ -264,6 +287,7 @@ Future<void> _fetchDashboardCurrency() async {
     try {
       final response = await ApiService.get(
   "/api/collab/dashboard/${widget.dashboardId}",
+  context
 );
 
 
@@ -285,8 +309,42 @@ Future<void> _fetchDashboardCurrency() async {
   final Color activeColor = const Color(0xFF217BFF);
   final Color inactiveColor = const Color(0xFF667085);
 
+Widget _loadingScreen() {
+  return Scaffold(
+    backgroundColor: Colors.white,
+    body: Center(
+      child: Column(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          SizedBox(
+            width: 180,
+            child: LinearProgressIndicator(
+              minHeight: 6,
+              backgroundColor: Colors.blue.shade100,
+              valueColor: const AlwaysStoppedAnimation(Color(0xFF217BFF)),
+              borderRadius: BorderRadius.circular(12),
+            ),
+          ),
+          const SizedBox(height: 18),
+          const Text(
+            "Loading content",
+            style: TextStyle(
+              fontSize: 16,
+              fontWeight: FontWeight.w600,
+              color: Color(0xFF217BFF),
+            ),
+          ),
+        ],
+      ),
+    ),
+  );
+}
+
   @override
   Widget build(BuildContext context) {
+  //   if (_pageLoading) {
+  //   return _loadingScreen();
+  // }
     final double bottomInset = MediaQuery.of(context).viewPadding.bottom;
 
     return SafeArea(

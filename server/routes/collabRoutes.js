@@ -14,6 +14,8 @@ const { updateLedgerAmounts } = require("../utils/ledgerCalculator");
 const jwt = require("jsonwebtoken");
 const {generateAccessToken, generateRefreshToken} = require("../utils/jwt.js");
 const protect = require("../middleware/middleware.js")
+const Notification = require("../models/notifications.js")
+const  sendEmail  = require("../utils/mailer.js"); // make sure you export {sendEmail} properly
 
 
 
@@ -154,6 +156,38 @@ router.post("/invite", protect, async (req, res) => {
       toUser,
       status,
     });
+
+    const sender = await User.findOne(
+      { email: fromUser },
+      { name: 1 }
+    );
+
+    const senderName = sender?.name || fromUser;
+
+    // 3️⃣ Fetch dashboard name
+    const dashboard = await Dashboard.findById(
+      dashboardId,
+      { name: 1 }
+    );
+
+    const dashboardName = dashboard?.name || "a dashboard";
+
+    // 4️⃣ Create notification 🔔
+    await Notification.create({
+      userId: toUser, // 👈 invited user
+      type: "Invite",
+      title: "Invitation for you",
+      body: `You got an invitation from ${senderName} for ${dashboardName}`,
+      relatedId: invitation._id, // 🔥 link notification to invitation
+    });
+
+    const html = `
+        <p>You got an invitation from <b>${senderName}</b> for <b>${dashboardName}</b></p>
+        <p>Check the FlowBank application to join</p>
+        
+      `;
+      await sendEmail(toUser, "FlowBank Invitation Notification", html);
+    
     res.status(201).json({ message: "Invitation created", invitation });
   } catch (error) {
     console.error(error);
@@ -540,7 +574,7 @@ router.get("/dashboard-entries", protect, async (req, res) => {
 
 router.post("/ledger-assignment", protect, async (req, res) => {
   try {
-    const { dashboardId, memberId } = req.body;
+    const { dashboardId, memberId, totalAmount, dueDate } = req.body;
 
     if (!dashboardId || !memberId) {
       return res.status(400).json({ message: "dashboardId and memberId are required" });
@@ -562,6 +596,25 @@ router.post("/ledger-assignment", protect, async (req, res) => {
       { dashboardId, memberId, membersAssigned: true }, // update
       { upsert: true, new: true } // create if doesn't exist
     );
+
+    await Notification.create({
+      userId: memberId, // 🔥 notification receiver
+      type: "Reminder",
+      title: "Assignment Reminder",
+      body: `You have to pay ${totalAmount} before ${new Date(dueDate)
+        .toISOString()
+        .split("T")[0]}`,
+      dueDate: dueDate,
+      relatedId: assignment._id,
+    });
+
+    const html = `
+        <p>You got a new assignment,</p>
+        <p>Amount to pay: <b>${totalAmount}</b></p>
+        <p>Your payment is due on <b>${new Date(dueDate).toISOString().split("T")[0]}</b></p>
+        
+      `;
+      await sendEmail(memberId, "FlowBank Reminder Notification", html);
 
     res.status(201).json({
       message: "Assignment created and member updated successfully",
@@ -1053,6 +1106,42 @@ router.get("/shared-expenses-total", protect, async (req, res) => {
     res.status(500).json({ message: "Failed to calculate shared expenses" });
   }
 });
+
+// GET dashboard owner by entryId
+router.get("/entry-owner/:entryId", protect, async (req, res) => {
+  try {
+    const { entryId } = req.params;
+
+    // 1️⃣ Find entry
+    const entry = await DashboardEntry.findById(entryId);
+    if (!entry) {
+      return res.status(404).json({ message: "Entry not found" });
+    }
+
+    // 2️⃣ Find dashboard
+    const dashboard = await Dashboard.findById(entry.dashboardId);
+    if (!dashboard) {
+      return res.status(404).json({ message: "Dashboard not found" });
+    }
+
+    // 3️⃣ Optional: fetch owner user info
+    const owner = await User.findOne(
+      { email: dashboard.ownerId },
+      { email: 1, name: 1 }
+    );
+
+    res.status(200).json({
+      entryId,
+      dashboardId: entry.dashboardId,
+      ownerId: dashboard.ownerId,
+      ownerName: owner?.name || dashboard.ownerId,
+    });
+  } catch (error) {
+    console.error("Entry owner fetch error:", error);
+    res.status(500).json({ message: "Server error" });
+  }
+});
+
 
 
 

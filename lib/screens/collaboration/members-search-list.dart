@@ -76,7 +76,8 @@ class _MembersSearchListState extends State<MembersSearchList> {
     
 
     final response = await ApiService.get(
-      "/api/search/search?name=${widget.searchName}"
+      "/api/search/search?name=${widget.searchName}",
+      context
       );
 
     if (response.statusCode == 200) {
@@ -102,6 +103,7 @@ class _MembersSearchListState extends State<MembersSearchList> {
     final response = await ApiService.post(
       "/api/collab/invite",
       body,
+      context
     );
 
     if (response.statusCode == 201) {

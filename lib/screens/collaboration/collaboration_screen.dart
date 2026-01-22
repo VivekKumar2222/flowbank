@@ -95,6 +95,7 @@ class _CollaborationScreenState extends State<CollaborationScreen> {
     try {
       final response = await ApiService.get(
   "/api/collab/invited-dashboards?userId=$email",
+  context
 );
 
 
@@ -138,6 +139,7 @@ class _CollaborationScreenState extends State<CollaborationScreen> {
     try {
       final membersResponse = await ApiService.get(
   "/api/collab/dashboard-members?userId=$email",
+  context
 );
 
 
@@ -150,6 +152,7 @@ class _CollaborationScreenState extends State<CollaborationScreen> {
       final dashboardsResponse = await ApiService.post(
   "/api/collab/dashboards-by-ids",
   {"ids": dashboardIds},
+  context
 );
 
 
@@ -159,6 +162,7 @@ class _CollaborationScreenState extends State<CollaborationScreen> {
       final futures = dashboardsData.map((dash) async {
         final membersRes = await ApiService.get(
   "/api/collab/dashboard-members-by-dashboard?dashboardId=${dash['_id']}",
+  context
 );
 
 

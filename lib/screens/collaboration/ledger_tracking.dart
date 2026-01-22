@@ -141,7 +141,8 @@ class _LedgerTrackingState extends State<LedgerTracking> {
 Future<void> _fetchAssignedMembers() async {
   try {
     final response = await ApiService.get(
-      "/api/collab/assigned-members-summary?dashboardId=${widget.dashboardId}"
+      "/api/collab/assigned-members-summary?dashboardId=${widget.dashboardId}",
+      context
       
     );
 
@@ -173,7 +174,8 @@ Future<void> _fetchAssignedMembers() async {
 Future<void> _fetchUnassignedMembers() async {
   try {
     final response = await ApiService.get(
-      "/api/collab/unassigned-members?dashboardId=${widget.dashboardId}"
+      "/api/collab/unassigned-members?dashboardId=${widget.dashboardId}",
+     context
       
     );
 
@@ -199,7 +201,8 @@ Future<void> _fetchUnassignedMembers() async {
 Future<void> _fetchLedgerSummary() async {
   try {
     final response = await ApiService.get(
-      "/api/collab/ledger-summary?dashboardId=${widget.dashboardId}"
+      "/api/collab/ledger-summary?dashboardId=${widget.dashboardId}",
+      context
       
     );
 
@@ -224,8 +227,8 @@ Future<void> _fetchLedgerSummary() async {
   Future<void> _fetchEntries() async {
   try {
     final response = await ApiService.get(
-      "/api/collab/dashboard-entries?dashboardId=${widget.dashboardId}"
-      
+      "/api/collab/dashboard-entries?dashboardId=${widget.dashboardId}",
+      context
     );
 
     if (response.statusCode == 200) {
@@ -273,7 +276,8 @@ Future<void> _fetchLedgerSummary() async {
   Future<void> _fetchBillSplitTotal() async {
     try {
       final response = await ApiService.get(
-        "/api/collab/bill-split-total?dashboardId=${widget.dashboardId}"
+        "/api/collab/bill-split-total?dashboardId=${widget.dashboardId}",
+        context
       );
 
       if (response.statusCode == 200) {
@@ -299,7 +303,8 @@ Future<void> _fetchLedgerSummary() async {
   try {
     // 1️⃣ Fetch Dashboard Members
     final membersResponse = await ApiService.get(
-      "/api/collab/dashboard-members-by-dashboard?dashboardId=${widget.dashboardId}"
+      "/api/collab/dashboard-members-by-dashboard?dashboardId=${widget.dashboardId}",
+      context
       
     );
 
@@ -315,6 +320,7 @@ Future<void> _fetchLedgerSummary() async {
     final usersResponse = await ApiService.post(
       "/api/collab/users-by-emails",
       {"emails": emails},
+      context
     );
 
     if (usersResponse.statusCode != 200) return;
@@ -370,6 +376,7 @@ Future<void> _fetchDashboardCurrency() async {
     final response = await ApiService.post(
       "/api/collab/dashboards-by-ids",
       {"ids": [widget.dashboardId],},
+      context
     );
 
     if (response.statusCode == 200) {
@@ -389,7 +396,8 @@ Future<void> _fetchDashboardCurrency() async {
  Future<void> _fetchOwnerEmail() async {
     try {
       final response = await ApiService.get(
-        "/api/collab/dashboard/${widget.dashboardId}"
+        "/api/collab/dashboard/${widget.dashboardId}",
+        context
       );
 
       if (response.statusCode == 200) {

@@ -1,45 +1,55 @@
 import 'dart:convert';
 import 'package:flutter/material.dart';
-import 'package:http/http.dart' as http;
-import '../home/newPasswordscreen.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import 'package:flowbank/api/api_service.dart';
+import '../home/resetOTPscreen.dart';
 
-class ResetOtpScreen extends StatefulWidget {
-  final String email;
-
-  const ResetOtpScreen({required this.email, super.key});
+class ResetPasswordEmailScreen extends StatefulWidget {
+  const ResetPasswordEmailScreen({super.key});
 
   @override
-  _ResetOtpScreenState createState() => _ResetOtpScreenState();
+  State<ResetPasswordEmailScreen> createState() =>
+      _ResetPasswordEmailScreenState();
 }
 
-class _ResetOtpScreenState extends State<ResetOtpScreen> {
-  final TextEditingController otpController = TextEditingController();
+class _ResetPasswordEmailScreenState extends State<ResetPasswordEmailScreen> {
+  final TextEditingController emailController = TextEditingController();
   bool isLoading = false;
 
-  Future<void> verifyResetOTP() async {
+  bool get isEmailValid =>
+      emailController.text.isNotEmpty &&
+      emailController.text.contains('@') &&
+      emailController.text.contains('.');
+
+  // 🔹 SEND RESET OTP FUNCTION
+  Future<void> sendResetOTP(BuildContext context) async {
     setState(() => isLoading = true);
 
+    final prefs = await SharedPreferences.getInstance();
+    final email = emailController.text.trim();
+
+    await prefs.setString("userEmail", email);
+
     final response = await ApiService.post(
-      "/api/auth/verify-reset-otp",
-      {"email": widget.email, "otp": otpController.text},
-      context
+      "/api/auth/request-password-reset-tokenless",
+      {"email": email},
+      context,
     );
 
     setState(() => isLoading = false);
-
-    final data = jsonDecode(response.body);
 
     if (response.statusCode == 200) {
       Navigator.push(
         context,
         MaterialPageRoute(
-          builder: (_) => NewPasswordScreen(email: widget.email),
+          builder: (_) => ResetOtpScreen(email: email),
         ),
       );
     } else {
-      ScaffoldMessenger.of(context)
-          .showSnackBar(SnackBar(content: Text(data["message"])));
+      final data = jsonDecode(response.body);
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text(data["message"] ?? "Something went wrong")),
+      );
     }
   }
 
@@ -61,11 +71,11 @@ class _ResetOtpScreenState extends State<ResetOtpScreen> {
         child: SafeArea(
           child: Center(
             child: Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 28.0),
+              padding: const EdgeInsets.symmetric(horizontal: 28),
               child: Column(
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [
-                  // Icon (same as normal OTP screen)
+                  // Icon
                   Container(
                     width: 64,
                     height: 64,
@@ -74,49 +84,36 @@ class _ResetOtpScreenState extends State<ResetOtpScreen> {
                       borderRadius: BorderRadius.circular(16),
                     ),
                     child: Icon(
-                      Icons.lock_reset,
+                      Icons.lock_reset_rounded,
                       color: primaryColor,
                       size: 36,
                     ),
                   ),
-
                   const SizedBox(height: 24),
 
-                  // Heading
                   const Text(
-                    "Reset Password OTP",
+                    "Reset Password",
                     style: TextStyle(
                       fontSize: 28,
                       fontWeight: FontWeight.w600,
-                      color: Colors.black,
-                      letterSpacing: -0.5,
                     ),
                   ),
-
-                  const SizedBox(height: 8),
-
-                  Text(
-                    "We’ve sent a 6-digit OTP to",
-                    style: TextStyle(fontSize: 16, color: Colors.grey.shade700),
-                  ),
+                  const SizedBox(height: 10),
 
                   Text(
-                    widget.email,
+                    "Enter the correct email address\nfor which you want to reset your password",
+                    textAlign: TextAlign.center,
                     style: TextStyle(
                       fontSize: 15,
-                      color: primaryColor,
-                      fontWeight: FontWeight.w500,
+                      color: Colors.grey.shade700,
                     ),
                   ),
-
                   const SizedBox(height: 32),
 
-                  // OTP Input UI
+                  // Email Input
                   Container(
-                    padding: const EdgeInsets.symmetric(
-                      horizontal: 16,
-                      vertical: 4,
-                    ),
+                    padding:
+                        const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
                     decoration: BoxDecoration(
                       color: Colors.white,
                       borderRadius: BorderRadius.circular(12),
@@ -129,36 +126,31 @@ class _ResetOtpScreenState extends State<ResetOtpScreen> {
                       ],
                     ),
                     child: TextField(
-                      controller: otpController,
-                      keyboardType: TextInputType.number,
-                      maxLength: 6,
-                      textAlign: TextAlign.center,
-                      decoration: const InputDecoration(
-                        counterText: "",
+                      controller: emailController,
+                      keyboardType: TextInputType.emailAddress,
+                      onChanged: (_) => setState(() {}), // ⭐ FIX
+                      decoration: InputDecoration(
                         border: InputBorder.none,
-                        hintText: "Enter OTP",
-                        hintStyle: TextStyle(color: Colors.grey, fontSize: 16),
-                      ),
-                      style: const TextStyle(
-                        fontSize: 20,
-                        letterSpacing: 4,
-                        fontWeight: FontWeight.w500,
+                        hintText: "Email address",
+                        prefixIcon: Icon(
+                          Icons.email_outlined,
+                          color: primaryColor,
+                        ),
                       ),
                     ),
                   ),
-
                   const SizedBox(height: 28),
 
-                  // Verify Button (same UI)
+                  // Continue Button
                   SizedBox(
                     width: double.infinity,
                     height: 50,
                     child: ElevatedButton(
-                      onPressed: isLoading ? null : verifyResetOTP,
+                      onPressed: (!isEmailValid || isLoading)
+                          ? null
+                          : () => sendResetOTP(context),
                       style: ElevatedButton.styleFrom(
                         backgroundColor: accentColor,
-                        foregroundColor: Colors.white,
-                        elevation: 0,
                         shape: RoundedRectangleBorder(
                           borderRadius: BorderRadius.circular(12),
                         ),
@@ -169,24 +161,13 @@ class _ResetOtpScreenState extends State<ResetOtpScreen> {
                               strokeWidth: 2,
                             )
                           : const Text(
-                              "Verify OTP",
+                              "Continue",
                               style: TextStyle(
                                 fontSize: 16,
                                 fontWeight: FontWeight.w600,
-                                letterSpacing: 0.5,
+                                color: Colors.white
                               ),
                             ),
-                    ),
-                  ),
-
-                  const SizedBox(height: 20),
-
-                  // Note
-                  Text(
-                    "Didn’t receive the OTP? Try again after 60s.",
-                    style: TextStyle(
-                      color: Colors.grey.shade600,
-                      fontSize: 13,
                     ),
                   ),
                 ],
