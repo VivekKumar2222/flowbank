@@ -9,6 +9,7 @@ import '../home/user-total-balance-view.dart';
 import '../home/bank_transactions.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import '../collaboration/collaboration_screen.dart';
+import '../notification/notification-page.dart';
 
 class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
@@ -19,6 +20,7 @@ class HomeScreen extends StatefulWidget {
 
 class _HomeScreenState extends State<HomeScreen> {
   String? userName;
+  String? userInitials;
     @override
   void initState() {
     super.initState();
@@ -29,6 +31,7 @@ class _HomeScreenState extends State<HomeScreen> {
     final prefs = await SharedPreferences.getInstance();
     setState(() {
       userName = prefs.getString('userName') ?? 'User';
+      userInitials = prefs.getString('userInitials') ?? 'U';
     });
   }
   int _selectedIndex = 0;
@@ -117,13 +120,24 @@ class _HomeScreenState extends State<HomeScreen> {
       ),
     );
   },
-                                child: const CircleAvatar(
-                                  radius: 28,
-                                  
-                                  backgroundImage: NetworkImage(
-                                    "https://i.pravatar.cc/150?img=3",
+                                child:  Container(
+                                  width: 56,
+                                  height: 56,
+                                  decoration: BoxDecoration(
+                                    color: Color(0xFFF5FAFF),
+                                    shape: BoxShape.circle,
                                   ),
-                                ),
+                                  child: Center(
+                                    child: Text(
+                                      userInitials ?? 'U',
+                                      style: TextStyle(
+                                        color: Color(0xFF0179FE), 
+                                        fontSize: 22,
+                                        fontWeight: FontWeight.w600,
+                                      ),
+                                    ),
+                                  ),
+                                )
                               ),
                             ),
                           ],
@@ -133,7 +147,7 @@ class _HomeScreenState extends State<HomeScreen> {
                   ),
                 ),
               ),
-            ),
+            )
           ),
         ),
 
@@ -345,7 +359,15 @@ class _HomeScreenState extends State<HomeScreen> {
                           builder: (context) => const CollaborationScreen(),
                         ),
                       );
-                    } else {
+                    } 
+                    else if (index == 2) {
+    // Navigate to Notifications page
+    Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (context) => const NotificationPage(),
+      ),);} 
+      else {
                       setState(() {
                         _selectedIndex = index;
                       });
@@ -362,8 +384,8 @@ class _HomeScreenState extends State<HomeScreen> {
                       label: "Groups",
                     ),
                     BottomNavigationBarItem(
-                      icon: Icon(Icons.insert_chart_rounded),
-                      label: "Report",
+                      icon: Icon(Icons.notification_add),
+                      label: "Notifications",
                     ),
                   ],
                 ),

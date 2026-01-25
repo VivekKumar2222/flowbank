@@ -30,6 +30,18 @@ class _OtpScreenState extends State<OtpScreen> {
     startTimer(); // start countdown as soon as screen opens
   }
 
+  String getInitials(String name) {
+  if (name.trim().isEmpty) return "";
+
+  final parts = name.trim().split(RegExp(r'\s+'));
+
+  if (parts.length == 1) {
+    return parts[0][0].toUpperCase();
+  }
+
+  return (parts[0][0] + parts[1][0]).toUpperCase();
+}
+
   void startTimer() {
     canResend = false;
     remainingSeconds = 60;
@@ -75,10 +87,14 @@ class _OtpScreenState extends State<OtpScreen> {
         print("after prefs");
         print(data['accessToken']);
         
-        await prefs.setString('userId', user['_id']);
-        await prefs.setString('userName', user['name'] ?? '');
-        await prefs.setString('userEmail', user['email'] ?? '');
-        await prefs.setString('accessToken', data['accessToken'] ?? '');
+        final String userName = data['user']['name'] ?? '';
+final String initials = getInitials(userName);
+
+await prefs.setString('userId', data['user']['_id']);
+await prefs.setString('userName', userName);
+await prefs.setString('userInitials', initials);
+await prefs.setString('userEmail', data['user']['email'] ?? '');
+await prefs.setString('accessToken', data['accessToken'] ?? '');
       }
 
       Navigator.pushReplacement(

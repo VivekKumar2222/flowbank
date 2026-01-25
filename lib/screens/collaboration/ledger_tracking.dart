@@ -10,6 +10,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 import '../collaboration/unassigned-members-view.dart';
 import '../collaboration/inPage_add_members_page.dart';
 import 'package:flowbank/api/api_service.dart';
+import '../notification/exit_request_page.dart';
 
 /// --------------------
 /// Member Model
@@ -99,6 +100,9 @@ class _LedgerTrackingState extends State<LedgerTracking> {
   List<EntryItem> entries = [];
   bool isLoadingEntries = true;
 
+  bool hasExitRequests = false;
+  bool isCheckingExitRequests = true;
+
       final List<Map<String, dynamic>> membersData = [
       {
         'name': 'Ali',
@@ -121,11 +125,14 @@ class _LedgerTrackingState extends State<LedgerTracking> {
     _fetchDashboardCurrency(); 
     _loadUserEmail();
     _fetchOwnerEmail();
+    
     _fetchEntries();
     _fetchUnassignedMembers();
     _fetchLedgerSummary();
     _fetchAssignedMembers();
   }
+
+  
   
   Map<String, double> _calculatePaidAmountsFromEntries() {
   final Map<String, double> paidMap = {};
@@ -405,6 +412,7 @@ Future<void> _fetchDashboardCurrency() async {
         setState(() {
           ownerEmail = data['ownerId']; // 🔥 ownerId comes from your MongoDB schema
         });
+        _checkExitRequests();
       } else {
         debugPrint("Failed to fetch owner: ${response.body}");
       }
@@ -412,6 +420,36 @@ Future<void> _fetchDashboardCurrency() async {
       debugPrint("Error fetching owner email: $e");
     }
   }
+
+  Future<void> _checkExitRequests() async {
+  if (ownerEmail == null || userEmail != ownerEmail) {
+    setState(() {
+      hasExitRequests = false;
+      isCheckingExitRequests = false;
+    });
+    return;
+  }
+
+  try {
+    final response = await ApiService.get(
+      "/api/collab/exit-requests-by-dashboard?dashboardId=${widget.dashboardId}",
+      context,
+    );
+
+    if (response.statusCode == 200) {
+      final decoded = jsonDecode(response.body);
+      setState(() {
+        hasExitRequests = decoded["hasExitRequests"] == true;
+        isCheckingExitRequests = false;
+      });
+    } else {
+      isCheckingExitRequests = false;
+    }
+  } catch (e) {
+    debugPrint("Failed to check exit requests: $e");
+    isCheckingExitRequests = false;
+  }
+}
 
 
 
@@ -664,6 +702,46 @@ floatingActionButtonLocation: FloatingActionButtonLocation.endDocked,
                     mainAxisAlignment: MainAxisAlignment.center,
                     crossAxisAlignment: CrossAxisAlignment.center,
                     children: [
+                      if (!isCheckingExitRequests && hasExitRequests &&
+    ownerEmail == userEmail)
+  Column(
+    children: [
+      
+      InkWell(
+  borderRadius: BorderRadius.circular(26),
+  onTap: () {
+    Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (context) => ExitRequestPage(dashboardId: widget.dashboardId),
+      ),
+    );
+  },
+  child: Container(
+    decoration: BoxDecoration(
+      color: Colors.white,
+      borderRadius: BorderRadius.circular(26),
+    ),
+    child: Padding(
+      padding: const EdgeInsets.symmetric(
+        horizontal: 8.0,
+        vertical: 2.0,
+      ),
+      child: Text(
+        "View Exit Requests",
+        style: TextStyle(
+          color: Color(0xFF4893FF),
+          fontSize: 12,
+          fontWeight: FontWeight.w700,
+        ),
+      ),
+    ),
+  ),
+),
+
+      const SizedBox(height: 10),
+    ],
+  ),
                       Text(
                         "Total Amount to Lent",
                         style: TextStyle(
@@ -777,8 +855,8 @@ floatingActionButtonLocation: FloatingActionButtonLocation.endDocked,
                     label: "Groups",
                   ),
                   BottomNavigationBarItem(
-                    icon: Icon(Icons.insert_chart_rounded),
-                    label: "Report",
+                    icon: Icon(Icons.notification_add),
+                    label: "Notifications",
                   ),
                 ],
               ),

@@ -7,6 +7,19 @@ import '../authentication/otpscreen_login.dart';
 import '../authentication/email-for-password-reset.dart';
 import  'package:flowbank/api/api_service.dart';
 
+String getInitials(String name) {
+  if (name.trim().isEmpty) return "";
+
+  final parts = name.trim().split(RegExp(r'\s+'));
+
+  if (parts.length == 1) {
+    return parts[0][0].toUpperCase();
+  }
+
+  return (parts[0][0] + parts[1][0]).toUpperCase();
+}
+
+
 Future<void> showLoginBottomSheet(
   BuildContext context, {
   required Function(String) onMessage,

@@ -1,12 +1,8 @@
 import 'dart:ui';
 import 'dart:convert';
-import 'dart:typed_data';
 import '../collaboration/add_Entries.dart';
 import 'package:flutter/material.dart';
-import 'package:http/http.dart' as http;
 import 'package:shared_preferences/shared_preferences.dart';
-import 'package:encrypt/encrypt.dart' as encrypt;
-import '../collaboration/add_Entries.dart';
 import 'package:flowbank/api/api_service.dart';
 
 /* ============================================================
@@ -40,7 +36,7 @@ class LedgerAssignment {
   final String? interestCycle;
   final double penaltyAmount;
   final String? penaltyType;
-  final String? verificationSource;
+  final String? verificationSource; // ✅ URL now
 
   LedgerAssignment({
     required this.id,
@@ -68,35 +64,8 @@ class LedgerAssignment {
       interestCycle: json["interestCycle"],
       penaltyAmount: (json["penaltyAmount"] as num).toDouble(),
       penaltyType: json["penaltyType"],
-      verificationSource: json["verificationSource"],
+      verificationSource: json["verificationSource"], // URL
     );
-  }
-}
-
-/* ============================================================
-   IMAGE DECRYPTION
-============================================================ */
-
-Uint8List decryptImage(String encryptedBase64) {
-  try {
-    final key = encrypt.Key.fromUtf8(
-      '0123456789abcdef0123456789abcdef',
-    );
-    final iv = encrypt.IV.fromLength(16);
-
-    final encrypter = encrypt.Encrypter(
-      encrypt.AES(key, mode: encrypt.AESMode.cbc),
-    );
-
-    final encryptedBytes = base64Decode(encryptedBase64);
-    final decrypted = encrypter.decryptBytes(
-      encrypt.Encrypted(encryptedBytes),
-      iv: iv,
-    );
-
-    return Uint8List.fromList(decrypted);
-  } catch (_) {
-    return Uint8List(0);
   }
 }
 
@@ -135,14 +104,11 @@ class _LedgerMemberScreenState extends State<LedgerMemberScreen> {
   }
 
   Future<void> fetchLedger() async {
-  
-
     final res = await ApiService.get(
-  "/api/collab/member-ledger"
-  "?dashboardId=${widget.dashboardId}&memberId=${widget.memberId}",
-  context
-);
-
+      "/api/collab/member-ledger"
+      "?dashboardId=${widget.dashboardId}&memberId=${widget.memberId}",
+      context,
+    );
 
     final data = jsonDecode(res.body);
 
@@ -186,21 +152,23 @@ class _LedgerMemberScreenState extends State<LedgerMemberScreen> {
     return Scaffold(
       backgroundColor: Colors.white,
       body: SingleChildScrollView(
-          child: Column(
-            children: [
-              _Header(member: member!),
-              const SizedBox(height: 16),
-              _Assignments(assignments: assignments,dashboardId: widget.dashboardId,),
-              const SizedBox(height: 120),
-            ],
-          ),
+        child: Column(
+          children: [
+            _Header(member: member!),
+            const SizedBox(height: 16),
+            _Assignments(
+              assignments: assignments,
+              dashboardId: widget.dashboardId,
+            ),
+            const SizedBox(height: 120),
+          ],
         ),
-      
+      ),
 
       floatingActionButton: FloatingActionButton(
         backgroundColor: activeColor,
-        onPressed: (){},
-        child: const Icon(Icons.add, size: 28, color: Colors.white,),
+        onPressed: () {},
+        child: const Icon(Icons.add, size: 28, color: Colors.white),
       ),
 
       bottomNavigationBar: ClipRRect(
@@ -257,9 +225,8 @@ class _Header extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final topPadding = MediaQuery.of(context).padding.top;
-final double progress =
-    member.total == 0 ? 0.0 : (member.paid / member.total).clamp(0.0, 1.0);
-
+    final double progress =
+        member.total == 0 ? 0.0 : (member.paid / member.total).clamp(0.0, 1.0);
 
     return Container(
       width: double.infinity,
@@ -308,7 +275,7 @@ final double progress =
             style: TextStyle(color: Colors.white70, fontSize: 13),
           ),
           const SizedBox(height: 6),
-          Text( // for GPT: here in the member.paid we will show every approved entry by the member for this particular dashboard
+          Text(
             "${member.paid.toInt()}/${member.total.toInt()}",
             style: const TextStyle(
               fontSize: 36,
@@ -323,8 +290,7 @@ final double progress =
               value: progress,
               minHeight: 6,
               backgroundColor: Colors.white.withOpacity(0.3),
-              valueColor:
-                  const AlwaysStoppedAnimation(Colors.white),
+              valueColor: const AlwaysStoppedAnimation(Colors.white),
             ),
           ),
         ],
@@ -339,9 +305,12 @@ final double progress =
 
 class _Assignments extends StatelessWidget {
   final List<LedgerAssignment> assignments;
-    final String dashboardId;
+  final String dashboardId;
 
-  const _Assignments({required this.assignments, required this.dashboardId});
+  const _Assignments({
+    required this.assignments,
+    required this.dashboardId,
+  });
 
   @override
   Widget build(BuildContext context) {
@@ -356,131 +325,131 @@ class _Assignments extends StatelessWidget {
           ),
           const SizedBox(height: 12),
           ...assignments.map(
-  (a) => _AssignmentCard(
-    assignment: a,
-    dashboardId: dashboardId,
-  ),
-),
-
+            (a) => _AssignmentCard(
+              assignment: a,
+              dashboardId: dashboardId,
+            ),
+          ),
         ],
       ),
     );
   }
 }
 
-class _AssignmentCard extends StatelessWidget { // for GPT: this will show the paid amount for each assignment. So from entry we will fetch all the approved entries for this particular assignment and show it here as total
+class _AssignmentCard extends StatelessWidget {
   final LedgerAssignment assignment;
   final String dashboardId;
 
-const _AssignmentCard({
-  required this.assignment,
-  required this.dashboardId,
-});
-
+  const _AssignmentCard({
+    required this.assignment,
+    required this.dashboardId,
+  });
 
   @override
   Widget build(BuildContext context) {
     return InkWell(
-  borderRadius: BorderRadius.circular(20),
-  onTap: () {
-    Navigator.push(
-      context,
-      MaterialPageRoute(
-        builder: (_) => AddEntriesPage(
-          dashboardId: dashboardId,
-          assignmentId: assignment.id,
-        ),
-      ),
-    );
-  },
-    child: Container(
-      margin: const EdgeInsets.only(bottom: 16),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.stretch,
-        children: [
-          Container(
-            padding: const EdgeInsets.all(16),
-            decoration: BoxDecoration(
-              color: const Color(0xFFF5FAFF),
-              borderRadius: BorderRadius.circular(20),
-              border: Border.all(color: const Color(0xFFD7E8FF)),
-            ),
-            child: Row(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        assignment.title,
-                        style: const TextStyle(
-                          fontSize: 18,
-                          fontWeight: FontWeight.w600,
-                          color: Color(0xFF2F80ED),
-                        ),
-                      ),
-                      const SizedBox(height: 4),
-                      Text(
-                        assignment.description,
-                        style: const TextStyle(
-                          fontSize: 14,
-                          color: Color(0xFF4490FF),
-                        ),
-                      ),
-                      const SizedBox(height: 12),
-                      Text(
-                        "Due: ${assignment.dueDate.day}/${assignment.dueDate.month}/${assignment.dueDate.year}\n"
-                        "${assignment.interestRate}% Interest\n"
-                        "${assignment.penaltyAmount}% Penalty",
-                        style: const TextStyle(
-                          fontSize: 14,
-                          height: 1.5,
-                          color: Color(0xFF4490FF),
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-                RichText(
-                  text: TextSpan(
-                    children: [
-                      TextSpan(
-                        text:
-                            "\$${assignment.paidAmount.toStringAsFixed(1)}",
-                        style: const TextStyle(
-                          fontSize: 18,
-                          fontWeight: FontWeight.w600,
-                          color: Color(0xFF2F80ED),
-                        ),
-                      ),
-                      TextSpan(
-                        text: "/${assignment.totalAmount.toInt()}",
-                        style: const TextStyle(
-                          fontSize: 18,
-                          fontWeight: FontWeight.w600,
-                          color: Color(0xFF181818),
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-              ],
+      borderRadius: BorderRadius.circular(20),
+      onTap: () {
+        Navigator.push(
+          context,
+          MaterialPageRoute(
+            builder: (_) => AddEntriesPage(
+              dashboardId: dashboardId,
+              assignmentId: assignment.id,
             ),
           ),
-          const SizedBox(height: 10),
-          if (assignment.verificationSource != null &&
-              assignment.verificationSource!.isNotEmpty)
-            ClipRRect(
-              borderRadius: BorderRadius.circular(16),
-              child: Image.memory(
-                decryptImage(assignment.verificationSource!),
-                fit: BoxFit.cover,
+        );
+      },
+      child: Container(
+        margin: const EdgeInsets.only(bottom: 16),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            Container(
+              padding: const EdgeInsets.all(16),
+              decoration: BoxDecoration(
+                color: const Color(0xFFF5FAFF),
+                borderRadius: BorderRadius.circular(20),
+                border: Border.all(color: const Color(0xFFD7E8FF)),
+              ),
+              child: Row(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          assignment.title,
+                          style: const TextStyle(
+                            fontSize: 18,
+                            fontWeight: FontWeight.w600,
+                            color: Color(0xFF2F80ED),
+                          ),
+                        ),
+                        const SizedBox(height: 4),
+                        Text(
+                          assignment.description,
+                          style: const TextStyle(
+                            fontSize: 14,
+                            color: Color(0xFF4490FF),
+                          ),
+                        ),
+                        const SizedBox(height: 12),
+                        Text(
+                          "Due: ${assignment.dueDate.day}/${assignment.dueDate.month}/${assignment.dueDate.year}\n"
+                          "${assignment.interestRate}% Interest\n"
+                          "${assignment.penaltyAmount}% Penalty",
+                          style: const TextStyle(
+                            fontSize: 14,
+                            height: 1.5,
+                            color: Color(0xFF4490FF),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                  RichText(
+                    text: TextSpan(
+                      children: [
+                        TextSpan(
+                          text:
+                              "\$${assignment.paidAmount.toStringAsFixed(1)}",
+                          style: const TextStyle(
+                            fontSize: 18,
+                            fontWeight: FontWeight.w600,
+                            color: Color(0xFF2F80ED),
+                          ),
+                        ),
+                        TextSpan(
+                          text: "/${assignment.totalAmount.toInt()}",
+                          style: const TextStyle(
+                            fontSize: 18,
+                            fontWeight: FontWeight.w600,
+                            color: Color(0xFF181818),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ],
               ),
             ),
-        ],
+            const SizedBox(height: 10),
+
+            /// ✅ Image now loaded directly from URL
+            if (assignment.verificationSource != null &&
+                assignment.verificationSource!.isNotEmpty)
+              ClipRRect(
+                borderRadius: BorderRadius.circular(16),
+                child: Image.network(
+                  assignment.verificationSource!,
+                  fit: BoxFit.cover,
+                ),
+              ),
+          ],
+        ),
       ),
-    ),
     );
   }
 }

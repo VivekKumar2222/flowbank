@@ -8,6 +8,10 @@ import 'package:http/http.dart' as http;
 import '../collaboration/ledger_Member_screen.dart';
 import '../collaboration/shared_Expenses.dart';
 import 'package:flowbank/api/api_service.dart';
+import 'package:flutter_slidable/flutter_slidable.dart';
+import '../collaboration/delete_Group.dart';
+import '../collaboration/exit_Group.dart';
+
 
 /// ─────────────────────────────────────────
 /// REQUEST DATA MODEL
@@ -163,7 +167,43 @@ Future<void> _loadOwnerId() async {
 
   @override
   Widget build(BuildContext context) {
-    return InkWell(
+    final isOwner = userEmail != null && userEmail == ownerId;
+
+    return Slidable(
+  key: ValueKey(widget.dashboardID),
+  endActionPane: ActionPane(
+    motion: const DrawerMotion(),
+    extentRatio: 0.25,
+    children: [
+      SlidableAction(
+        padding: EdgeInsets.all(8),
+        onPressed: isOwner ? (BuildContext context) {
+        Navigator.push(
+          context,
+          MaterialPageRoute(
+            builder: (_) => GroupDeleteScreen(dashboardId: widget.dashboardID),
+          ),
+        );
+      } : (BuildContext context) {
+        Navigator.push(
+          context,
+          MaterialPageRoute(
+            builder: (_) => GroupExitScreen(
+              dashboardId: widget.dashboardID,
+              ownerId: ownerId ?? '',
+            ),
+          ),
+        );
+      },
+        backgroundColor: isOwner ? Colors.red : const Color.fromARGB(255, 99, 99, 99),
+        foregroundColor: Colors.white,
+        icon: isOwner ? Icons.delete_outline : Icons.exit_to_app,
+        label: isOwner ? 'Delete' : 'Exit',
+        borderRadius: BorderRadius.circular(20),
+      ),
+    ],
+  ),
+    child: InkWell(
       borderRadius: BorderRadius.circular(20),
       onTap: () {
         print("🔍 USER EMAIL: $userEmail");
@@ -308,6 +348,7 @@ print("🔍 EQUAL? ${userEmail == ownerId}");
           ],
         ),
       ),
+    )
     );
   }
 

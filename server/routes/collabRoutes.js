@@ -16,6 +16,8 @@ const {generateAccessToken, generateRefreshToken} = require("../utils/jwt.js");
 const protect = require("../middleware/middleware.js")
 const Notification = require("../models/notifications.js")
 const  sendEmail  = require("../utils/mailer.js"); // make sure you export {sendEmail} properly
+const { encrypt, decrypt } = require("../utils/mediaCrypto");
+const ExitRequest = require("../models/collab_ExitRequest");
 
 
 
@@ -482,24 +484,20 @@ router.post("/users-by-emails", protect, async (req, res) => {
 
 router.post("/dashboard-entry", protect, async (req, res) => {
   try {
-    const {
-      dashboardId,
-      userId,
-      amount,
-      verificationImage,
-      assignmentId,
-    } = req.body;
+    const { dashboardId, userId, amount, verificationImage, assignmentId } = req.body;
 
     if (!dashboardId || !userId || !amount) {
       return res.status(400).json({ message: "Missing required fields" });
     }
 
+    const encryptedImage = verificationImage ? encrypt(verificationImage) : null;
+
     const entry = new DashboardEntry({
       dashboardId,
       userId,
       amount,
-      verificationImage, // 🔐 encrypted string
-       assignmentId: assignmentId || null,
+      verificationImage: encryptedImage, // store encrypted
+      assignmentId: assignmentId || null,
       status: "pending",
     });
 
@@ -958,42 +956,43 @@ router.get("/dashboard-entry/:entryId", protect, async (req, res) => {
       return res.status(404).json({ message: "Entry not found" });
     }
 
-    res.status(200).json(entry);
+    // Decrypt verification image before sending
+    const decryptedImage = entry.verificationImage
+      ? decrypt(entry.verificationImage)
+      : null;
+
+    res.status(200).json({
+      ...entry.toObject(),
+      verificationImage: decryptedImage, // send decrypted image
+    });
   } catch (error) {
     console.error(error);
     res.status(500).json({ message: "Server error" });
   }
 });
 
+
 router.post("/verify-entry-ocr", protect, async (req, res) => {
   try {
     const { entryId } = req.body;
-
-    if (!entryId) {
-      return res.status(400).json({ message: "entryId is required" });
-    }
+    if (!entryId) return res.status(400).json({ message: "entryId is required" });
 
     const entry = await DashboardEntry.findById(entryId);
-    if (!entry) {
-      return res.status(404).json({ message: "Entry not found" });
-    }
+    if (!entry) return res.status(404).json({ message: "Entry not found" });
 
     const senderUser = await User.findOne({ email: entry.userId }, { name: 1 });
     const senderName = senderUser?.name || entry.userId;
 
     const dashboard = await Dashboard.findById(entry.dashboardId);
-    if (!dashboard) {
-      return res.status(404).json({ message: "Dashboard not found" });
-    }
+    if (!dashboard) return res.status(404).json({ message: "Dashboard not found" });
 
     const receiverUser = await User.findOne({ email: dashboard.ownerId }, { name: 1 });
     const receiverName = receiverUser?.name || dashboard.ownerId;
 
     const amountNumber = Number(entry.amount || 0);
-    const imageUrl = entry.verificationImage;
+    const imageUrl = entry.verificationImage ? decrypt(entry.verificationImage) : null; // decrypt here
     const dateStr = entry.createdAt ? entry.createdAt.toISOString().split("T")[0] : null;
 
-    // ❌ Validate before OCR
     if (!imageUrl || !dateStr) {
       return res.status(400).json({ message: "Missing image or date for OCR" });
     }
@@ -1011,10 +1010,7 @@ router.post("/verify-entry-ocr", protect, async (req, res) => {
       ocrData = ocrResponse.data;
     } catch (ocrError) {
       console.error("OCR server error:", ocrError.message);
-      return res.status(500).json({
-        message: "OCR server failed",
-        error: ocrError.message,
-      });
+      return res.status(500).json({ message: "OCR server failed", error: ocrError.message });
     }
 
     entry.ocrVerification = ocrData;
@@ -1031,6 +1027,7 @@ router.post("/verify-entry-ocr", protect, async (req, res) => {
     res.status(500).json({ message: "Server error", error: error.message });
   }
 });
+
 
 // ─── Update Entry Status (Verify / Reject) ─────────────────
 router.post("/update-entry-status", protect, async (req, res) => {
@@ -1138,6 +1135,309 @@ router.get("/entry-owner/:entryId", protect, async (req, res) => {
     });
   } catch (error) {
     console.error("Entry owner fetch error:", error);
+    res.status(500).json({ message: "Server error" });
+  }
+});
+
+const generateOTP = () => Math.floor(1000 + Math.random() * 9000).toString();
+const otpStore = new Map();
+
+router.post("/delete-group-otp", async (req, res) => {
+  try {
+    const { email } = req.body; // get email and name from request body
+    if (!email) {
+      return res.status(400).json({ message: "Email is required" });
+    }
+
+    // Generate OTP
+    const otp = generateOTP();
+    const expiry = Date.now() + 5 * 60 * 1000; // 5 minutes
+
+    // Store OTP temporarily in memory
+    otpStore.set(email, {
+      otp,
+      expiry, // ideally, hash OTP before storing for security
+    });
+
+    // Prepare email HTML
+    const html = `
+      <p>Hello,</p>
+      <p>Your OTP for deleting a group is: <b>${otp}</b></p>
+      <p>This code will expire in 5 minutes.</p>
+    `;
+
+    // Send email
+    await sendEmail(email, "FlowBank Delete Group OTP", html);
+
+    res.status(200).json({ message: "OTP sent to email. Please verify to delete the group." });
+  } catch (err) {
+    console.error("Delete group OTP error:", err);
+    res.status(500).json({ message: "Server error", error: err.message });
+  }
+});
+
+router.post("/verify-delete-otp", protect, async (req, res) => {
+  try {
+    const { email, otp, dashboardId } = req.body;
+    if (!email || !otp || !dashboardId) {
+      return res.status(400).json({ message: "Email, OTP, and dashboardId are required" });
+    }
+
+    // Check OTP exists
+    const record = otpStore.get(email);
+    if (!record) {
+      return res.status(400).json({ message: "No OTP found. Please request a new one." });
+    }
+
+    // Check OTP expiry
+    if (Date.now() > record.expiry) {
+      otpStore.delete(email);
+      return res.status(400).json({ message: "OTP expired. Please request a new one." });
+    }
+
+    // Verify OTP
+    if (record.otp !== otp) {
+      return res.status(400).json({ message: "Invalid OTP" });
+    }
+
+    // OTP verified → delete OTP from store
+    otpStore.delete(email);
+
+    // Proceed to delete dashboard + related data
+    const userId = req.user.email; // assuming email is stored in token
+    const dashboard = await Dashboard.findById(dashboardId);
+    if (!dashboard) return res.status(404).json({ message: "Dashboard not found" });
+    if (dashboard.ownerId !== userId) return res.status(403).json({ message: "Not authorized" });
+
+    await Promise.all([
+      DashboardEntry.deleteMany({ dashboardId }),
+      Invitation.deleteMany({ dashboardId }),
+      LedgerAssignment.deleteMany({ dashboardId }),
+      DashboardMember.deleteMany({ dashboardId }),
+      DashboardBillSplit.deleteMany({ dashboardId }),
+      AssignedMembers.deleteMany({ dashboardId }),
+      Notification.deleteMany({ dashboardId }),
+    ]);
+
+    await Dashboard.findByIdAndDelete(dashboardId);
+
+    res.status(200).json({ success: true, message: "Group and all related data deleted successfully" });
+
+  } catch (err) {
+    console.error("Verify Delete OTP error:", err);
+    res.status(500).json({ message: "Server error", error: err.message });
+  }
+});
+
+router.post("/exit-group-request", protect, async (req, res) => {
+  try {
+    const { dashboardId, toUserId, fromUserId } = req.body;
+     // logged-in user
+
+    if (!dashboardId || !toUserId) {
+      return res.status(400).json({ message: "dashboardId and toUserId are required" });
+    }
+
+    // Prevent duplicate pending requests
+    const existing = await ExitRequest.findOne({
+      dashboardId,
+      fromUserId,
+      status: "pending",
+    });
+
+    if (existing) {
+      return res.status(400).json({ message: "Exit request already pending" });
+    }
+
+    // Fetch dashboard
+    const dashboard = await Dashboard.findById(dashboardId, { name: 1 });
+    if (!dashboard) {
+      return res.status(404).json({ message: "Dashboard not found" });
+    }
+
+    // Fetch sender user
+    const sender = await User.findOne(
+      { email: fromUserId },
+      { name: 1 }
+    );
+
+    const senderName = sender?.name || fromUserId;
+    const dashboardName = dashboard.name || "a group";
+
+    // Create exit request
+    const exitRequest = await ExitRequest.create({
+      dashboardId,
+      toUserId,
+      fromUserId,
+      title: "Exit Group Request",
+      body: `${senderName} has requested to exit the group "${dashboardName}".`,
+      status: "pending",
+    });
+
+    // 🔔 Notification for owner
+    await Notification.create({
+      userId: toUserId,
+      type: "Request",
+      title: "Exit Group Request",
+      body: `${senderName} wants to exit "${dashboardName}"`,
+      relatedId: exitRequest._id,
+    });
+
+    // 📧 Email to owner
+    const html = `
+      <p><b>${senderName}</b> has requested to exit the group:</p>
+      <p><b>${dashboardName}</b></p>
+      <p>Please review this request in FlowBank.</p>
+    `;
+
+    await sendEmail(
+      toUserId,
+      "FlowBank Exit Group Request",
+      html
+    );
+
+    res.status(201).json({
+      message: "Exit request submitted successfully",
+      exitRequest,
+    });
+  } catch (error) {
+    console.error("Exit request error:", error);
+    res.status(500).json({ message: "Server error" });
+  }
+});
+
+// routes/collab.js
+router.get("/exit-requests-by-dashboard", protect, async (req, res) => {
+  try {
+    const { dashboardId } = req.query;
+    const ownerEmail = req.user.email; // logged-in user
+
+    if (!dashboardId) {
+      return res.status(400).json({ message: "dashboardId is required" });
+    }
+
+    // Check pending exit requests for this dashboard & owner
+    const requests = await ExitRequest.find({
+      dashboardId,
+      toUserId: ownerEmail,
+      status: "pending",
+    }).limit(1); // we only need to know IF EXISTS
+
+    res.status(200).json({
+      hasExitRequests: requests.length > 0,
+    });
+  } catch (err) {
+    console.error("Fetch exit requests error:", err);
+    res.status(500).json({ message: "Server error" });
+  }
+});
+
+// routes/collab.js
+router.get("/exit-requests-by-dashboard-data", protect, async (req, res) => {
+  try {
+    const { dashboardId } = req.query;
+    const ownerEmail = req.user.email;
+
+    if (!dashboardId) {
+      return res.status(400).json({ message: "dashboardId is required" });
+    }
+
+    const requests = await ExitRequest.find({
+      dashboardId,
+      toUserId: ownerEmail,
+      status: "pending",
+    }).sort({ createdAt: -1 });
+
+    res.status(200).json({
+      exitRequests: requests, // ✅ send full list
+    });
+  } catch (err) {
+    console.error("Fetch exit requests error:", err);
+    res.status(500).json({ message: "Server error" });
+  }
+});
+
+router.post("/approve-exit-request", protect, async (req, res) => {
+  try {
+    const { requestId } = req.body;
+
+    if (!requestId) {
+      return res.status(400).json({ message: "requestId is required" });
+    }
+
+    // 1️⃣ Find exit request
+    const exitRequest = await ExitRequest.findById(requestId);
+
+    if (!exitRequest) {
+      return res.status(404).json({ message: "Exit request not found" });
+    }
+
+    if (exitRequest.status !== "pending") {
+      return res
+        .status(400)
+        .json({ message: "Exit request already processed" });
+    }
+
+    const { dashboardId, fromUserId } = exitRequest;
+
+    // Fetch dashboard name
+const dashboard = await Dashboard.findById(
+  exitRequest.dashboardId,
+  { name: 1 }
+);
+
+const dashboardName = dashboard?.name || "the group";
+
+
+    // 2️⃣ Approve exit request
+    exitRequest.status = "approved";
+    await exitRequest.save();
+
+    // 3️⃣ Remove from DashboardMember
+    await DashboardMember.deleteMany({
+      dashboardId,
+      userId: fromUserId,
+    });
+
+    // 4️⃣ Remove ledger assignments
+    await LedgerAssignment.deleteMany({
+      dashboardId,
+      memberId: fromUserId,
+    });
+
+    // 5️⃣ Remove assigned member record
+    await AssignedMembers.deleteMany({
+      dashboardId,
+      memberId: fromUserId,
+    });
+
+    await Notification.create({
+  userId: fromUserId,
+  type: "Update",
+  title: "Exit Request Approved",
+  body: `Your request to exit "${dashboardName}" has been approved.`,
+  relatedId: exitRequest._id,
+});
+
+
+    const html = `
+  <p><b>Exit Request Approved</b></p>
+  <p>Your request to exit <b>${dashboardName}</b> has been approved.</p>
+  <p>You are no longer a member of this group.</p>
+`;
+
+
+    await sendEmail(
+      fromUserId,
+      "FlowBank Exit Group Request Approval",
+      html
+    );
+
+    res.status(200).json({
+      message: "Exit request approved and member removed successfully",
+    });
+  } catch (error) {
+    console.error("Approve exit request error:", error);
     res.status(500).json({ message: "Server error" });
   }
 });

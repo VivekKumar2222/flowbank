@@ -29,6 +29,7 @@ class _CollaborationScreenState extends State<CollaborationScreen> {
 
   String? userEmail;
   String? userName;
+  String? userInitials;
 
   final Color activeColor = const Color(0xFF217BFF);
   final Color inactiveColor = const Color(0xFF667085);
@@ -82,6 +83,7 @@ class _CollaborationScreenState extends State<CollaborationScreen> {
 
     setState(() {
       userName = prefs.getString('userName') ?? 'user';
+      userInitials = prefs.getString('userInitials') ?? 'U';
     });
   }
 
@@ -287,7 +289,7 @@ class _CollaborationScreenState extends State<CollaborationScreen> {
                     Row(
                       mainAxisAlignment: MainAxisAlignment.spaceBetween,
                       crossAxisAlignment: CrossAxisAlignment.end,
-                      children: const [
+                      children:  [
                         Text(
                           "CollaBorations",
                           style: TextStyle(
@@ -296,11 +298,24 @@ class _CollaborationScreenState extends State<CollaborationScreen> {
                             fontWeight: FontWeight.w700,
                           ),
                         ),
-                        CircleAvatar(
-                          radius: 28,
-                          backgroundImage:
-                              NetworkImage("https://i.pravatar.cc/150?img=3"),
-                        ),
+                        Container(
+                                  width: 56,
+                                  height: 56,
+                                  decoration: BoxDecoration(
+                                    color: Color(0xFFF5FAFF),
+                                    shape: BoxShape.circle,
+                                  ),
+                                  child: Center(
+                                    child: Text(
+                                      userInitials ?? 'U',
+                                      style: TextStyle(
+                                        color: Color(0xFF0179FE), 
+                                        fontSize: 22,
+                                        fontWeight: FontWeight.w600,
+                                      ),
+                                    ),
+                                  ),
+                                )
                       ],
                     ),
                   ],
@@ -392,8 +407,8 @@ class _CollaborationScreenState extends State<CollaborationScreen> {
                   label: "Groups",
                 ),
                 BottomNavigationBarItem(
-                  icon: Icon(Icons.insert_chart_rounded),
-                  label: "Report",
+                  icon: Icon(Icons.notification_add),
+                  label: "Notifications",
                 ),
               ],
             ),

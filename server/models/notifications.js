@@ -10,7 +10,7 @@ const notificationSchema = new mongoose.Schema(
 
     type: {
       type: String,  // for GPT: this will be 'invite' for now
-      enum: ["Reminder", "Invite", "Entry Update"],
+      enum: ["Reminder", "Invite", "Entry Update", "Request", "Update"],
       required: true,
     },
 
