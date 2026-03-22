@@ -10,6 +10,7 @@ import '../home/bank_transactions.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import '../collaboration/collaboration_screen.dart';
 import '../notification/notification-page.dart';
+import '../home/financial_health_screen.dart';
 
 class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
@@ -21,7 +22,8 @@ class HomeScreen extends StatefulWidget {
 class _HomeScreenState extends State<HomeScreen> {
   String? userName;
   String? userInitials;
-    @override
+
+  @override
   void initState() {
     super.initState();
     _loadUserName();
@@ -34,10 +36,38 @@ class _HomeScreenState extends State<HomeScreen> {
       userInitials = prefs.getString('userInitials') ?? 'U';
     });
   }
+
   int _selectedIndex = 0;
 
   final Color activeColor = const Color(0xFF217BFF);
   final Color inactiveColor = const Color(0xFF667085);
+
+  Route _premiumRoute(Widget page) {
+    return PageRouteBuilder(
+      transitionDuration: const Duration(milliseconds: 320),
+      reverseTransitionDuration: const Duration(milliseconds: 260),
+      pageBuilder: (context, animation, secondaryAnimation) => page,
+      transitionsBuilder: (context, animation, secondaryAnimation, child) {
+        final curved = CurvedAnimation(
+          parent: animation,
+          curve: Curves.easeOutCubic,
+          reverseCurve: Curves.easeInCubic,
+        );
+
+        final slide = Tween<Offset>(
+          begin: const Offset(0.0, 0.04),
+          end: Offset.zero,
+        ).animate(curved);
+
+        final fade = Tween<double>(begin: 0.0, end: 1.0).animate(curved);
+
+        return FadeTransition(
+          opacity: fade,
+          child: SlideTransition(position: slide, child: child),
+        );
+      },
+    );
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -88,7 +118,7 @@ class _HomeScreenState extends State<HomeScreen> {
                             Column(
                               crossAxisAlignment: CrossAxisAlignment.start,
                               children: [
-                                Text(
+                                const Text(
                                   "Welcome,",
                                   style: TextStyle(
                                     fontSize: 28,
@@ -97,10 +127,10 @@ class _HomeScreenState extends State<HomeScreen> {
                                     height: -0.5,
                                   ),
                                 ),
-                                SizedBox(height: 6),
+                                const SizedBox(height: 6),
                                 Text(
                                   userName ?? 'User',
-                                  style: TextStyle(
+                                  style: const TextStyle(
                                     color: Color(0xFF0179FE),
                                     fontSize: 28,
                                     fontFamily: "Manrope",
@@ -113,31 +143,31 @@ class _HomeScreenState extends State<HomeScreen> {
                               padding: const EdgeInsets.only(bottom: 8),
                               child: InkWell(
                                 onTap: () {
-    Navigator.push(
-      context,
-       MaterialPageRoute(
-        builder: (context) => ProfileScreen(),
-      ),
-    );
-  },
-                                child:  Container(
+                                  Navigator.push(
+                                    context,
+                                    MaterialPageRoute(
+                                      builder: (context) => ProfileScreen(),
+                                    ),
+                                  );
+                                },
+                                child: Container(
                                   width: 56,
                                   height: 56,
-                                  decoration: BoxDecoration(
+                                  decoration: const BoxDecoration(
                                     color: Color(0xFFF5FAFF),
                                     shape: BoxShape.circle,
                                   ),
                                   child: Center(
                                     child: Text(
                                       userInitials ?? 'U',
-                                      style: TextStyle(
-                                        color: Color(0xFF0179FE), 
+                                      style: const TextStyle(
+                                        color: Color(0xFF0179FE),
                                         fontSize: 22,
                                         fontWeight: FontWeight.w600,
                                       ),
                                     ),
                                   ),
-                                )
+                                ),
                               ),
                             ),
                           ],
@@ -147,7 +177,7 @@ class _HomeScreenState extends State<HomeScreen> {
                   ),
                 ),
               ),
-            )
+            ),
           ),
         ),
 
@@ -182,7 +212,7 @@ class _HomeScreenState extends State<HomeScreen> {
                               maxValue: 1400,
                               themeColor: "red",
                             ),
-                            SizedBox(height: 8),
+                            const SizedBox(height: 8),
                             InfoCard(
                               title: 'Food',
                               currentValue: 756,
@@ -265,6 +295,7 @@ class _HomeScreenState extends State<HomeScreen> {
                               isPositive: false,
                               isCategorized: false,
                               onCategorize: () {
+                                // ignore: avoid_print
                                 print("Categorize clicked");
                               },
                             ),
@@ -316,6 +347,23 @@ class _HomeScreenState extends State<HomeScreen> {
                         ),
                       ],
                     ),
+
+                    // -------- AI ANALYSIS (NEW) --------
+                    const SizedBox(height: 18),
+                    SectionHeader(
+                      title: "AI Analysis",
+                      showButton: false,
+                      destination: OnboardingScreen(),
+                    ),
+                    const SizedBox(height: 12),
+                    AIGlowAnalysisCard(
+                      onTap: () {
+                        Navigator.push(
+                          context,
+                          _premiumRoute(const FinancialHealthScreen()),
+                        );
+                      },
+                    ),
                   ],
                 ),
               ),
@@ -359,21 +407,20 @@ class _HomeScreenState extends State<HomeScreen> {
                           builder: (context) => const CollaborationScreen(),
                         ),
                       );
-                    } 
-                    else if (index == 2) {
-    // Navigate to Notifications page
-    Navigator.push(
-      context,
-      MaterialPageRoute(
-        builder: (context) => const NotificationPage(),
-      ),);} 
-      else {
+                    } else if (index == 2) {
+                      // Navigate to Notifications page
+                      Navigator.push(
+                        context,
+                        MaterialPageRoute(
+                          builder: (context) => const NotificationPage(),
+                        ),
+                      );
+                    } else {
                       setState(() {
                         _selectedIndex = index;
                       });
                     }
                   },
-
                   items: const [
                     BottomNavigationBarItem(
                       icon: Icon(Icons.home_rounded),
@@ -395,5 +442,210 @@ class _HomeScreenState extends State<HomeScreen> {
         ),
       ),
     );
+  }
+}
+
+class AIGlowAnalysisCard extends StatefulWidget {
+  final VoidCallback onTap;
+  const AIGlowAnalysisCard({super.key, required this.onTap});
+
+  @override
+  State<AIGlowAnalysisCard> createState() => _AIGlowAnalysisCardState();
+}
+
+class _AIGlowAnalysisCardState extends State<AIGlowAnalysisCard>
+    with SingleTickerProviderStateMixin {
+  late final AnimationController _c;
+
+  @override
+  void initState() {
+    super.initState();
+    _c = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 2200),
+    )..repeat();
+  }
+
+  @override
+  void dispose() {
+    _c.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    const blue = Color(0xFF217BFF);
+
+    return AnimatedBuilder(
+      animation: _c,
+      builder: (_, __) {
+        return GestureDetector(
+          onTap: widget.onTap,
+          behavior: HitTestBehavior.opaque,
+          child: Container(
+            width: double.infinity,
+            padding: const EdgeInsets.all(2.0),
+            decoration: BoxDecoration(
+              borderRadius: BorderRadius.circular(22),
+              boxShadow: [
+                BoxShadow(
+                  color: blue.withOpacity(0.22),
+                  blurRadius: 26,
+                  spreadRadius: 2,
+                ),
+                BoxShadow(
+                  color: Colors.white.withOpacity(0.22),
+                  blurRadius: 22,
+                  spreadRadius: -6,
+                ),
+              ],
+            ),
+            child: CustomPaint(
+              painter: _GlowBorderPainter(progress: _c.value),
+              child: ClipRRect(
+                borderRadius: BorderRadius.circular(20),
+                child: Container(
+                  padding: const EdgeInsets.all(16),
+                  decoration: BoxDecoration(
+                    color: const Color(0xFFF7FBFF),
+                    borderRadius: BorderRadius.circular(20),
+                    border: Border.all(color: blue.withOpacity(0.10)),
+                  ),
+                  child: Row(
+                    children: [
+                      Container(
+                        width: 46,
+                        height: 46,
+                        decoration: BoxDecoration(
+                          borderRadius: BorderRadius.circular(14),
+                          gradient: LinearGradient(
+                            colors: [
+                              blue.withOpacity(0.90),
+                              const Color(0xFF6DD5ED).withOpacity(0.90),
+                            ],
+                          ),
+                          boxShadow: [
+                            BoxShadow(
+                              color: blue.withOpacity(0.22),
+                              blurRadius: 18,
+                              spreadRadius: 1,
+                            ),
+                          ],
+                        ),
+                        child: const Icon(
+                          Icons.auto_awesome_rounded,
+                          color: Colors.white,
+                          size: 24,
+                        ),
+                      ),
+                      const SizedBox(width: 12),
+                      const Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              "AI Analysis",
+                              style: TextStyle(
+                                fontSize: 15,
+                                fontWeight: FontWeight.w800,
+                                color: Color(0xFF101828),
+                              ),
+                            ),
+                            SizedBox(height: 6),
+                            Text(
+                              "Predict spending, savings feasibility, and smart cut suggestions.",
+                              style: TextStyle(
+                                fontSize: 12.5,
+                                height: 1.25,
+                                fontWeight: FontWeight.w600,
+                                color: Color(0xFF667085),
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                      const SizedBox(width: 10),
+                      Container(
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 10,
+                          vertical: 6,
+                        ),
+                        decoration: BoxDecoration(
+                          borderRadius: BorderRadius.circular(99),
+                          color: blue.withOpacity(0.10),
+                          border: Border.all(color: blue.withOpacity(0.15)),
+                        ),
+                        child: const Text(
+                          "View",
+                          style: TextStyle(
+                            color: blue,
+                            fontWeight: FontWeight.w800,
+                            fontSize: 12,
+                          ),
+                        ),
+                      ),
+                      const SizedBox(width: 6),
+                      const Icon(
+                        Icons.chevron_right_rounded,
+                        color: blue,
+                        size: 24,
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+            ),
+          ),
+        );
+      },
+    );
+  }
+}
+
+class _GlowBorderPainter extends CustomPainter {
+  final double progress;
+  _GlowBorderPainter({required this.progress});
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    const blue = Color(0xFF217BFF);
+
+    final rect = Offset.zero & size;
+    final r = RRect.fromRectAndRadius(
+      rect.deflate(0.8),
+      const Radius.circular(20),
+    );
+
+    final sweep = SweepGradient(
+      startAngle: 0,
+      endAngle: 6.283185307179586,
+      transform: GradientRotation(6.283185307179586 * progress),
+      colors: [
+        blue.withOpacity(0.0),
+        blue.withOpacity(0.20),
+        Colors.white.withOpacity(0.95),
+        blue.withOpacity(0.30),
+        blue.withOpacity(0.0),
+      ],
+      stops: const [0.0, 0.40, 0.50, 0.60, 1.0],
+    );
+
+    final paint = Paint()
+      ..style = PaintingStyle.stroke
+      ..strokeWidth = 2.2
+      ..shader = sweep.createShader(rect);
+
+    final innerGlow = Paint()
+      ..style = PaintingStyle.stroke
+      ..strokeWidth = 1.1
+      ..color = blue.withOpacity(0.15);
+
+    canvas.drawRRect(r, innerGlow);
+    canvas.drawRRect(r, paint);
+  }
+
+  @override
+  bool shouldRepaint(covariant _GlowBorderPainter oldDelegate) {
+    return oldDelegate.progress != progress;
   }
 }

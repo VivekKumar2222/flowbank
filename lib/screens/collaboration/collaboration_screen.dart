@@ -1,9 +1,12 @@
 import 'dart:convert';
 import 'dart:ui';
 import 'package:flowbank/api/api_service.dart';
+import 'package:flowbank/screens/notification/notification-page.dart';
 import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:http/http.dart' as http;
+import '../home/new_homescreen.dart';
+import '../authentication/notification.dart';
 
 import '../collaboration/groups_outlook.dart';
 import '../collaboration/request-widgets.dart';
@@ -61,17 +64,13 @@ class _CollaborationScreenState extends State<CollaborationScreen> {
       _pageLoading = true;
     });
 
-    await Future.wait([
-    _fetchUserGroups(email),
-    _fetchInvitedGroups(email),
-  ]);
+    await Future.wait([_fetchUserGroups(email), _fetchInvitedGroups(email)]);
 
-  if (!mounted) return;
+    if (!mounted) return;
 
-  setState(() {
-    _pageLoading = false;
-  }); 
-  
+    setState(() {
+      _pageLoading = false;
+    });
   }
 
   /// --------------------
@@ -96,10 +95,9 @@ class _CollaborationScreenState extends State<CollaborationScreen> {
 
     try {
       final response = await ApiService.get(
-  "/api/collab/invited-dashboards?userId=$email",
-  context
-);
-
+        "/api/collab/invited-dashboards?userId=$email",
+        context,
+      );
 
       if (response.statusCode != 200) {
         throw Exception("Failed to load invited dashboards");
@@ -140,33 +138,30 @@ class _CollaborationScreenState extends State<CollaborationScreen> {
 
     try {
       final membersResponse = await ApiService.get(
-  "/api/collab/dashboard-members?userId=$email",
-  context
-);
-
+        "/api/collab/dashboard-members?userId=$email",
+        context,
+      );
 
       final List<dynamic> membersData = jsonDecode(membersResponse.body);
-      final dashboardIds =
-          membersData.map((m) => m['dashboardId'].toString()).toList();
+      final dashboardIds = membersData
+          .map((m) => m['dashboardId'].toString())
+          .toList();
 
       if (dashboardIds.isEmpty) return;
 
       final dashboardsResponse = await ApiService.post(
-  "/api/collab/dashboards-by-ids",
-  {"ids": dashboardIds},
-  context
-);
+        "/api/collab/dashboards-by-ids",
+        {"ids": dashboardIds},
+        context,
+      );
 
-
-      final List<dynamic> dashboardsData =
-          jsonDecode(dashboardsResponse.body);
+      final List<dynamic> dashboardsData = jsonDecode(dashboardsResponse.body);
 
       final futures = dashboardsData.map((dash) async {
         final membersRes = await ApiService.get(
-  "/api/collab/dashboard-members-by-dashboard?dashboardId=${dash['_id']}",
-  context
-);
-
+          "/api/collab/dashboard-members-by-dashboard?dashboardId=${dash['_id']}",
+          context,
+        );
 
         final membersList = (jsonDecode(membersRes.body) as List)
             .map((m) => m['userId'].toString())
@@ -202,42 +197,41 @@ class _CollaborationScreenState extends State<CollaborationScreen> {
   }
 
   Widget _loadingScreen() {
-  return Scaffold(
-    backgroundColor: Colors.white,
-    body: Center(
-      child: Column(
-        mainAxisAlignment: MainAxisAlignment.center,
-        children: [
-          SizedBox(
-            width: 180,
-            child: LinearProgressIndicator(
-              minHeight: 6,
-              backgroundColor: Colors.blue.shade100,
-              valueColor: const AlwaysStoppedAnimation(Color(0xFF217BFF)),
-              borderRadius: BorderRadius.circular(12),
+    return Scaffold(
+      backgroundColor: Colors.white,
+      body: Center(
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            SizedBox(
+              width: 180,
+              child: LinearProgressIndicator(
+                minHeight: 6,
+                backgroundColor: Colors.blue.shade100,
+                valueColor: const AlwaysStoppedAnimation(Color(0xFF217BFF)),
+                borderRadius: BorderRadius.circular(12),
+              ),
             ),
-          ),
-          const SizedBox(height: 18),
-          const Text(
-            "Loading content",
-            style: TextStyle(
-              fontSize: 16,
-              fontWeight: FontWeight.w600,
-              color: Color(0xFF217BFF),
+            const SizedBox(height: 18),
+            const Text(
+              "Loading content",
+              style: TextStyle(
+                fontSize: 16,
+                fontWeight: FontWeight.w600,
+                color: Color(0xFF217BFF),
+              ),
             ),
-          ),
-        ],
+          ],
+        ),
       ),
-    ),
-  );
-}
-
+    );
+  }
 
   @override
   Widget build(BuildContext context) {
     if (_pageLoading) {
-    return _loadingScreen();
-  }
+      return _loadingScreen();
+    }
     final double bottomInset = MediaQuery.of(context).viewPadding.bottom;
 
     return SafeArea(
@@ -277,11 +271,7 @@ class _CollaborationScreenState extends State<CollaborationScreen> {
             flexibleSpace: SafeArea(
               bottom: false,
               child: Padding(
-                padding: const EdgeInsets.only(
-                      left: 18,
-                      right: 26,
-                      bottom: 16,
-                    ),
+                padding: const EdgeInsets.only(left: 18, right: 26, bottom: 16),
                 child: Column(
                   mainAxisAlignment: MainAxisAlignment.end,
                   crossAxisAlignment: CrossAxisAlignment.start,
@@ -289,9 +279,9 @@ class _CollaborationScreenState extends State<CollaborationScreen> {
                     Row(
                       mainAxisAlignment: MainAxisAlignment.spaceBetween,
                       crossAxisAlignment: CrossAxisAlignment.end,
-                      children:  [
+                      children: [
                         Text(
-                          "CollaBorations",
+                          "Collaborations",
                           style: TextStyle(
                             color: Color(0xFF0179FE),
                             fontSize: 28,
@@ -299,23 +289,23 @@ class _CollaborationScreenState extends State<CollaborationScreen> {
                           ),
                         ),
                         Container(
-                                  width: 56,
-                                  height: 56,
-                                  decoration: BoxDecoration(
-                                    color: Color(0xFFF5FAFF),
-                                    shape: BoxShape.circle,
-                                  ),
-                                  child: Center(
-                                    child: Text(
-                                      userInitials ?? 'U',
-                                      style: TextStyle(
-                                        color: Color(0xFF0179FE), 
-                                        fontSize: 22,
-                                        fontWeight: FontWeight.w600,
-                                      ),
-                                    ),
-                                  ),
-                                )
+                          width: 56,
+                          height: 56,
+                          decoration: BoxDecoration(
+                            color: Color(0xFFF5FAFF),
+                            shape: BoxShape.circle,
+                          ),
+                          child: Center(
+                            child: Text(
+                              userInitials ?? 'U',
+                              style: TextStyle(
+                                color: Color(0xFF0179FE),
+                                fontSize: 22,
+                                fontWeight: FontWeight.w600,
+                              ),
+                            ),
+                          ),
+                        ),
                       ],
                     ),
                   ],
@@ -371,8 +361,9 @@ class _CollaborationScreenState extends State<CollaborationScreen> {
                     ? _emptyText("No groups yet")
                     : GroupsRow(
                         groups: userGroups.map((group) {
-                          final owner =
-                              group.ownerName == userName ? "You" : group.ownerName;
+                          final owner = group.ownerName == userName
+                              ? "You"
+                              : group.ownerName;
                           return group.copyWith(ownerName: owner);
                         }).toList(),
                       ),
@@ -396,7 +387,62 @@ class _CollaborationScreenState extends State<CollaborationScreen> {
               type: BottomNavigationBarType.fixed,
               selectedItemColor: activeColor,
               unselectedItemColor: inactiveColor,
-              onTap: (_) {},
+              onTap: (index) {
+                if (index == _selectedIndex) return;
+
+                Widget? target;
+                switch (index) {
+                  case 0:
+                    target = const HomeScreen();
+                    break;
+                  case 1:
+                    target = null; // already here
+                    break;
+                  case 2:
+                    target = const NotificationPage();
+                    break;
+                }
+
+                if (target == null) return;
+
+                Navigator.of(context).pushReplacement(
+                  PageRouteBuilder(
+                    transitionDuration: const Duration(milliseconds: 320),
+                    reverseTransitionDuration: const Duration(
+                      milliseconds: 260,
+                    ),
+                    pageBuilder: (context, animation, secondaryAnimation) =>
+                        target!,
+                    transitionsBuilder:
+                        (context, animation, secondaryAnimation, child) {
+                          final curved = CurvedAnimation(
+                            parent: animation,
+                            curve: Curves.easeOutCubic,
+                            reverseCurve: Curves.easeInCubic,
+                          );
+
+                          // Subtle slide up + fade (premium feel)
+                          final slide = Tween<Offset>(
+                            begin: const Offset(0.0, 0.04),
+                            end: Offset.zero,
+                          ).animate(curved);
+
+                          final fade = Tween<double>(
+                            begin: 0.0,
+                            end: 1.0,
+                          ).animate(curved);
+
+                          return FadeTransition(
+                            opacity: fade,
+                            child: SlideTransition(
+                              position: slide,
+                              child: child,
+                            ),
+                          );
+                        },
+                  ),
+                );
+              },
               items: const [
                 BottomNavigationBarItem(
                   icon: Icon(Icons.home_rounded),

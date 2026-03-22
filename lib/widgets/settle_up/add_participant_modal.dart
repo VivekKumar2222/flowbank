@@ -323,7 +323,7 @@ class _AddParticipantModalContentState extends State<AddParticipantModalContent>
                     );
                     selectedName = friend['name'];
                     selectedInitials = friend['initials'];
-                                    } else if (userIdController.text.isNotEmpty) {
+                  } else if (userIdController.text.isNotEmpty) {
                     selectedName = 'User - ${userIdController.text}';
                     selectedInitials = 'U';
                   }

@@ -11,6 +11,32 @@ import '../collaboration/unassigned-members-view.dart';
 import '../collaboration/inPage_add_members_page.dart';
 import 'package:flowbank/api/api_service.dart';
 import '../notification/exit_request_page.dart';
+import 'dart:ui';
+import 'dart:convert';
+import 'package:flutter/material.dart';
+import '../home/section_header.dart';
+import '../collaboration/members-view-row.dart';
+import '../collaboration/members-entries-billsplitting.dart';
+import 'package:http/http.dart' as http;
+import '../collaboration/add_Entries.dart';
+import 'package:shared_preferences/shared_preferences.dart';
+import '../collaboration/inPage_add_members_page.dart';
+import 'package:flowbank/api/api_service.dart';
+import '../notification/exit_request_page.dart';
+import 'dart:ui';
+import 'package:flutter/material.dart';
+import '../home/profile.dart';
+import '../home/section_header.dart';
+import '../onboarding/OnboardingScreen.dart';
+import '../home/status_card.dart';
+import '../home/status_card_box.dart';
+import '../home/user-total-balance-view.dart';
+import '../home/bank_transactions.dart';
+import 'package:shared_preferences/shared_preferences.dart';
+import '../collaboration/collaboration_screen.dart';
+import '../notification/notification-page.dart';
+import '../home/financial_health_screen.dart';
+import '../home/new_homescreen.dart';
 
 /// --------------------
 /// Member Model
@@ -35,7 +61,6 @@ class UnassignedMember {
     );
   }
 }
-
 
 class Member {
   final String name;
@@ -69,10 +94,7 @@ class Member {
 class LedgerTracking extends StatefulWidget {
   final String dashboardId;
 
-  const LedgerTracking({
-    super.key,
-    required this.dashboardId,
-  });
+  const LedgerTracking({super.key, required this.dashboardId});
 
   @override
   State<LedgerTracking> createState() => _LedgerTrackingState();
@@ -94,8 +116,6 @@ class _LedgerTrackingState extends State<LedgerTracking> {
   bool isLoadingUnassigned = true;
   List<Map<String, dynamic>> assignedMembers = [];
   bool isLoadingAssignedMembers = true;
-  
-
 
   List<EntryItem> entries = [];
   bool isLoadingEntries = true;
@@ -103,176 +123,160 @@ class _LedgerTrackingState extends State<LedgerTracking> {
   bool hasExitRequests = false;
   bool isCheckingExitRequests = true;
 
-      final List<Map<String, dynamic>> membersData = [
-      {
-        'name': 'Ali',
-        'paidAmount': 2000,
-        'totalAmount': 6500,
-      },
-      {
-        'name': 'Sara',
-        'paidAmount': 500,
-        'totalAmount': 4000,
-      },
-    ];
-    
-
+  final List<Map<String, dynamic>> membersData = [
+    {'name': 'Ali', 'paidAmount': 2000, 'totalAmount': 6500},
+    {'name': 'Sara', 'paidAmount': 500, 'totalAmount': 4000},
+  ];
 
   @override
   void initState() {
     super.initState();
     _fetchBillSplitTotal();
-    _fetchDashboardCurrency(); 
+    _fetchDashboardCurrency();
     _loadUserEmail();
     _fetchOwnerEmail();
-    
+
     _fetchEntries();
     _fetchUnassignedMembers();
     _fetchLedgerSummary();
     _fetchAssignedMembers();
   }
 
-  
-  
   Map<String, double> _calculatePaidAmountsFromEntries() {
-  final Map<String, double> paidMap = {};
+    final Map<String, double> paidMap = {};
 
-  for (final entry in entries) {
-    final userName = entry.title; // this is userName (email/name mapping already done)
-    paidMap[userName] = (paidMap[userName] ?? 0) + entry.amount;
+    for (final entry in entries) {
+      final userName =
+          entry.title; // this is userName (email/name mapping already done)
+      paidMap[userName] = (paidMap[userName] ?? 0) + entry.amount;
+    }
+
+    return paidMap;
   }
 
-  return paidMap;
-}
+  Future<void> _fetchAssignedMembers() async {
+    try {
+      final response = await ApiService.get(
+        "/api/collab/assigned-members-summary?dashboardId=${widget.dashboardId}",
+        context,
+      );
 
-Future<void> _fetchAssignedMembers() async {
-  try {
-    final response = await ApiService.get(
-      "/api/collab/assigned-members-summary?dashboardId=${widget.dashboardId}",
-      context
-      
-    );
+      if (response.statusCode == 200) {
+        final List data = jsonDecode(response.body);
 
-    if (response.statusCode == 200) {
-      final List data = jsonDecode(response.body);
+        setState(() {
+          assignedMembers = data
+              .map(
+                (m) => {
+                  "name": m["name"],
+                  "memberId": m["memberId"],
+                  "paidAmount": (m["paidAmount"] as num).toDouble(),
+                  "totalAmount": (m["totalAmount"] as num).toDouble(),
+                  "dashboardId": widget.dashboardId,
+                },
+              )
+              .toList();
 
-      setState(() {
-        assignedMembers = data.map((m) => {
-          "name": m["name"],
-          "memberId": m["memberId"],
-          "paidAmount": (m["paidAmount"] as num).toDouble(),
-          "totalAmount": (m["totalAmount"] as num).toDouble(),
-          "dashboardId": widget.dashboardId,
-
-        }).toList();
-
+          isLoadingAssignedMembers = false;
+        });
+      } else {
         isLoadingAssignedMembers = false;
-      });
-    } else {
+      }
+    } catch (e) {
+      debugPrint("Failed to fetch assigned members: $e");
       isLoadingAssignedMembers = false;
     }
-  } catch (e) {
-    debugPrint("Failed to fetch assigned members: $e");
-    isLoadingAssignedMembers = false;
   }
-}
 
+  Future<void> _fetchUnassignedMembers() async {
+    try {
+      final response = await ApiService.get(
+        "/api/collab/unassigned-members?dashboardId=${widget.dashboardId}",
+        context,
+      );
 
-Future<void> _fetchUnassignedMembers() async {
-  try {
-    final response = await ApiService.get(
-      "/api/collab/unassigned-members?dashboardId=${widget.dashboardId}",
-     context
-      
-    );
+      if (response.statusCode == 200) {
+        final List data = jsonDecode(response.body);
 
-    if (response.statusCode == 200) {
-      final List data = jsonDecode(response.body);
-
-      setState(() {
-        unassignedMembers = data
-            .map((m) => UnassignedMember.fromMap(m))
-            .toList();
+        setState(() {
+          unassignedMembers = data
+              .map((m) => UnassignedMember.fromMap(m))
+              .toList();
+          isLoadingUnassigned = false;
+        });
+      } else {
         isLoadingUnassigned = false;
-      });
-    } else {
+      }
+    } catch (e) {
+      debugPrint("Failed to fetch unassigned members: $e");
       isLoadingUnassigned = false;
     }
-  } catch (e) {
-    debugPrint("Failed to fetch unassigned members: $e");
-    isLoadingUnassigned = false;
   }
-}
 
+  Future<void> _fetchLedgerSummary() async {
+    try {
+      final response = await ApiService.get(
+        "/api/collab/ledger-summary?dashboardId=${widget.dashboardId}",
+        context,
+      );
 
-Future<void> _fetchLedgerSummary() async {
-  try {
-    final response = await ApiService.get(
-      "/api/collab/ledger-summary?dashboardId=${widget.dashboardId}",
-      context
-      
-    );
+      if (response.statusCode == 200) {
+        final data = jsonDecode(response.body);
 
-    if (response.statusCode == 200) {
-      final data = jsonDecode(response.body);
-
-      setState(() {
-        totalLent = (data["totalLent"] as num).toDouble();
-        assignedMemberCount = data["assignedMemberCount"];
+        setState(() {
+          totalLent = (data["totalLent"] as num).toDouble();
+          assignedMemberCount = data["assignedMemberCount"];
+          isLoadingLedgerSummary = false;
+        });
+      } else {
         isLoadingLedgerSummary = false;
-      });
-    } else {
+      }
+    } catch (e) {
+      debugPrint("Failed to fetch ledger summary: $e");
       isLoadingLedgerSummary = false;
     }
-  } catch (e) {
-    debugPrint("Failed to fetch ledger summary: $e");
-    isLoadingLedgerSummary = false;
   }
-}
-
 
   Future<void> _fetchEntries() async {
-  try {
-    final response = await ApiService.get(
-      "/api/collab/dashboard-entries?dashboardId=${widget.dashboardId}",
-      context
-    );
+    try {
+      final response = await ApiService.get(
+        "/api/collab/dashboard-entries?dashboardId=${widget.dashboardId}",
+        context,
+      );
 
-    if (response.statusCode == 200) {
-      final List data = jsonDecode(response.body);
+      if (response.statusCode == 200) {
+        final List data = jsonDecode(response.body);
 
-      setState(() {
-        entries = data.map((e) {
-          return EntryItem(
-            entryId: e["_id"],
-            title: e["userName"], // email for now
-            subtitle: e["status"] ?? "pending",
-            date: e["createdAt"] != null
-                ? e["createdAt"].toString().substring(0, 10)
-                : "",
-            amount: (e["amount"] as num).toDouble(),
-            // totalAmount: (e["amount"] as num).toDouble(),
-          );
-        }).toList();
+        setState(() {
+          entries = data.map((e) {
+            return EntryItem(
+              entryId: e["_id"],
+              title: e["userName"], // email for now
+              subtitle: e["status"] ?? "pending",
+              date: e["createdAt"] != null
+                  ? e["createdAt"].toString().substring(0, 10)
+                  : "",
+              amount: (e["amount"] as num).toDouble(),
+              // totalAmount: (e["amount"] as num).toDouble(),
+            );
+          }).toList();
 
+          isLoadingEntries = false;
+        });
+      } else {
         isLoadingEntries = false;
-      });
-    } else {
+      }
+    } catch (e) {
+      debugPrint("Failed to fetch entries: $e");
       isLoadingEntries = false;
     }
-  } catch (e) {
-    debugPrint("Failed to fetch entries: $e");
-    isLoadingEntries = false;
+
+    if (!isLoadingTotal) {
+      await _fetchMembersAndSplit();
+    }
   }
 
-  if (!isLoadingTotal) {
-  await _fetchMembersAndSplit();
-}
-
-}
-
-
-    Future<void> _loadUserEmail() async {
+  Future<void> _loadUserEmail() async {
     final prefs = await SharedPreferences.getInstance();
     setState(() {
       userEmail = prefs.getString('userEmail') ?? 'user';
@@ -284,7 +288,7 @@ Future<void> _fetchLedgerSummary() async {
     try {
       final response = await ApiService.get(
         "/api/collab/bill-split-total?dashboardId=${widget.dashboardId}",
-        context
+        context,
       );
 
       if (response.statusCode == 200) {
@@ -307,110 +311,107 @@ Future<void> _fetchLedgerSummary() async {
 
   /// Fetch members and calculate split
   Future<void> _fetchMembersAndSplit() async {
-  try {
-    // 1️⃣ Fetch Dashboard Members
-    final membersResponse = await ApiService.get(
-      "/api/collab/dashboard-members-by-dashboard?dashboardId=${widget.dashboardId}",
-      context
-      
-    );
+    try {
+      // 1️⃣ Fetch Dashboard Members
+      final membersResponse = await ApiService.get(
+        "/api/collab/dashboard-members-by-dashboard?dashboardId=${widget.dashboardId}",
+        context,
+      );
 
-    if (membersResponse.statusCode != 200) return;
+      if (membersResponse.statusCode != 200) return;
 
-    final membersData = jsonDecode(membersResponse.body) as List;
-    if (membersData.isEmpty) return;
+      final membersData = jsonDecode(membersResponse.body) as List;
+      if (membersData.isEmpty) return;
 
-    // 2️⃣ Extract emails
-    final emails = membersData.map((m) => m['userId']).toList();
+      // 2️⃣ Extract emails
+      final emails = membersData.map((m) => m['userId']).toList();
 
-    // 3️⃣ Fetch users by emails to get names
-    final usersResponse = await ApiService.post(
-      "/api/collab/users-by-emails",
-      {"emails": emails},
-      context
-    );
+      // 3️⃣ Fetch users by emails to get names
+      final usersResponse = await ApiService.post(
+        "/api/collab/users-by-emails",
+        {"emails": emails},
+        context,
+      );
 
-    if (usersResponse.statusCode != 200) return;
+      if (usersResponse.statusCode != 200) return;
 
-    final usersData = jsonDecode(usersResponse.body) as List;
+      final usersData = jsonDecode(usersResponse.body) as List;
 
-    // Map email -> name
-    final userMap = {for (var u in usersData) u['email']: u['name']};
+      // Map email -> name
+      final userMap = {for (var u in usersData) u['email']: u['name']};
 
-    // 4️⃣ Calculate split amount
-    if (totalAmount == null) return;
-    final memberCount = membersData.length;
-    final splitAmount = totalAmount! / memberCount;
+      // 4️⃣ Calculate split amount
+      if (totalAmount == null) return;
+      final memberCount = membersData.length;
+      final splitAmount = totalAmount! / memberCount;
 
-    // 5️⃣ Map members with names and split
-final paidMap = _calculatePaidAmountsFromEntries();
+      // 5️⃣ Map members with names and split
+      final paidMap = _calculatePaidAmountsFromEntries();
 
-List<Member> tempMembers = membersData.map((m) {
-  final email = m['userId'];
-  final role = m['role'] ?? 'member';
-  final name = userMap[email] ?? email;
+      List<Member> tempMembers = membersData.map((m) {
+        final email = m['userId'];
+        final role = m['role'] ?? 'member';
+        final name = userMap[email] ?? email;
 
-  double paidAmount;
+        double paidAmount;
 
-  if (role == 'owner') {
-    // 🔒 Owner always fully paid
-    paidAmount = splitAmount;
-  } else {
-    // 🔢 Sum of all entries made by this user
-    paidAmount = paidMap[name] ?? 0.0;
-  }
+        if (role == 'owner') {
+          // 🔒 Owner always fully paid
+          paidAmount = splitAmount;
+        } else {
+          // 🔢 Sum of all entries made by this user
+          paidAmount = paidMap[name] ?? 0.0;
+        }
 
-  return Member(
-    name: name,
-    email: email,
-    role: role,
-    totalAmount: splitAmount,
-    paidAmount: paidAmount,
-  );
-}).toList();
+        return Member(
+          name: name,
+          email: email,
+          role: role,
+          totalAmount: splitAmount,
+          paidAmount: paidAmount,
+        );
+      }).toList();
 
-
-    setState(() {
-      members = tempMembers;
-    });
-  } catch (e) {
-    debugPrint("Failed to fetch members and split: $e");
-  }
-}
-
-Future<void> _fetchDashboardCurrency() async {
-  try {
-    final response = await ApiService.post(
-      "/api/collab/dashboards-by-ids",
-      {"ids": [widget.dashboardId],},
-      context
-    );
-
-    if (response.statusCode == 200) {
-      final decoded = jsonDecode(response.body) as List;
-
-      if (decoded.isNotEmpty) {
-        setState(() {
-          currency = decoded[0]["currency"] ?? "USD";
-        });
-      }
+      setState(() {
+        members = tempMembers;
+      });
+    } catch (e) {
+      debugPrint("Failed to fetch members and split: $e");
     }
-  } catch (e) {
-    debugPrint("Failed to fetch dashboard currency: $e");
   }
-}
 
- Future<void> _fetchOwnerEmail() async {
+  Future<void> _fetchDashboardCurrency() async {
+    try {
+      final response = await ApiService.post("/api/collab/dashboards-by-ids", {
+        "ids": [widget.dashboardId],
+      }, context);
+
+      if (response.statusCode == 200) {
+        final decoded = jsonDecode(response.body) as List;
+
+        if (decoded.isNotEmpty) {
+          setState(() {
+            currency = decoded[0]["currency"] ?? "USD";
+          });
+        }
+      }
+    } catch (e) {
+      debugPrint("Failed to fetch dashboard currency: $e");
+    }
+  }
+
+  Future<void> _fetchOwnerEmail() async {
     try {
       final response = await ApiService.get(
         "/api/collab/dashboard/${widget.dashboardId}",
-        context
+        context,
       );
 
       if (response.statusCode == 200) {
         final data = jsonDecode(response.body);
         setState(() {
-          ownerEmail = data['ownerId']; // 🔥 ownerId comes from your MongoDB schema
+          ownerEmail =
+              data['ownerId']; // 🔥 ownerId comes from your MongoDB schema
         });
         _checkExitRequests();
       } else {
@@ -422,36 +423,34 @@ Future<void> _fetchDashboardCurrency() async {
   }
 
   Future<void> _checkExitRequests() async {
-  if (ownerEmail == null || userEmail != ownerEmail) {
-    setState(() {
-      hasExitRequests = false;
-      isCheckingExitRequests = false;
-    });
-    return;
-  }
-
-  try {
-    final response = await ApiService.get(
-      "/api/collab/exit-requests-by-dashboard?dashboardId=${widget.dashboardId}",
-      context,
-    );
-
-    if (response.statusCode == 200) {
-      final decoded = jsonDecode(response.body);
+    if (ownerEmail == null || userEmail != ownerEmail) {
       setState(() {
-        hasExitRequests = decoded["hasExitRequests"] == true;
+        hasExitRequests = false;
         isCheckingExitRequests = false;
       });
-    } else {
+      return;
+    }
+
+    try {
+      final response = await ApiService.get(
+        "/api/collab/exit-requests-by-dashboard?dashboardId=${widget.dashboardId}",
+        context,
+      );
+
+      if (response.statusCode == 200) {
+        final decoded = jsonDecode(response.body);
+        setState(() {
+          hasExitRequests = decoded["hasExitRequests"] == true;
+          isCheckingExitRequests = false;
+        });
+      } else {
+        isCheckingExitRequests = false;
+      }
+    } catch (e) {
+      debugPrint("Failed to check exit requests: $e");
       isCheckingExitRequests = false;
     }
-  } catch (e) {
-    debugPrint("Failed to check exit requests: $e");
-    isCheckingExitRequests = false;
   }
-}
-
-
 
   final Color activeColor = const Color(0xFF217BFF);
   final Color inactiveColor = const Color(0xFF667085);
@@ -469,161 +468,162 @@ Future<void> _fetchDashboardCurrency() async {
 
         /// Floating Button
         floatingActionButton: Padding(
-  padding: EdgeInsets.only(bottom: 80 + bottomInset),
-  child: Column(
-    mainAxisSize: MainAxisSize.min,
-    crossAxisAlignment: CrossAxisAlignment.end,
-    children: [
-
-      /// -------- Add Entries Button --------
-AnimatedOpacity(
-  opacity: _isExpanded ? 1 : 0,
-  duration: const Duration(milliseconds: 300),
-  child: AnimatedContainer(
-    duration: const Duration(milliseconds: 200),
-    height: _isExpanded ? 48 : 38,
-    child: Container(
-      decoration: BoxDecoration(
-        borderRadius: BorderRadius.circular(16),
-        boxShadow: [
-          BoxShadow(
-            color: const Color(0xFF217BFF).withOpacity(0.35),
-            blurRadius: 22,
-            offset: const Offset(0, 10),
-          ),
-        ],
-      ),
-      child: FloatingActionButton.extended(
-  heroTag: "add_entries",
-  backgroundColor: (ownerEmail != null && ownerEmail == userEmail)
-      ? Colors.grey.shade400 // lighter grey for disabled
-      : const Color(0xFF217BFF),
-  elevation: 0,
-  onPressed: (ownerEmail != null && ownerEmail == userEmail)
-      ? null // disables the button
-      : () {
-          setState(() => _isExpanded = false);
-          Navigator.push(
-            context,
-            MaterialPageRoute(
-              builder: (_) => AddEntriesPage(
-                dashboardId: widget.dashboardId,
+          padding: EdgeInsets.only(bottom: 80 + bottomInset),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.end,
+            children: [
+              /// -------- Add Entries Button --------
+              AnimatedOpacity(
+                opacity: _isExpanded ? 1 : 0,
+                duration: const Duration(milliseconds: 300),
+                child: AnimatedContainer(
+                  duration: const Duration(milliseconds: 200),
+                  height: _isExpanded ? 48 : 38,
+                  child: Container(
+                    decoration: BoxDecoration(
+                      borderRadius: BorderRadius.circular(16),
+                      boxShadow: [
+                        BoxShadow(
+                          color: const Color(0xFF217BFF).withOpacity(0.35),
+                          blurRadius: 22,
+                          offset: const Offset(0, 10),
+                        ),
+                      ],
+                    ),
+                    child: FloatingActionButton.extended(
+                      heroTag: "add_entries",
+                      backgroundColor:
+                          (ownerEmail != null && ownerEmail == userEmail)
+                          ? Colors
+                                .grey
+                                .shade400 // lighter grey for disabled
+                          : const Color(0xFF217BFF),
+                      elevation: 0,
+                      onPressed: (ownerEmail != null && ownerEmail == userEmail)
+                          ? null // disables the button
+                          : () {
+                              setState(() => _isExpanded = false);
+                              Navigator.push(
+                                context,
+                                MaterialPageRoute(
+                                  builder: (_) => AddEntriesPage(
+                                    dashboardId: widget.dashboardId,
+                                  ),
+                                ),
+                              );
+                            },
+                      label: Text(
+                        "Add Entries",
+                        style: TextStyle(
+                          color: (ownerEmail != null && ownerEmail == userEmail)
+                              ? const Color.fromARGB(
+                                  255,
+                                  255,
+                                  255,
+                                  255,
+                                ).withOpacity(1.0) // reduced opacity
+                              : Colors.white,
+                          fontWeight: FontWeight.w700,
+                        ),
+                      ),
+                      icon: Icon(
+                        Icons.receipt_long,
+                        color: (ownerEmail != null && ownerEmail == userEmail)
+                            ? Colors.white.withOpacity(1.0) // reduced opacity
+                            : Colors.white,
+                      ),
+                    ),
+                  ),
+                ),
               ),
-            ),
-          );
-        },
-  label: Text(
-    "Add Entries",
-    style: TextStyle(
-      color: (ownerEmail != null && ownerEmail == userEmail)
-          ? const Color.fromARGB(255, 255, 255, 255).withOpacity(1.0) // reduced opacity
-          : Colors.white,
-      fontWeight: FontWeight.w700,
-    ),
-  ),
-  icon: Icon(
-    Icons.receipt_long,
-    color: (ownerEmail != null && ownerEmail == userEmail)
-        ? Colors.white.withOpacity(1.0) // reduced opacity
-        : Colors.white,
-  ),
-),
 
-    ),
-  ),
-),
+              const SizedBox(height: 12),
 
+              /// -------- Add Members Button --------
+              AnimatedOpacity(
+                opacity: _isExpanded ? 1 : 0,
+                duration: const Duration(milliseconds: 200),
+                child: AnimatedContainer(
+                  duration: const Duration(milliseconds: 200),
+                  height: _isExpanded ? 48 : 38,
+                  child: Container(
+                    decoration: BoxDecoration(
+                      borderRadius: BorderRadius.circular(16),
+                      boxShadow: [
+                        BoxShadow(
+                          color: const Color(0xFF217BFF).withOpacity(0.35),
+                          blurRadius: 22,
+                          offset: const Offset(0, 10),
+                        ),
+                      ],
+                    ),
+                    child: FloatingActionButton.extended(
+                      heroTag: "add_members",
+                      backgroundColor: const Color(0xFF217BFF),
+                      elevation: 0,
+                      onPressed: (ownerEmail != null && ownerEmail == userEmail)
+                          ? () {
+                              setState(() => _isExpanded = false);
+                              Navigator.push(
+                                context,
+                                MaterialPageRoute(
+                                  builder: (_) => InpageAddMembersPage(
+                                    dashboardId: widget.dashboardId,
+                                  ),
+                                ),
+                              );
+                            }
+                          : null,
+                      label: const Text(
+                        "Add Members",
+                        style: TextStyle(
+                          color: Colors.white,
+                          fontWeight: FontWeight.w700,
+                        ),
+                      ),
+                      icon: const Icon(Icons.person_add, color: Colors.white),
+                    ),
+                  ),
+                ),
+              ),
 
-      const SizedBox(height: 12),
+              const SizedBox(height: 16),
 
-      /// -------- Add Members Button --------
-AnimatedOpacity(
-  opacity: _isExpanded ? 1 : 0,
-  duration: const Duration(milliseconds: 200),
-  child: AnimatedContainer(
-    duration: const Duration(milliseconds: 200),
-    height: _isExpanded ? 48 : 38,
-    child: Container(
-      decoration: BoxDecoration(
-        borderRadius: BorderRadius.circular(16),
-        boxShadow: [
-          BoxShadow(
-            color: const Color(0xFF217BFF).withOpacity(0.35),
-            blurRadius: 22,
-            offset: const Offset(0, 10),
-          ),
-        ],
-      ),
-      child: FloatingActionButton.extended(
-        heroTag: "add_members",
-        backgroundColor: const Color(0xFF217BFF),
-        elevation: 0,
-        onPressed:(ownerEmail != null && ownerEmail == userEmail)
-    ? () {
-        setState(() => _isExpanded = false);
-        Navigator.push(
-          context,
-          MaterialPageRoute(
-            builder: (_) => InpageAddMembersPage(
-              dashboardId: widget.dashboardId,
-            ),
-          ),
-        );
-      }
-    : null,
-        label: const Text(
-          "Add Members",
-          style: TextStyle(
-            color: Colors.white,
-            fontWeight: FontWeight.w700,
-          ),
-        ),
-        icon: const Icon(
-          Icons.person_add,
-          color: Colors.white,
-        ),
-      ),
-    ),
-  ),
-),
-
-
-      const SizedBox(height: 16),
-
-      /// -------- Main FAB --------
-      Container(
-        decoration: BoxDecoration(
-          borderRadius: BorderRadius.circular(16),
-          boxShadow: [
-            BoxShadow(
-              color: const Color(0xFF217BFF).withOpacity(0.35),
-              blurRadius: 22,
-              offset: const Offset(0, 10),
-            ),
-          ],
-        ),
-        child: FloatingActionButton(
-          backgroundColor: const Color(0xFF217BFF),
-          elevation: 0,
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(16),
-          ),
-          onPressed: () {
-            setState(() {
-              _isExpanded = !_isExpanded;
-            });
-          },
-          child: Icon(
-            _isExpanded ? Icons.close : Icons.add,
-            color: Colors.white,
-            size: 28,
+              /// -------- Main FAB --------
+              Container(
+                decoration: BoxDecoration(
+                  borderRadius: BorderRadius.circular(16),
+                  boxShadow: [
+                    BoxShadow(
+                      color: const Color(0xFF217BFF).withOpacity(0.35),
+                      blurRadius: 22,
+                      offset: const Offset(0, 10),
+                    ),
+                  ],
+                ),
+                child: FloatingActionButton(
+                  backgroundColor: const Color(0xFF217BFF),
+                  elevation: 0,
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(16),
+                  ),
+                  onPressed: () {
+                    setState(() {
+                      _isExpanded = !_isExpanded;
+                    });
+                  },
+                  child: Icon(
+                    _isExpanded ? Icons.close : Icons.add,
+                    color: Colors.white,
+                    size: 28,
+                  ),
+                ),
+              ),
+            ],
           ),
         ),
-      ),
-    ],
-  ),
-),
-floatingActionButtonLocation: FloatingActionButtonLocation.endDocked,
+        floatingActionButtonLocation: FloatingActionButtonLocation.endDocked,
 
         /// App Bar
         appBar: PreferredSize(
@@ -702,46 +702,48 @@ floatingActionButtonLocation: FloatingActionButtonLocation.endDocked,
                     mainAxisAlignment: MainAxisAlignment.center,
                     crossAxisAlignment: CrossAxisAlignment.center,
                     children: [
-                      if (!isCheckingExitRequests && hasExitRequests &&
-    ownerEmail == userEmail)
-  Column(
-    children: [
-      
-      InkWell(
-  borderRadius: BorderRadius.circular(26),
-  onTap: () {
-    Navigator.push(
-      context,
-      MaterialPageRoute(
-        builder: (context) => ExitRequestPage(dashboardId: widget.dashboardId),
-      ),
-    );
-  },
-  child: Container(
-    decoration: BoxDecoration(
-      color: Colors.white,
-      borderRadius: BorderRadius.circular(26),
-    ),
-    child: Padding(
-      padding: const EdgeInsets.symmetric(
-        horizontal: 8.0,
-        vertical: 2.0,
-      ),
-      child: Text(
-        "View Exit Requests",
-        style: TextStyle(
-          color: Color(0xFF4893FF),
-          fontSize: 12,
-          fontWeight: FontWeight.w700,
-        ),
-      ),
-    ),
-  ),
-),
+                      if (!isCheckingExitRequests &&
+                          hasExitRequests &&
+                          ownerEmail == userEmail)
+                        Column(
+                          children: [
+                            InkWell(
+                              borderRadius: BorderRadius.circular(26),
+                              onTap: () {
+                                Navigator.push(
+                                  context,
+                                  MaterialPageRoute(
+                                    builder: (context) => ExitRequestPage(
+                                      dashboardId: widget.dashboardId,
+                                    ),
+                                  ),
+                                );
+                              },
+                              child: Container(
+                                decoration: BoxDecoration(
+                                  color: Colors.white,
+                                  borderRadius: BorderRadius.circular(26),
+                                ),
+                                child: Padding(
+                                  padding: const EdgeInsets.symmetric(
+                                    horizontal: 8.0,
+                                    vertical: 2.0,
+                                  ),
+                                  child: Text(
+                                    "View Exit Requests",
+                                    style: TextStyle(
+                                      color: Color(0xFF4893FF),
+                                      fontSize: 12,
+                                      fontWeight: FontWeight.w700,
+                                    ),
+                                  ),
+                                ),
+                              ),
+                            ),
 
-      const SizedBox(height: 10),
-    ],
-  ),
+                            const SizedBox(height: 10),
+                          ],
+                        ),
                       Text(
                         "Total Amount to Lent",
                         style: TextStyle(
@@ -752,11 +754,11 @@ floatingActionButtonLocation: FloatingActionButtonLocation.endDocked,
                         ),
                       ),
                       Text(
-                       isLoadingLedgerSummary
-    ? "--"
-    : currency == "USD"
-        ? "\$${totalLent.toStringAsFixed(2)}"
-        : "$currency ${totalLent.toStringAsFixed(2)}",
+                        isLoadingLedgerSummary
+                            ? "--"
+                            : currency == "USD"
+                            ? "\$${totalLent.toStringAsFixed(2)}"
+                            : "$currency ${totalLent.toStringAsFixed(2)}",
 
                         style: TextStyle(
                           color: Color(0xFFFFFFFF),
@@ -767,9 +769,9 @@ floatingActionButtonLocation: FloatingActionButtonLocation.endDocked,
                       ),
                       Text(
                         isLoadingLedgerSummary
-    ? "loading members..."
-    : "lent to $assignedMemberCount group members",
- // number of members who are assigned/ who are in assigned members
+                            ? "loading members..."
+                            : "lent to $assignedMemberCount group members",
+                        // number of members who are assigned/ who are in assigned members
                         style: TextStyle(
                           color: Color(0xFFFFFFFF),
                           fontFamily: "Manrope",
@@ -782,41 +784,34 @@ floatingActionButtonLocation: FloatingActionButtonLocation.endDocked,
                 ),
                 const SizedBox(height: 27),
 
-                                SectionHeader(
-                  title: "Un-Assigned Members",  // all un-assigned members
+                SectionHeader(
+                  title: "Un-Assigned Members", // all un-assigned members
                   showButton: true,
                 ),
 
                 const SizedBox(height: 16),
 
-                UnassignedMembersView(members: unassignedMembers), // un assigned users/members
+                UnassignedMembersView(
+                  members: unassignedMembers,
+                ), // un assigned users/members
 
                 const SizedBox(height: 24),
 
-
-                
-                SectionHeader(
-                  title: "Assigned Members",
-                  showButton: true,
-                ),
+                SectionHeader(title: "Assigned Members", showButton: true),
                 const SizedBox(height: 16),
                 isLoadingAssignedMembers
-    ? const Center(child: CircularProgressIndicator())
-    : MembersViewRow(
-        members: assignedMembers,
-        groupType: "Ledger Tracking"
-      ),
+                    ? const Center(child: CircularProgressIndicator())
+                    : MembersViewRow(
+                        members: assignedMembers,
+                        groupType: "Ledger Tracking",
+                      ),
 
                 const SizedBox(height: 24),
 
                 /// All Entries
-                SectionHeader(
-                  title: "All Entries",
-                  showButton: true,
-                ),
+                SectionHeader(title: "All Entries", showButton: true),
                 const SizedBox(height: 16),
                 EntriesEntryList(entries: entries),
-
               ],
             ),
           ),
@@ -832,33 +827,66 @@ floatingActionButtonLocation: FloatingActionButtonLocation.endDocked,
             filter: ImageFilter.blur(sigmaX: 20, sigmaY: 20),
             child: Container(
               height: 70 + bottomInset.clamp(0, 40),
-              color: Colors.white.withOpacity(0.6),
-              child: BottomNavigationBar(
-                currentIndex: _selectedIndex,
-                backgroundColor: Colors.transparent,
-                elevation: 0,
-                type: BottomNavigationBarType.fixed,
-                selectedItemColor: activeColor,
-                unselectedItemColor: inactiveColor,
-                onTap: (index) {
-                  setState(() {
-                    _selectedIndex = index;
-                  });
-                },
-                items: const [
-                  BottomNavigationBarItem(
-                    icon: Icon(Icons.home_rounded),
-                    label: "Home",
-                  ),
-                  BottomNavigationBarItem(
-                    icon: Icon(Icons.groups_rounded),
-                    label: "Groups",
-                  ),
-                  BottomNavigationBarItem(
-                    icon: Icon(Icons.notification_add),
-                    label: "Notifications",
-                  ),
-                ],
+              decoration: BoxDecoration(
+                color: Colors.white.withOpacity(0.6),
+                border: Border.all(color: Colors.white.withOpacity(0.2)),
+              ),
+              child: SafeArea(
+                top: false,
+                child: BottomNavigationBar(
+                  backgroundColor: Colors.transparent,
+                  type: BottomNavigationBarType.fixed,
+                  elevation: 0,
+                  selectedItemColor: activeColor,
+                  unselectedItemColor: inactiveColor,
+                  currentIndex: _selectedIndex,
+                  showUnselectedLabels: true,
+                  onTap: (index) {
+                    if (index == 0) {
+                      // Navigate to home page
+                      Navigator.push(
+                        context,
+                        MaterialPageRoute(
+                          builder: (context) => const HomeScreen(),
+                        ),
+                      );
+                    } else if (index == 1) {
+                      // Navigate to Groups page
+                      Navigator.push(
+                        context,
+                        MaterialPageRoute(
+                          builder: (context) => const CollaborationScreen(),
+                        ),
+                      );
+                    } else if (index == 2) {
+                      // Navigate to Notifications page
+                      Navigator.push(
+                        context,
+                        MaterialPageRoute(
+                          builder: (context) => const NotificationPage(),
+                        ),
+                      );
+                    } else {
+                      setState(() {
+                        _selectedIndex = index;
+                      });
+                    }
+                  },
+                  items: const [
+                    BottomNavigationBarItem(
+                      icon: Icon(Icons.home_rounded),
+                      label: "Home",
+                    ),
+                    BottomNavigationBarItem(
+                      icon: Icon(Icons.groups_rounded),
+                      label: "Groups",
+                    ),
+                    BottomNavigationBarItem(
+                      icon: Icon(Icons.notification_add),
+                      label: "Notifications",
+                    ),
+                  ],
+                ),
               ),
             ),
           ),

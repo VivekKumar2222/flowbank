@@ -4,7 +4,8 @@ from io import BytesIO
 import pytesseract
 
 # Set the tesseract executable path
-pytesseract.pytesseract.tesseract_cmd = r"C:\Program Files\Tesseract-OCR\tesseract.exe"
+pytesseract.pytesseract.tesseract_cmd = r"C:\Users\syeda\AppData\Local\Programs\Tesseract-OCR\tesseract.exe"
+
 
 def run_ocr(image_url: str):
     headers = {"User-Agent": "Mozilla/5.0"}

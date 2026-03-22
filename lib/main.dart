@@ -2,14 +2,12 @@ import 'package:flutter/material.dart';
 import 'screens/onboarding/OnboardingScreen.dart';
 import 'package:device_preview/device_preview.dart';
 import 'screens/collaboration/delete_Group.dart';
+
 void main() {
   WidgetsFlutterBinding.ensureInitialized(); // 👈 this is required
   runApp(
-        DevicePreview(
-      enabled: true,
-      builder: (context) => const MyApp(),
-      )
-      // const MyApp()
+    DevicePreview(enabled: true, builder: (context) => const MyApp()),
+    // const MyApp()
   );
 }
 
@@ -21,7 +19,7 @@ class MyApp extends StatelessWidget {
     return MaterialApp(
       title: 'FlowBank',
       theme: ThemeData(fontFamily: 'Manrope', useMaterial3: true),
-            locale: DevicePreview.locale(context),
+      locale: DevicePreview.locale(context),
       builder: DevicePreview.appBuilder,
 
       home: const OnboardingScreen(),

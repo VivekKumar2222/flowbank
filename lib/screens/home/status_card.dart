@@ -8,7 +8,7 @@ class InfoCard extends StatelessWidget {
   final IconData? icon;
   final String themeColor; // NEW PARAMETER
 
-   InfoCard({
+  InfoCard({
     super.key,
     required this.title,
     required this.currentValue,
@@ -70,10 +70,7 @@ class InfoCard extends StatelessWidget {
       decoration: BoxDecoration(
         color: selected["bg"],
         borderRadius: BorderRadius.circular(16),
-        border: Border.all(
-          color: selected["border"]!,
-          width: 1.2,
-        ),
+        border: Border.all(color: selected["border"]!, width: 1.2),
       ),
       child: Row(
         children: [
@@ -162,14 +159,14 @@ class InfoCard extends StatelessWidget {
                               fontFamily: "Manrope",
                             ),
                           ),
-                        ]
+                        ],
                       ],
                     ),
                   ),
                 ],
               ),
             ),
-          )
+          ),
         ],
       ),
     );

@@ -999,7 +999,8 @@ router.post("/verify-entry-ocr", protect, async (req, res) => {
 
     let ocrData;
     try {
-      const ocrResponse = await axios.post("http://127.0.0.1:8000/ocr/verify", {
+      console.log("IMAGE URL FOR OCR:", imageUrl);
+      const ocrResponse = await axios.post("http://127.0.0.1:8001/ocr/verify", {
         image_url: imageUrl,
         sender_name: senderName,
         receiver_name: receiverName,

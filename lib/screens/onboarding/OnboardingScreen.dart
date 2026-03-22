@@ -64,222 +64,218 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
                 painter: WavePainter(),
               ),
             ),
-             Column(
-                children: [
-                  // ✅ Image (NO animation)
-                  AnimatedSwitcher(
-                    duration: const Duration(milliseconds: 400),
-                    transitionBuilder: (child, animation) {
-                      return FadeTransition(opacity: animation, child: child);
-                    },
-                    child: Image.asset(
+            Column(
+              children: [
+                // ✅ Image (NO animation)
+                AnimatedSwitcher(
+                  duration: const Duration(milliseconds: 400),
+                  transitionBuilder: (child, animation) {
+                    return FadeTransition(opacity: animation, child: child);
+                  },
+                  child: Image.asset(
+                    onboardingData[currentIndex]["image"]!,
+                    key: ValueKey<String>(
                       onboardingData[currentIndex]["image"]!,
-                      key: ValueKey<String>(
-                        onboardingData[currentIndex]["image"]!,
-                      ), // important
-                    ),
+                    ), // important
                   ),
+                ),
 
-                  const SizedBox(height: 4),
-                  Padding(
-                    padding: const EdgeInsets.symmetric(horizontal: 24),
-                    child: Row(
-                      children: [
-                        Container(
-                          width: 24,
-                          height: 24,
-                          decoration: BoxDecoration(
-                            color: Colors.black,
-                            borderRadius: BorderRadius.circular(4),
-                          ),
-                          child: const Center(
-                            child: Text(
-                              '◆',
-                              style: TextStyle(
-                                color: Colors.white,
-                                fontSize: 12,
-                                fontWeight: FontWeight.bold,
-                              ),
+                const SizedBox(height: 4),
+                Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 24),
+                  child: Row(
+                    children: [
+                      Container(
+                        width: 24,
+                        height: 24,
+                        decoration: BoxDecoration(
+                          color: Colors.black,
+                          borderRadius: BorderRadius.circular(4),
+                        ),
+                        child: const Center(
+                          child: Text(
+                            '◆',
+                            style: TextStyle(
+                              color: Colors.white,
+                              fontSize: 12,
+                              fontWeight: FontWeight.bold,
                             ),
                           ),
                         ),
-                        const SizedBox(width: 8),
-                        const Text(
-                          'FlowBank',
-                          style: TextStyle(
-                            color: Colors.black,
-                            fontSize: 16,
-                            fontWeight: FontWeight.w600,
-                            letterSpacing: 0.5,
-                          ),
+                      ),
+                      const SizedBox(width: 8),
+                      const Text(
+                        'FlowBank',
+                        style: TextStyle(
+                          color: Colors.black,
+                          fontSize: 16,
+                          fontWeight: FontWeight.w600,
+                          letterSpacing: 0.5,
                         ),
-                      ],
-                    ),
+                      ),
+                    ],
                   ),
+                ),
 
-                  const SizedBox(height: 20),
+                const SizedBox(height: 20),
 
-                  Padding(
-                    padding: const EdgeInsets.symmetric(horizontal: 24),
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        // ✅ Text (NO animation)
-                        Text(
-                          onboardingData[currentIndex]["title1"]!,
+                Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 24),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      // ✅ Text (NO animation)
+                      Text(
+                        onboardingData[currentIndex]["title1"]!,
+                        style: const TextStyle(
+                          color: Colors.black,
+                          fontSize: 42,
+                          fontWeight: FontWeight.w500,
+                          height: 1.2,
+                          letterSpacing: -0.5,
+                        ),
+                      ),
+                      const SizedBox(height: 4),
+                      Text(
+                        onboardingData[currentIndex]["title2"]!,
+                        style: TextStyle(
+                          color: currentIndex == onboardingData.length - 1
+                              ? const Color(
+                                  0xFFB968F6,
+                                ) // Purple for last screen
+                              : const Color(0xFF1E88E5), // Blue for others
+                          fontSize: 42,
+                          fontWeight: FontWeight.w500,
+                          height: 1.2,
+                          letterSpacing: -0.5,
+                        ),
+                      ),
+                      const SizedBox(height: 14),
+                      Text(
+                        onboardingData[currentIndex]["desc"]!,
+                        style: const TextStyle(
+                          color: Color(0xFF424242),
+                          fontSize: 17,
+                          fontWeight: FontWeight.w400,
+                          height: 1.4,
+                          letterSpacing: 0.25,
+                        ),
+                      ),
+                      const SizedBox(height: 18),
+
+                      Row(
+                        children: List.generate(onboardingData.length, (index) {
+                          final bool isLastSlide =
+                              currentIndex == onboardingData.length - 1;
+
+                          final activeColor = isLastSlide
+                              ? const Color(0xFFB968F6)
+                              : const Color(0xFF1E88E5);
+
+                          final inactiveColor = isLastSlide
+                              ? const Color.fromARGB(255, 221, 186, 247)
+                              : const Color(0xFFBBDEFB);
+
+                          return AnimatedContainer(
+                            duration: const Duration(milliseconds: 300),
+                            curve: Curves.easeInOut,
+                            margin: const EdgeInsets.only(right: 8),
+                            width: currentIndex == index ? 36 : 8,
+                            height: 8,
+                            decoration: BoxDecoration(
+                              color: currentIndex == index
+                                  ? activeColor
+                                  : inactiveColor,
+                              borderRadius: BorderRadius.circular(4),
+                            ),
+                          );
+                        }),
+                      ),
+                    ],
+                  ),
+                ),
+
+                const SizedBox(height: 28),
+
+                Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 24),
+                  child: Column(
+                    children: [
+                      SizedBox(
+                        width: double.infinity,
+                        height: 48,
+                        child: ElevatedButton(
+                          onPressed: () {
+                            if (currentIndex < onboardingData.length - 1) {
+                              setState(() {
+                                currentIndex++;
+                              });
+                            } else {
+                              showSignUpBottomSheet(
+                                context,
+                                onMessage: (msg) {
+                                  showCustomNotification(context, msg);
+                                },
+                              );
+                            }
+                          },
+
+                          style: ElevatedButton.styleFrom(
+                            backgroundColor:
+                                currentIndex == onboardingData.length - 1
+                                ? const Color(0xFFB968F6)
+                                : const Color(0xFF1E88E5),
+                            foregroundColor: Colors.white,
+                            elevation: 0,
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(12),
+                            ),
+                          ),
+                          child: Text(
+                            currentIndex == onboardingData.length - 1
+                                ? "Get Started"
+                                : "Next",
+                            style: const TextStyle(
+                              fontSize: 16,
+                              fontWeight: FontWeight.w600,
+                              letterSpacing: 0.5,
+                            ),
+                          ),
+                        ),
+                      ),
+                      const SizedBox(height: 10),
+                      TextButton(
+                        onPressed: () {
+                          if (currentIndex == onboardingData.length - 1) {
+                            showLoginBottomSheet(
+                              context,
+                              onMessage: (msg) {
+                                showCustomNotification(context, msg);
+                              },
+                            );
+                          } else {
+                            setState(() {
+                              currentIndex = onboardingData.length - 1;
+                            });
+                          }
+                        },
+                        child: Text(
+                          currentIndex == onboardingData.length - 1
+                              ? "Already have an account?"
+                              : "Skip",
                           style: const TextStyle(
                             color: Colors.black,
-                            fontSize: 42,
+                            fontSize: 14,
                             fontWeight: FontWeight.w500,
-                            height: 1.2,
-                            letterSpacing: -0.5,
-                          ),
-                        ),
-                        const SizedBox(height: 4),
-                        Text(
-                          onboardingData[currentIndex]["title2"]!,
-                          style: TextStyle(
-                            color: currentIndex == onboardingData.length - 1
-                                ? const Color(
-                                    0xFFB968F6,
-                                  ) // Purple for last screen
-                                : const Color(0xFF1E88E5), // Blue for others
-                            fontSize: 42,
-                            fontWeight: FontWeight.w500,
-                            height: 1.2,
-                            letterSpacing: -0.5,
-                          ),
-                        ),
-                        const SizedBox(height: 14),
-                        Text(
-                          onboardingData[currentIndex]["desc"]!,
-                          style: const TextStyle(
-                            color: Color(0xFF424242),
-                            fontSize: 17,
-                            fontWeight: FontWeight.w400,
-                            height: 1.4,
                             letterSpacing: 0.25,
                           ),
                         ),
-                        const SizedBox(height: 18),
-
-                        Row(
-                          children: List.generate(onboardingData.length, (
-                            index,
-                          ) {
-                            final bool isLastSlide =
-                                currentIndex == onboardingData.length - 1;
-
-                            final activeColor = isLastSlide
-                                ? const Color(0xFFB968F6)
-                                : const Color(0xFF1E88E5);
-
-                            final inactiveColor = isLastSlide
-                                ? const Color.fromARGB(255, 221, 186, 247)
-                                : const Color(0xFFBBDEFB);
-
-                            return AnimatedContainer(
-                              duration: const Duration(milliseconds: 300),
-                              curve: Curves.easeInOut,
-                              margin: const EdgeInsets.only(right: 8),
-                              width: currentIndex == index ? 36 : 8,
-                              height: 8,
-                              decoration: BoxDecoration(
-                                color: currentIndex == index
-                                    ? activeColor
-                                    : inactiveColor,
-                                borderRadius: BorderRadius.circular(4),
-                              ),
-                            );
-                          }),
-                        ),
-                      ],
-                    ),
+                      ),
+                    ],
                   ),
-
-                  const SizedBox(height: 28),
-
-                  Padding(
-                    padding: const EdgeInsets.symmetric(horizontal: 24),
-                    child: Column(
-                      children: [
-                        SizedBox(
-                          width: double.infinity,
-                          height: 48,
-                          child: ElevatedButton(
-                            onPressed: () {
-                              if (currentIndex < onboardingData.length - 1) {
-                                setState(() {
-                                  currentIndex++;
-                                });
-                              } else {
-                                    showSignUpBottomSheet(
-      context,
-      onMessage: (msg) {
-        showCustomNotification(context, msg);
-      },
-    );
-                              }
-                            },
-
-                            style: ElevatedButton.styleFrom(
-                              backgroundColor:
-                                  currentIndex == onboardingData.length - 1
-                                  ? const Color(0xFFB968F6)
-                                  : const Color(0xFF1E88E5),
-                              foregroundColor: Colors.white,
-                              elevation: 0,
-                              shape: RoundedRectangleBorder(
-                                borderRadius: BorderRadius.circular(12),
-                              ),
-                            ),
-                            child: Text(
-                              currentIndex == onboardingData.length - 1
-                                  ? "Get Started"
-                                  : "Next",
-                              style: const TextStyle(
-                                fontSize: 16,
-                                fontWeight: FontWeight.w600,
-                                letterSpacing: 0.5,
-                              ),
-                            ),
-                          ),
-                        ),
-                        const SizedBox(height: 10),
-                        TextButton(
-                          onPressed: () {
-                            if (currentIndex == onboardingData.length - 1) {
-showLoginBottomSheet(
-  context,
-  onMessage: (msg) {
-    showCustomNotification(context, msg);
-  },
-);
-
-                            } else {
-                              setState(() {
-                                currentIndex = onboardingData.length - 1;
-                              });
-                            }
-                          },
-                          child: Text(
-                            currentIndex == onboardingData.length - 1
-                                ? "Already have an account?"
-                                : "Skip",
-                            style: const TextStyle(
-                              color: Colors.black,
-                              fontSize: 14,
-                              fontWeight: FontWeight.w500,
-                              letterSpacing: 0.25,
-                            ),
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-                ],
-              ),
-          
+                ),
+              ],
+            ),
           ],
         ),
       ),

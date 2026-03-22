@@ -30,17 +30,16 @@ class _OtpScreenState extends State<OtpScreen> {
   }
 
   String getInitials(String name) {
-  if (name.trim().isEmpty) return "";
+    if (name.trim().isEmpty) return "";
 
-  final parts = name.trim().split(RegExp(r'\s+'));
+    final parts = name.trim().split(RegExp(r'\s+'));
 
-  if (parts.length == 1) {
-    return parts[0][0].toUpperCase();
+    if (parts.length == 1) {
+      return parts[0][0].toUpperCase();
+    }
+
+    return (parts[0][0] + parts[1][0]).toUpperCase();
   }
-
-  return (parts[0][0] + parts[1][0]).toUpperCase();
-}
-
 
   void startTimer() {
     canResend = false;
@@ -67,14 +66,10 @@ class _OtpScreenState extends State<OtpScreen> {
   Future<void> verifyOtp() async {
     setState(() => isLoading = true);
 
-    final response = await ApiService.post(
-      "/api/auth/verify-login-otp",
-      {
-        "email": widget.email,
-        "otp": otpController.text.trim(),
-      },
-      context,
-    );
+    final response = await ApiService.post("/api/auth/verify-login-otp", {
+      "email": widget.email,
+      "otp": otpController.text.trim(),
+    }, context);
 
     setState(() => isLoading = false);
 
@@ -89,14 +84,13 @@ class _OtpScreenState extends State<OtpScreen> {
         print(data['accessToken']);
 
         final String userName = data['user']['name'] ?? '';
-final String initials = getInitials(userName);
+        final String initials = getInitials(userName);
 
-await prefs.setString('userId', data['user']['_id']);
-await prefs.setString('userName', userName);
-await prefs.setString('userInitials', initials);
-await prefs.setString('userEmail', data['user']['email'] ?? '');
-await prefs.setString('accessToken', data['accessToken'] ?? '');
-
+        await prefs.setString('userId', data['user']['_id']);
+        await prefs.setString('userName', userName);
+        await prefs.setString('userInitials', initials);
+        await prefs.setString('userEmail', data['user']['email'] ?? '');
+        await prefs.setString('accessToken', data['accessToken'] ?? '');
       }
 
       Navigator.pushReplacement(
@@ -162,7 +156,7 @@ await prefs.setString('accessToken', data['accessToken'] ?? '');
                   ),
                   const SizedBox(height: 8),
                   Text(
-                    "We've sent a 6-digit code to",
+                    "We've sent a 4-digit code to",
                     style: TextStyle(fontSize: 16, color: Colors.grey.shade700),
                   ),
                   Text(
@@ -250,7 +244,7 @@ await prefs.setString('accessToken', data['accessToken'] ?? '');
                             final response = await ApiService.post(
                               "/api/auth/resend-otp",
                               {"email": widget.email},
-                              context
+                              context,
                             );
 
                             final data = jsonDecode(response.body);

@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
-
 class NotificationOutlook extends StatelessWidget {
   final String titleText;
   final String badgeText;
@@ -19,14 +18,16 @@ class NotificationOutlook extends StatelessWidget {
   Color get bgColor =>
       isPenalty ? const Color(0xFFFFD1D1) : const Color(0xFFF5FAFF);
 
-  Color get borderColor =>
-      isPenalty ? const Color.fromARGB(127, 255, 51, 51) : const Color(0xFFD7E8FF);
+  Color get borderColor => isPenalty
+      ? const Color.fromARGB(127, 255, 51, 51)
+      : const Color(0xFFD7E8FF);
 
   Color get textColor =>
       isPenalty ? const Color(0xFFFF2121) : const Color(0xFF2C82FF);
 
-  Color get badgeBgColor =>
-      isPenalty ? const Color.fromARGB(255, 255, 227, 227) : const Color(0xFFD1E9FF);
+  Color get badgeBgColor => isPenalty
+      ? const Color.fromARGB(255, 255, 227, 227)
+      : const Color(0xFFD1E9FF);
 
   @override
   Widget build(BuildContext context) {
@@ -36,15 +37,11 @@ class NotificationOutlook extends StatelessWidget {
       decoration: BoxDecoration(
         color: bgColor,
         borderRadius: BorderRadius.circular(20),
-        border: Border.all(
-          color: borderColor,
-          width: 1.2,
-        ),
+        border: Border.all(color: borderColor, width: 1.2),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          
           Row(
             children: [
               Flexible(
@@ -89,8 +86,10 @@ class NotificationOutlook extends StatelessWidget {
               ),
               const SizedBox(width: 6),
               Container(
-                padding:
-                    const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 12,
+                  vertical: 4,
+                ),
                 decoration: BoxDecoration(
                   color: badgeBgColor,
                   borderRadius: BorderRadius.circular(24),
