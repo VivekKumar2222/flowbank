@@ -1,5 +1,6 @@
 import 'dart:ui';
 import 'package:flutter/material.dart';
+import 'package:flutter_svg/flutter_svg.dart';
 import '../home/profile.dart';
 import '../home/section_header.dart';
 import '../onboarding/OnboardingScreen.dart';
@@ -10,6 +11,11 @@ import '../home/bank_transactions.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import '../collaboration/collaboration_screen.dart';
 import '../notification/notification-page.dart';
+import 'financial_health_screen.dart';
+import 'dart:convert';
+import 'package:http/http.dart' as http;
+import 'package:flowbank/api/api_service.dart';
+import '../home/home_skeleton_loader.dart';
 
 class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
@@ -21,23 +27,154 @@ class HomeScreen extends StatefulWidget {
 class _HomeScreenState extends State<HomeScreen> {
   String? userName;
   String? userInitials;
+  String? email;
+  double? totalBalance;
+  List<BankAccount> plaidAccounts = [];
+  List<Map<String, dynamic>> recentTransactions = [];
+  bool isLoadingData = true;
+  
     @override
   void initState() {
     super.initState();
-    _loadUserName();
+    _loadUserData();
+    //_loadUserEmail();
+    //_fetchTotalBalance();
   }
 
-  Future<void> _loadUserName() async {
+  Future<void> _loadUserData() async {
     final prefs = await SharedPreferences.getInstance();
     setState(() {
       userName = prefs.getString('userName') ?? 'User';
       userInitials = prefs.getString('userInitials') ?? 'U';
+      email = prefs.getString('userEmail') ?? '';
+      
     });
+    if (email != null && email!.isNotEmpty) {
+    _fetchTotalBalance();  // ✅ Now email is guaranteed
   }
+  }
+
+  // Future<void> _loadUserEmail() async {
+  //   final prefs = await SharedPreferences.getInstance();
+  //   setState(() {
+  //     email = prefs.getString('userEmail') ?? '';
+  //   });
+  //   if (email != null && email!.isNotEmpty) {
+  //   await _fetchTotalBalance();  // ✅ Now email is guaranteed
+  // }
+  // }
+
+  // Add this inside _HomeScreenState
+
+
+// Predefined gradient pairs for cards
+final List<List<Color>> _cardGradients = [
+  [Color(0xFFB28DFF), Color(0xFFF3B0FF)],
+  [Color(0xFF2193FF), Color(0xFF6DD5ED)],
+  [Color(0xFF11998e), Color(0xFF38ef7d)],
+  [Color(0xFFf7971e), Color(0xFFffd200)],
+  [Color(0xFFc94b4b), Color(0xFF4b134f)],
+];
+
+Future<void> _fetchTotalBalance() async {
+  final stopwatch = Stopwatch()..start();
+  try {
+    final response = await ApiService.get("/api/bank/all-data/$email", context);
+
+    print("⏱ API call took: ${stopwatch.elapsedMilliseconds} ms");
+
+    if (response.statusCode == 200) {
+      final parseWatch = Stopwatch()..start();
+      final data = jsonDecode(response.body);
+
+      print("⏱ JSON decode took: ${parseWatch.elapsedMilliseconds} ms");
+
+      // Parse accounts
+      final List accountsRaw = data['accounts'] ?? [];
+final List<BankAccount> parsedAccounts = [];
+
+for (int i = 0; i < accountsRaw.length; i++) {
+  final acc = accountsRaw[i];
+
+  String dateConnected = '';
+  try {
+    final dt = DateTime.parse(acc['dateConnected']);
+    dateConnected =
+        '${dt.month.toString().padLeft(2, '0')}/${dt.year.toString().substring(2)}';
+  } catch (_) {
+    dateConnected = '';
+  }
+
+  // Parse sub-accounts
+  final List subRaw = acc['subAccounts'] ?? [];
+  final List<Map<String, dynamic>> subAccounts = subRaw
+      .map((s) => Map<String, dynamic>.from(s))
+      .toList();
+
+  parsedAccounts.add(BankAccount(
+    bankName: acc['institutionName'] ?? 'Bank',
+    amount: (acc['totalBalance'] as num?)?.toDouble() ?? 0.0,
+    dateConnected: dateConnected,
+    gradientColors: _cardGradients[i % _cardGradients.length],
+    subAccounts: subAccounts,
+  ));
+}
+      // Parse recent transactions (last 5 from historical)
+      final List historicalRaw = data['historical'] ?? [];
+      final List<Map<String, dynamic>> parsedTransactions = historicalRaw
+          .take(5)
+          .map((t) => Map<String, dynamic>.from(t))
+          .toList();
+
+      setState(() {
+        totalBalance = (data['totalBalance'] as num?)?.toDouble() ?? 0.0;
+        plaidAccounts = parsedAccounts;
+        recentTransactions = parsedTransactions;
+        isLoadingData = false;
+        print('✅ Total Balance: $totalBalance');
+        print('✅ Accounts: ${plaidAccounts.length}');
+        print('✅ Transactions: ${recentTransactions.length}');
+      });
+    } else {
+      print('Failed to fetch data: ${response.body}');
+      setState(() => isLoadingData = false);
+    }
+  } catch (e) {
+    print('Error fetching data: $e');
+    setState(() => isLoadingData = false);
+  }
+}
   int _selectedIndex = 0;
 
   final Color activeColor = const Color(0xFF217BFF);
   final Color inactiveColor = const Color(0xFF667085);
+
+  Route _premiumRoute(Widget page) {
+    return PageRouteBuilder(
+      transitionDuration: const Duration(milliseconds: 320),
+      reverseTransitionDuration: const Duration(milliseconds: 260),
+      pageBuilder: (context, animation, secondaryAnimation) => page,
+      transitionsBuilder: (context, animation, secondaryAnimation, child) {
+        final curved = CurvedAnimation(
+          parent: animation,
+          curve: Curves.easeOutCubic,
+          reverseCurve: Curves.easeInCubic,
+        );
+
+        final slide = Tween<Offset>(
+          begin: const Offset(0.0, 0.04),
+          end: Offset.zero,
+        ).animate(curved);
+
+        final fade = Tween<double>(begin: 0.0, end: 1.0).animate(curved);
+
+        return FadeTransition(
+          opacity: fade,
+          child: SlideTransition(position: slide, child: child),
+        );
+      },
+    );
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -209,24 +346,18 @@ class _HomeScreenState extends State<HomeScreen> {
               ),
 
               // -------- USER TOTAL CARDS --------
-              UserTotal(
-                accounts: [
-                  BankAccount(
-                    bankName: "JS Mastery Pro",
-                    cardHolder: "Adrian Hajdin",
-                    amount: 1000.12,
-                    dateConnected: "06/24",
-                    gradientColors: [Color(0xFFB28DFF), Color(0xFFF3B0FF)],
-                  ),
-                  BankAccount(
-                    bankName: "Sky Bank",
-                    cardHolder: "John Doe",
-                    amount: 1600.00,
-                    dateConnected: "07/23",
-                    gradientColors: [Color(0xFF2193FF), Color(0xFF6DD5ED)],
-                  ),
-                ],
-              ),
+              // -------- USER TOTAL CARDS --------
+isLoadingData
+    ? const HomeSkeletonLoader()
+    : plaidAccounts.isEmpty
+        ? Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 20),
+            child: Text(
+              "No bank accounts connected.",
+              style: TextStyle(color: Color(0xFF667085), fontSize: 14),
+            ),
+          )
+        : UserTotal(accounts: plaidAccounts),
 
               // -------- TRANSACTIONS --------
               Padding(
@@ -320,6 +451,30 @@ class _HomeScreenState extends State<HomeScreen> {
                 ),
               ),
 
+              const SizedBox(height: 18),
+              Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 18.0),
+                child: Column(
+                  children: [
+                    SectionHeader(
+                        title: "AI Analysis",
+                        showButton: false,
+                        destination: OnboardingScreen(),
+                      ),
+                      const SizedBox(height: 12),
+                      AIFinancialHeroCard(
+  onTap: () {
+    Navigator.push(
+      context,
+      _premiumRoute(const FinancialHealthScreen()),
+    );
+  },
+),
+
+                ],
+                ),
+              ),
+                    
               // -------- SPACE FOR BOTTOM NAV --------
               const SizedBox(height: 120),
             ],
@@ -391,6 +546,137 @@ class _HomeScreenState extends State<HomeScreen> {
                 ),
               ),
             ),
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+
+class AIFinancialHeroCard extends StatelessWidget {
+  final VoidCallback onTap;
+
+  const AIFinancialHeroCard({super.key, required this.onTap});
+
+  @override
+  Widget build(BuildContext context) {
+    final width = MediaQuery.of(context).size.width;
+
+    return GestureDetector(
+      onTap: onTap,
+      child: Container(
+        width: double.infinity,
+        height: 380,
+        decoration: BoxDecoration(
+          borderRadius: BorderRadius.circular(22),
+        ),
+        child: ClipRRect(
+          borderRadius: BorderRadius.circular(22),
+          child: Stack(
+            children: [
+              // 🔵 BACKGROUND (Replace this with your SVG)
+              Positioned.fill(
+  child: Image.asset(
+    "assets/financial-prediction-background.png",
+    fit: BoxFit.cover,
+  ),
+),
+
+
+
+              // Optional curve overlay (subtle design detail)
+              // Positioned(
+              //   right: -40,
+              //   top: -40,
+              //   child: Container(
+              //     width: 200,
+              //     height: 200,
+              //     decoration: BoxDecoration(
+              //       border: Border.all(
+              //         color: Colors.white.withOpacity(0.3),
+              //         width: 1,
+              //       ),
+              //       shape: BoxShape.circle,
+              //     ),
+              //   ),
+              // ),
+
+              // CONTENT
+              Padding(
+                padding: EdgeInsets.symmetric(
+                  horizontal: 25,
+                  vertical: 41,
+                ),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    // ✨ Icon
+                    Container(
+                      width: 28,
+                      height: 28,
+                      decoration: BoxDecoration(
+                        color: Colors.white.withOpacity(0),
+                        borderRadius: BorderRadius.circular(8),
+                      ),
+                      child: const Icon(
+                        Icons.auto_awesome,
+                        size: 26,
+                        color: Colors.white,
+                      ),
+                    ),
+
+                    const Spacer(),
+
+                    // 🧠 Title
+                    Text(
+                      "Financial\nPrediction System\nPowered by AI",
+                      style: TextStyle(
+                        fontSize: width < 360 ? 28 : 29,
+                        fontWeight: FontWeight.w700,
+                        color: Colors.white,
+                        height: 1.12,
+                      ),
+                    ),
+
+                    const SizedBox(height: 10),
+
+                    // 📄 Description
+                    Text(
+                      "An AI-powered system that provides near-accurate predictions of your financial stability and future outlook",
+                      style: TextStyle(
+                        fontSize: width < 360 ? 11 : 12.5,
+                        color: Colors.white.withOpacity(0.85),
+                        height: 1.3,
+                        fontWeight: FontWeight.w500,
+                      ),
+                    ),
+
+                    const SizedBox(height: 36),
+
+                    // 🔘 Button
+                    Container(
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 18,
+                        vertical: 8,
+                      ),
+                      decoration: BoxDecoration(
+                        color: Colors.white,
+                        borderRadius: BorderRadius.circular(30),
+                      ),
+                      child: const Text(
+                        "Try It",
+                        style: TextStyle(
+                          color: Color(0xFF217BFF),
+                          fontWeight: FontWeight.w700,
+                          fontSize: 13,
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ],
           ),
         ),
       ),

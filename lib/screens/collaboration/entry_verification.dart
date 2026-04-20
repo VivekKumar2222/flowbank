@@ -186,7 +186,13 @@ if (ocrResponse.statusCode == 200) {
   _OcrStatusBox(
     verified: ocrVerified!,
     score: ocrScore!,
+  )
+else
+  const Text(
+    "OCR result is null",
+    style: TextStyle(color: Colors.grey),
   ),
+
   const SizedBox(height: 16),
 
                    _ActionButtons(

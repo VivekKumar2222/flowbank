@@ -10,7 +10,7 @@ import '../api/session_expired.dart';
 class ApiService {
   static const String baseUrl =
       "https://dagmar-bioelectric-varietally.ngrok-free.dev";
-      // "localhost:5000";
+      // "http://localhost:5000";
 
   static IOClient _client() {
     final httpClient = HttpClient();

@@ -297,14 +297,14 @@ class _ProfileScreenState extends State<ProfileScreen> {
                 accounts: [
                   BankAccount(
                     bankName: "JS Mastery Pro",
-                    cardHolder: "Adrian Hajdin",
+                    //cardHolder: "Adrian Hajdin",
                     amount: 1000.12,
                     dateConnected: "06/24",
                     gradientColors: [Color(0xFFB28DFF), Color(0xFFF3B0FF)],
                   ),
                   BankAccount(
                     bankName: "Sky Bank",
-                    cardHolder: "John Doe",
+                    //cardHolder: "John Doe",
                     amount: 1600.00,
                     dateConnected: "07/23",
                     gradientColors: [Color(0xFF2193FF), Color(0xFF6DD5ED)],

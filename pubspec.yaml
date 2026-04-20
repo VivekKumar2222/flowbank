@@ -20,7 +20,10 @@ dependencies:
   image_picker: ^1.0.7
   encrypt: ^5.0.3
   flutter_slidable: ^3.0.0
-  # google_sign_in: ^6.1.1
+  google_sign_in: ^6.1.1
+  fl_chart: ^0.66.2
+  plaid_flutter: ^3.0.0
+  shimmer: ^3.0.0
 
 
 
@@ -52,6 +55,9 @@ flutter:
     - assets/members-image.png
     - assets/members-image2.png
     - assets/fonts/
+    - assets/financial-prediction-background.png
+    - assets/bank-card.png
+    - assets/goals-card.png
 
 
   fonts:

@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'screens/onboarding/OnboardingScreen.dart';
 import 'package:device_preview/device_preview.dart';
 import 'screens/collaboration/delete_Group.dart';
+import 'screens/connectBank/connect_bank_screen.dart';
 void main() {
   WidgetsFlutterBinding.ensureInitialized(); // 👈 this is required
   runApp(

@@ -12,13 +12,30 @@ const userSchema = new mongoose.Schema({
   },
   password: {
     type: String,
-    required: true,
+    required: false,
   },
   isVerified: { type: Boolean, default: false },
   phone: { type: String, default: "" },
   city: { type: String, default: "" },
   country: { type: String, default: "" },
   postalCode: {type: String, default: "" },
+
+  googleId: {
+  type: String,
+  default: null,
+},
+avatar: {
+  type: String,
+  default: null,
+},
+authProvider: {
+  type: String,
+  enum: ['local', 'google'],
+  default: 'local',
+},
+
+  // plaidAccessToken: { type: String, default: null },
+  // plaidItemId: { type: String, default: null }, 
 }, { timestamps: true });
 
 module.exports = mongoose.model("User", userSchema);

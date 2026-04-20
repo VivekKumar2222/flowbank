@@ -8,6 +8,7 @@ import '../home/detail_collector.dart';
 import 'dart:async';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:flowbank/api/api_service.dart';
+import '../connectBank/connect_bank_screen.dart';
 
 class OtpScreen extends StatefulWidget {
   final String email;
@@ -98,9 +99,9 @@ await prefs.setString('accessToken', data['accessToken'] ?? '');
       }
 
       Navigator.pushReplacement(
-        context,
-        MaterialPageRoute(builder: (_) => DetailCollector(email: widget.email)),
-      );
+  context,
+  MaterialPageRoute(builder: (_) => const ConnectBankScreen()),
+);
     } else {
       final error = jsonDecode(response.body);
       showCustomNotification(

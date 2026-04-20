@@ -7,19 +7,35 @@ Future<void> saveTotalBalance(double total) async {
   await prefs.setDouble('totalBalance', total);
 }
 
+// class BankAccount {
+//   final String bankName;
+//   final String cardHolder;
+//   final double amount;
+//   final String dateConnected;
+//   final List<Color> gradientColors;
+
+//   BankAccount({
+//     required this.bankName,
+//     required this.cardHolder,
+//     required this.amount,
+//     required this.dateConnected,
+//     required this.gradientColors,
+//   });
+// }
+
 class BankAccount {
   final String bankName;
-  final String cardHolder;
   final double amount;
   final String dateConnected;
   final List<Color> gradientColors;
+  final List<Map<String, dynamic>> subAccounts; // NEW
 
   BankAccount({
     required this.bankName,
-    required this.cardHolder,
     required this.amount,
     required this.dateConnected,
     required this.gradientColors,
+    this.subAccounts = const [],
   });
 }
 
@@ -49,8 +65,12 @@ class UserTotal extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final watch = Stopwatch()..start();
+
 
       WidgetsBinding.instance.addPostFrameCallback((_) {
+        print("⏱ UserTotal build took: ${watch.elapsedMilliseconds} ms");
+        
     persistTotal();
   });
     return Column(
@@ -139,60 +159,146 @@ class UserTotal extends StatelessWidget {
                       Expanded(
                         child: Padding(
                           padding: const EdgeInsets.all(20),
+                          // child: Column(
+                          //   mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                          //   crossAxisAlignment: CrossAxisAlignment.start,
+                          //   children: [
+                          //     Text(
+                          //       account.bankName,
+                          //       style: TextStyle(
+                          //         color: Colors.white,
+                          //         fontFamily: "Manrope",
+                          //         fontSize: 17,
+                          //         fontWeight: FontWeight.w700,
+                          //       ),
+                          //     ),
+                              
+                          //     Column(
+                          //       crossAxisAlignment: CrossAxisAlignment.start,
+                          //       children: [
+                          //         Text(
+                          //           "\$${account.amount.toStringAsFixed(2)}",
+                          //           style: TextStyle(
+                          //             color: Colors.white,
+                          //             fontFamily: "Manrope",
+                          //             fontSize: 25,
+                          //             fontWeight: FontWeight.w800,
+                          //           ),
+                          //         ),
+                          //         const SizedBox(height: 8),
+                          //         Row(
+                          //           mainAxisAlignment:
+                          //               MainAxisAlignment.spaceBetween,
+                          //           children: [
+                          //             Text(
+                          //               account.cardHolder,
+                          //               style: TextStyle(
+                          //                 color: Colors.white,
+                          //                 fontFamily: "Manrope",
+                          //                 fontSize: 13,
+                          //                 fontWeight: FontWeight.w500,
+                          //               ),
+                          //             ),
+                          //             Text(
+                          //               account.dateConnected,
+                          //               style: TextStyle(
+                          //                 color: Colors.white,
+                          //                 fontFamily: "Manrope",
+                          //                 fontSize: 13,
+                          //                 fontWeight: FontWeight.w500,
+                          //               ),
+                          //             ),
+                          //           ],
+                          //         ),
+                          //       ],
+                          //     ),
+                          //   ],
+                          // ),
                           child: Column(
-                            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              Text(
-                                account.bankName,
-                                style: TextStyle(
-                                  color: Colors.white,
-                                  fontFamily: "Manrope",
-                                  fontSize: 17,
-                                  fontWeight: FontWeight.w700,
-                                ),
-                              ),
-                              Column(
-                                crossAxisAlignment: CrossAxisAlignment.start,
-                                children: [
-                                  Text(
-                                    "\$${account.amount.toStringAsFixed(2)}",
-                                    style: TextStyle(
-                                      color: Colors.white,
-                                      fontFamily: "Manrope",
-                                      fontSize: 25,
-                                      fontWeight: FontWeight.w800,
-                                    ),
-                                  ),
-                                  const SizedBox(height: 8),
-                                  Row(
-                                    mainAxisAlignment:
-                                        MainAxisAlignment.spaceBetween,
-                                    children: [
-                                      Text(
-                                        account.cardHolder,
-                                        style: TextStyle(
-                                          color: Colors.white,
-                                          fontFamily: "Manrope",
-                                          fontSize: 13,
-                                          fontWeight: FontWeight.w500,
-                                        ),
-                                      ),
-                                      Text(
-                                        account.dateConnected,
-                                        style: TextStyle(
-                                          color: Colors.white,
-                                          fontFamily: "Manrope",
-                                          fontSize: 13,
-                                          fontWeight: FontWeight.w500,
-                                        ),
-                                      ),
-                                    ],
-                                  ),
-                                ],
-                              ),
-                            ],
-                          ),
+  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+  crossAxisAlignment: CrossAxisAlignment.start,
+  children: [
+    // Bank name
+    Text(
+      account.bankName,
+      style: TextStyle(
+        color: Colors.white,
+        fontFamily: "Manrope",
+        fontSize: 17,
+        fontWeight: FontWeight.w700,
+      ),
+    ),
+
+    // Sub-accounts list
+    // if (account.subAccounts.isNotEmpty)
+    //   Column(
+    //     crossAxisAlignment: CrossAxisAlignment.start,
+    //     children: account.subAccounts.map((sub) => Padding(
+    //       padding: const EdgeInsets.only(bottom: 2),
+    //       child: Text(
+    //         "${sub['name']} · \$${(sub['balance'] as num).toStringAsFixed(2)}",
+    //         style: TextStyle(
+    //           color: Colors.white.withOpacity(0.65),
+    //           fontFamily: "Manrope",
+    //           fontSize: 11,
+    //           fontWeight: FontWeight.w500,
+    //         ),
+    //       ),
+    //     )).toList(),
+    //   ),
+
+    // Total balance + date
+    Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text("Balance", style: TextStyle(
+              color: Colors.white.withOpacity(0.7),
+              fontFamily: "Manrope",
+              fontSize: 12,
+              fontWeight: FontWeight.w500,
+            ),),
+            Text(
+              "\$${account.amount.toStringAsFixed(2)}",
+              style: TextStyle(
+                color: Colors.white,
+                fontFamily: "Manrope",
+                fontSize: 28,
+                fontWeight: FontWeight.w700,
+              ),
+            ),
+          ],
+        ),
+        const SizedBox(height: 8),
+        Row(
+          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+          children: [
+            Text(
+              "Vivek Kumar",
+              style: TextStyle(
+                color: Colors.white.withOpacity(0.7),
+                fontFamily: "Manrope",
+                fontSize: 12,
+                fontWeight: FontWeight.w500,
+              ),
+            ),
+            Text(
+              account.dateConnected,
+              style: TextStyle(
+                color: Colors.white.withOpacity(0.7),
+                fontFamily: "Manrope",
+                fontSize: 12,
+                fontWeight: FontWeight.w500,
+              ),
+            ),
+          ],
+        ),
+      ],
+    ),
+  ],
+),
                         ),
                       ),
 

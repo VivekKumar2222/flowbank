@@ -2,6 +2,7 @@
 const express = require("express");
 const mongoose = require("mongoose");
 const dotenv = require("dotenv");
+dotenv.config();
 const cors = require("cors");
 const morgan = require("morgan");
 
@@ -9,10 +10,14 @@ const authRoutes = require("./routes/authRoutes");
 const notificationRoutes = require("./routes/notificationRoutes");
 const collabRoutes = require("./routes/collabRoutes");
 const searchRoutes = require("./routes/userSearch");
+const plaidRoutes = require('./routes/plaid');
+const bankRoutes = require('./routes/bank');
+const googleAuthRoute = require('./routes/auth/googleAuth');
+const budgetGoalRoutes = require('./routes/goalSetRoutes');
 
 
 
-dotenv.config();
+
 
 // ✅ Create app FIRST before using it
 const app = express();
@@ -49,6 +54,10 @@ app.use("/api/auth", authRoutes);
 app.use("/api/notifications", notificationRoutes);
 app.use("/api/collab", collabRoutes);
 app.use("/api/search", searchRoutes);
+app.use('/api/plaid', plaidRoutes);
+app.use('/api/bank', bankRoutes);
+app.use('/api/auth', googleAuthRoute);
+app.use('/api/goals', budgetGoalRoutes);
 
 
 // ✅ Test route
