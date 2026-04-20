@@ -17,7 +17,7 @@ class GoogleAuthService {
   ) async {
     try {
       // Sign out first to always show account picker
-      await _googleSignIn.signOut();
+      //await _googleSignIn.signOut();
 
       final GoogleSignInAccount? googleUser = await _googleSignIn.signIn();
 

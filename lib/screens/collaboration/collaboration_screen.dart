@@ -40,21 +40,25 @@ class _CollaborationScreenState extends State<CollaborationScreen> {
   bool _loadingGroups = false;
   bool _loadingInvites = false;
 
+  bool isLoadingData = true;
+
   @override
   void initState() {
     super.initState();
-    _loadUserEmail();
-    _loadUserName();
+    _loadUserData();
+    //_loadUserName();
   }
 
   /// --------------------
   /// Load User Email
   /// --------------------
-  Future<void> _loadUserEmail() async {
+  Future<void> _loadUserData() async {
     final prefs = await SharedPreferences.getInstance();
     if (!mounted) return;
 
     final email = prefs.getString('userEmail') ?? 'user';
+    userName = prefs.getString('userName') ?? 'user';
+    userInitials = prefs.getString('userInitials') ?? 'U';
 
     setState(() {
       userEmail = email;
@@ -77,15 +81,15 @@ class _CollaborationScreenState extends State<CollaborationScreen> {
   /// --------------------
   /// Load User Name
   /// --------------------
-  Future<void> _loadUserName() async {
-    final prefs = await SharedPreferences.getInstance();
-    if (!mounted) return;
+  // Future<void> _loadUserName() async {
+  //   final prefs = await SharedPreferences.getInstance();
+  //   if (!mounted) return;
 
-    setState(() {
-      userName = prefs.getString('userName') ?? 'user';
-      userInitials = prefs.getString('userInitials') ?? 'U';
-    });
-  }
+  //   setState(() {
+  //     userName = prefs.getString('userName') ?? 'user';
+  //     userInitials = prefs.getString('userInitials') ?? 'U';
+  //   });
+  // }
 
   /// --------------------
   /// Fetch Invited Groups
@@ -130,6 +134,13 @@ class _CollaborationScreenState extends State<CollaborationScreen> {
       _loadingInvites = false;
     }
   }
+
+  Future<void> _handleRefresh() async {
+  setState(() {
+    isLoadingData = true;
+  });
+  await _loadUserData(); // This will also trigger _fetchTotalBalance
+}
 
   /// --------------------
   /// Fetch User Groups
@@ -326,57 +337,64 @@ class _CollaborationScreenState extends State<CollaborationScreen> {
         ),
 
         /// Body
-        body: SingleChildScrollView(
-          physics: const BouncingScrollPhysics(),
-          child: Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 18),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                const SizedBox(height: 12),
-
-                SectionHeader(
-                  title: "All Requests",
-                  showButton: true,
-                  destination: OnboardingScreen(),
-                ),
-                const SizedBox(height: 16),
-
-                invitedUserGroups.isEmpty
-                    ? _emptyBox("No Request")
-                    : RequestsRow(
-                        requests: invitedUserGroups.map((group) {
-                          return RequestData(
-                            dashboardID: group.dashboardId,
-                            invitationID: group.invitationId,
-                            groupName: group.groupName,
-                            groupType: group.groupType,
-                            ownerName: group.ownerName,
-                            createdDate: group.createdDate,
-                            members: group.members,
-                          );
-                        }).toList(),
-                      ),
-
-                const SizedBox(height: 12),
-
-                SectionHeader(
-                  title: "All Groups",
-                  showButton: true,
-                  destination: OnboardingScreen(),
-                ),
-                const SizedBox(height: 16),
-
-                userGroups.isEmpty
-                    ? _emptyText("No groups yet")
-                    : GroupsRow(
-                        groups: userGroups.map((group) {
-                          final owner =
-                              group.ownerName == userName ? "You" : group.ownerName;
-                          return group.copyWith(ownerName: owner);
-                        }).toList(),
-                      ),
-              ],
+        body: RefreshIndicator(
+          onRefresh: _handleRefresh,
+          color: const Color(0xFF0179FE),      // Spinner color (matches your theme)
+          backgroundColor: Colors.white,        // Spinner background
+          displacement: 40,                     // How far down the indicator appears
+          strokeWidth: 2.5,
+          child: SingleChildScrollView(
+            physics: const BouncingScrollPhysics(),
+            child: Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 18),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  const SizedBox(height: 12),
+          
+                  SectionHeader(
+                    title: "All Requests",
+                    showButton: true,
+                    destination: OnboardingScreen(),
+                  ),
+                  const SizedBox(height: 16),
+          
+                  invitedUserGroups.isEmpty
+                      ? _emptyBox("No Request")
+                      : RequestsRow(
+                          requests: invitedUserGroups.map((group) {
+                            return RequestData(
+                              dashboardID: group.dashboardId,
+                              invitationID: group.invitationId,
+                              groupName: group.groupName,
+                              groupType: group.groupType,
+                              ownerName: group.ownerName,
+                              createdDate: group.createdDate,
+                              members: group.members,
+                            );
+                          }).toList(),
+                        ),
+          
+                  const SizedBox(height: 12),
+          
+                  SectionHeader(
+                    title: "All Groups",
+                    showButton: true,
+                    destination: OnboardingScreen(),
+                  ),
+                  const SizedBox(height: 16),
+          
+                  userGroups.isEmpty
+                      ? _emptyText("No groups yet")
+                      : GroupsRow(
+                          groups: userGroups.map((group) {
+                            final owner =
+                                group.ownerName == userName ? "You" : group.ownerName;
+                            return group.copyWith(ownerName: owner);
+                          }).toList(),
+                        ),
+                ],
+              ),
             ),
           ),
         ),

@@ -13,7 +13,7 @@ const protect = async (req, res, next) => {
   }
 
   if (!token) {
-    return res.status(401).json({
+    return res.status(406).json({
       message: "No token provided. Please login again.",
     });
   }
@@ -23,7 +23,7 @@ const protect = async (req, res, next) => {
     const decoded = jwt.verify(token, process.env.JWT_SECRET);
 
     // Attach user
-    const user = await User.findById(decoded.id).select("-password");
+    const user = await User.findById(decoded.userId || decoded.id).select("-password");
     if (!user) {
       return res.status(401).json({
         message: "User not found. Please login again.",

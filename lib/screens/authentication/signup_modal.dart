@@ -96,18 +96,18 @@ Future<void> showSignUpBottomSheet(
                                           .signInWithGoogle(context);
                                       if (data == null) return;
 
-                                      final prefs = await SharedPreferences
-                                          .getInstance();
-                                      await prefs.setString(
-                                          'token', data['token']);
-                                      if (data['user'] != null) {
-                                        final String userName = data['user']['name'] ?? '';
-                                        await prefs.setString('userName',data['user']['name'] ?? '');
-                                        await prefs.setString('userEmail',data['user']['email'] ?? '');
-                                        await prefs.setString('userId', data['user']['id'] ?? '');
-                                        await prefs.setString('userInitials', getInitials(userName));
-                                        await prefs.setString('accessToken', data['token'] ?? '');
-                                      }
+                                      debugPrint('Google response keys: ${data.keys.toList()}');
+                                      debugPrint('token value: ${data['token']}');
+                                      debugPrint('user: ${data['user']}');
+
+                                      // ✅ AFTER (fixed)
+final prefs = await SharedPreferences.getInstance();
+final String userName = data['user']?['name'] ?? '';
+await prefs.setString('accessToken', data['token'] ?? ''); // ← moved out, correct key
+await prefs.setString('userName', userName);
+await prefs.setString('userEmail', data['user']?['email'] ?? '');
+await prefs.setString('userId', data['user']?['id'] ?? '');
+await prefs.setString('userInitials', getInitials(userName));
 
                                       Navigator.pop(context);
                                       Navigator.pushReplacement(
