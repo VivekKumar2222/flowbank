@@ -16,6 +16,7 @@ import 'dart:convert';
 import 'package:http/http.dart' as http;
 import 'package:flowbank/api/api_service.dart';
 import '../home/home_skeleton_loader.dart';
+import 'all_transactions_screen.dart';
 
 class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
@@ -32,6 +33,7 @@ class _HomeScreenState extends State<HomeScreen> {
   List<BankAccount> plaidAccounts = [];
   List<Map<String, dynamic>> recentTransactions = [];
   bool isLoadingData = true;
+  List<Map<String, dynamic>> allTransactions = [];
   
     @override
   void initState() {
@@ -121,16 +123,17 @@ for (int i = 0; i < accountsRaw.length; i++) {
 }
       // Parse recent transactions (last 5 from historical)
       final List historicalRaw = data['historical'] ?? [];
-      final List<Map<String, dynamic>> parsedTransactions = historicalRaw
-          .take(5)
-          .map((t) => Map<String, dynamic>.from(t))
-          .toList();
+      final List<Map<String, dynamic>> allTxRaw = historicalRaw
+    .map((t) => Map<String, dynamic>.from(t))
+    .toList();
+final List<Map<String, dynamic>> parsedTransactions = allTxRaw.take(5).toList();
 
       setState(() {
         totalBalance = (data['totalBalance'] as num?)?.toDouble() ?? 0.0;
         plaidAccounts = parsedAccounts;
         recentTransactions = parsedTransactions;
         isLoadingData = false;
+        allTransactions = allTxRaw;   // ← add this
         print('✅ Total Balance: $totalBalance');
         print('✅ Accounts: ${plaidAccounts.length}');
         print('✅ Transactions: ${recentTransactions.length}');
@@ -144,6 +147,52 @@ for (int i = 0; i < accountsRaw.length; i++) {
     setState(() => isLoadingData = false);
   }
 }
+
+List<Bank> _buildBanksFromTransactions(List<Map<String, dynamic>> txList) {
+  if (txList.isEmpty) return [];
+  final Map<String, List<TransactionItem>> byAccount = {};
+  for (final t in txList) {
+    final accountName = (t['account_name'] ?? t['accountName'] ?? 'My Account').toString();
+    final rawAmount = (t['amount'] as num?)?.toDouble() ?? 0.0;
+    final isDebit = rawAmount > 0;
+    final name = (t['name'] ?? t['merchant_name'] ?? 'Transaction').toString();
+    final date = _fmtDate(t['date']?.toString() ?? '');
+    final category = _fmtCategory(t['category']);
+    byAccount.putIfAbsent(accountName, () => []).add(TransactionItem(
+      title: name,
+      subtitle: category,
+      date: date,
+      amount: rawAmount.abs(),
+      isPositive: !isDebit,
+      isCategorized: category != 'Uncategorized',
+    ));
+  }
+  return byAccount.entries.map((e) {
+    final label = e.key;
+    return Bank(
+      name: label.length > 16 ? '${label.substring(0, 14)}…' : label,
+      logoText: label.substring(0, 2).toUpperCase(),
+      transactions: e.value,
+    );
+  }).toList();
+}
+
+String _fmtDate(String raw) {
+  try {
+    final dt = DateTime.parse(raw);
+    const months = ['','Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+    return '${dt.day} ${months[dt.month]}';
+  } catch (_) { return raw; }
+}
+
+String _fmtCategory(dynamic cat) {
+  if (cat == null) return 'Uncategorized';
+  if (cat is String) return cat;
+  if (cat is List && cat.isNotEmpty) return cat.last.toString();
+  return 'Uncategorized';
+}
+
+
   int _selectedIndex = 0;
 
   final Color activeColor = const Color(0xFF217BFF);
@@ -367,86 +416,33 @@ isLoadingData
                     const SizedBox(height: 26),
 
                     SectionHeader(
-                      title: "Recent Transactions",
-                      showButton: true,
-                      destination: OnboardingScreen(),
-                    ),
-
-                    const SizedBox(height: 16),
-
-                    BankTransactionsWidget(
-                      banks: [
-                        Bank(
-                          name: 'Chase Bank',
-                          logoText: 'CB',
-                          transactions: [
-                            TransactionItem(
-                              title: 'Chris David',
-                              subtitle: 'Request Received',
-                              amount: 35.0,
-                              isPositive: true,
-                              date: "12 Jan",
-                              isCategorized: true,
-                            ),
-                            TransactionItem(
-                              title: 'James Richardson',
-                              subtitle: 'Payment Sent',
-                              amount: 104.0,
-                              date: "12 Jan",
-                              isPositive: false,
-                              isCategorized: false,
-                              onCategorize: () {
-                                print("Categorize clicked");
-                              },
-                            ),
-                          ],
-                        ),
-                        Bank(
-                          name: 'Bank of America',
-                          logoText: 'BA',
-                          transactions: [
-                            TransactionItem(
-                              title: 'Dale Harry',
-                              subtitle: 'Payment Sent',
-                              amount: 85.0,
-                              date: "12 Jan",
-                              isCategorized: false,
-                              isPositive: false,
-                            ),
-                            TransactionItem(
-                              title: 'Dale Harry',
-                              subtitle: 'Request Received',
-                              amount: 15.0,
-                              isCategorized: true,
-                              date: "12 Jan",
-                              isPositive: true,
-                            ),
-                          ],
-                        ),
-                        Bank(
-                          name: 'National Bank',
-                          logoText: 'BA',
-                          transactions: [
-                            TransactionItem(
-                              title: 'Dale Harry',
-                              subtitle: 'Payment Sent',
-                              amount: 85.0,
-                              date: "12 Jan",
-                              isCategorized: false,
-                              isPositive: false,
-                            ),
-                            TransactionItem(
-                              title: 'Dale Harry',
-                              subtitle: 'Request Received',
-                              amount: 15.0,
-                              isCategorized: true,
-                              date: "12 Jan",
-                              isPositive: true,
-                            ),
-                          ],
-                        ),
-                      ],
-                    ),
+  title: 'Recent Transactions',
+  showButton: allTransactions.isNotEmpty,
+  destination: AllTransactionsScreen(
+    rawTransactions: allTransactions,
+    userName: userName ?? 'User',
+  ),
+),
+const SizedBox(height: 16),
+allTransactions.isEmpty
+    ? Container(
+        width: double.infinity,
+        padding: const EdgeInsets.symmetric(vertical: 28),
+        decoration: BoxDecoration(
+          color: Color(0xFFF5F7FA),
+          borderRadius: BorderRadius.circular(16),
+        ),
+        child: Column(children: const [
+          Icon(Icons.receipt_long_rounded, color: Color(0xFF98A2B3), size: 32),
+          SizedBox(height: 10),
+          Text('No recent transactions',
+              style: TextStyle(fontSize: 14, fontWeight: FontWeight.w500, color: Color(0xFF667085))),
+        ]),
+      )
+    : BankTransactionsWidget(
+        banks: _buildBanksFromTransactions(recentTransactions),
+        maxTransactionsPerBank: 5,
+      ),
                   ],
                 ),
               ),
