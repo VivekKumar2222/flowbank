@@ -100,7 +100,7 @@ await prefs.setString('accessToken', data['accessToken'] ?? '');
 
       Navigator.pushReplacement(
   context,
-  MaterialPageRoute(builder: (_) => const ConnectBankScreen()),
+  MaterialPageRoute(builder: (_) => const ConnectBankScreen(isAddingNew: false)),
 );
     } else {
       final error = jsonDecode(response.body);

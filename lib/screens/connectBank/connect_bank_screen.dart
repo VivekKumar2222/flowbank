@@ -8,7 +8,9 @@ import '../addGoalsInitialSignin/budget-goal-screen.dart'; // your budget goals 
 import '../addGoalsInitialSignin/add_goals_screen.dart';
 
 class ConnectBankScreen extends StatefulWidget {
-  const ConnectBankScreen({super.key});
+  final bool isAddingNew;
+
+  const ConnectBankScreen({super.key, required this.isAddingNew});
 
   @override
   State<ConnectBankScreen> createState() => _ConnectBankScreenState();
@@ -109,12 +111,24 @@ class _ConnectBankScreenState extends State<ConnectBankScreen> {
       );
 
       if (response.statusCode == 200) {
-        await prefs.setBool('bankConnected', true);
-        Navigator.pushReplacement(
-          context,
-          MaterialPageRoute(builder: (_) => const AddGoalsScreen()),
-        );
-      } else {
+  await prefs.setBool('bankConnected', true);
+  if (widget.isAddingNew) {
+    // Coming from homescreen — just go back, homescreen will refresh
+    Navigator.pop(context);
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(
+        content: Text('Bank connected successfully!'),
+        backgroundColor: Color(0xFF1E88E5),
+      ),
+    );
+  } else {
+    // Initial signup flow — go to goals screen
+    Navigator.pushReplacement(
+      context,
+      MaterialPageRoute(builder: (_) => const AddGoalsScreen()),
+    );
+  }
+} else {
         setState(() => _isConnecting = false);
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(content: Text('Failed to connect bank. Try again.')),
@@ -259,13 +273,17 @@ class _ConnectBankScreenState extends State<ConnectBankScreen> {
                   Center(
                     child: TextButton(
                       onPressed: () {
-                        Navigator.pushReplacement(
-                          context,
-                          MaterialPageRoute(builder: (_) => const AddGoalsScreen()),
-                        );
-                      },
+    if (widget.isAddingNew) {
+      Navigator.pop(context); // just go back
+    } else {
+      Navigator.pushReplacement(
+        context,
+        MaterialPageRoute(builder: (_) => const AddGoalsScreen()),
+      );
+    }
+  },
                       child: Text(
-                        "Skip for now",
+                        widget.isAddingNew ? "Cancel" : "Skip for now",
                         style: TextStyle(
                           color: Colors.black,
                           fontSize: 14,

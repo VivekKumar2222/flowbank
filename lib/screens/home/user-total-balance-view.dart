@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_svg/flutter_svg.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import '../connectBank/connect_bank_screen.dart';
 
 Future<void> saveTotalBalance(double total) async {
   final prefs = await SharedPreferences.getInstance();
@@ -106,18 +107,36 @@ class UserTotal extends StatelessWidget {
                   ),
                 ],
               ),
-              Padding(
-                padding: const EdgeInsets.only(bottom: 5),
-                child: Text(
-                  "+ Add Bank",
-                  style: TextStyle(
-                    color: Color(0xFF667085),
-                    fontSize: 13,
-                    fontFamily: "Manrope",
-                    fontWeight: FontWeight.w600,
-                  ),
-                ),
-              ),
+              GestureDetector(
+  onTap: () {
+    Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (_) => const ConnectBankScreen(isAddingNew: true),
+      ),
+    );
+  },
+  child: Padding(
+    padding: const EdgeInsets.only(bottom: 5),
+    child: Container(
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+      decoration: BoxDecoration(
+        color: const Color(0xFFF0F6FF),
+        borderRadius: BorderRadius.circular(8),
+        border: Border.all(color: const Color(0xFFD0E4FF), width: 1),
+      ),
+      child: const Text(
+        "+ Add Bank",
+        style: TextStyle(
+          color: Color(0xFF217BFF),
+          fontSize: 13,
+          fontFamily: "Manrope",
+          fontWeight: FontWeight.w600,
+        ),
+      ),
+    ),
+  ),
+),
             ],
           ),
         ),

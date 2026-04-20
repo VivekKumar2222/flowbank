@@ -114,7 +114,7 @@ Future<void> showSignUpBottomSheet(
                                         context,
                                         MaterialPageRoute(
                                           // ⚠️ Replace with your actual home screen class:
-                                          builder: (_) => const ConnectBankScreen(),
+                                          builder: (_) => const ConnectBankScreen(isAddingNew: false),
                                         ),
                                       );
                                     } catch (e) {

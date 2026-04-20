@@ -17,6 +17,7 @@ import 'package:http/http.dart' as http;
 import 'package:flowbank/api/api_service.dart';
 import '../home/home_skeleton_loader.dart';
 import 'all_transactions_screen.dart';
+import '../connectBank/connect_bank_screen.dart';
 
 class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
@@ -146,6 +147,13 @@ final List<Map<String, dynamic>> parsedTransactions = allTxRaw.take(5).toList();
     print('Error fetching data: $e');
     setState(() => isLoadingData = false);
   }
+}
+
+Future<void> _handleRefresh() async {
+  setState(() {
+    isLoadingData = true;
+  });
+  await _loadUserData(); // This will also trigger _fetchTotalBalance
 }
 
 List<Bank> _buildBanksFromTransactions(List<Map<String, dynamic>> txList) {
@@ -338,142 +346,152 @@ String _fmtCategory(dynamic cat) {
         ),
 
         // ---------------------- BODY (SCROLLABLE) ----------------------
-        body: SingleChildScrollView(
-          physics: const BouncingScrollPhysics(),
-          child: Column(
-            children: [
-              // -------- TOP SECTION --------
-              Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 18),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    const SizedBox(height: 12),
-
-                    SectionHeader(
-                      title: "Top Picks",
-                      showButton: true,
-                      destination: OnboardingScreen(),
-                    ),
-
-                    const SizedBox(height: 16),
-
-                    Row(
-                      children: [
-                        Column(
-                          children: [
-                            InfoCard(
-                              title: 'Subscription',
-                              currentValue: 600,
-                              maxValue: 1400,
-                              themeColor: "red",
-                            ),
-                            SizedBox(height: 8),
-                            InfoCard(
-                              title: 'Food',
-                              currentValue: 756,
-                              maxValue: 1200,
-                              themeColor: "purple",
-                            ),
-                          ],
-                        ),
-                        const SizedBox(width: 12),
-                        Expanded(
-                          child: InfoCard_Box(
-                            title: "Home Bills",
-                            currentValue: 200,
-                            maxValue: 1500,
-                            themeColor: "blue",
-                          ),
-                        ),
-                      ],
-                    ),
-
-                    const SizedBox(height: 24),
-                  ],
-                ),
-              ),
-
-              // -------- USER TOTAL CARDS --------
-              // -------- USER TOTAL CARDS --------
-isLoadingData
-    ? const HomeSkeletonLoader()
-    : plaidAccounts.isEmpty
-        ? Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 20),
-            child: Text(
-              "No bank accounts connected.",
-              style: TextStyle(color: Color(0xFF667085), fontSize: 14),
+        body: RefreshIndicator(
+          onRefresh: _handleRefresh,
+          color: const Color(0xFF0179FE),      // Spinner color (matches your theme)
+          backgroundColor: Colors.white,        // Spinner background
+          displacement: 40,                     // How far down the indicator appears
+          strokeWidth: 2.5,
+          child: SingleChildScrollView(
+            physics: const BouncingScrollPhysics(
+              parent: BouncingScrollPhysics(), 
             ),
-          )
-        : UserTotal(accounts: plaidAccounts),
-
-              // -------- TRANSACTIONS --------
-              Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 18),
-                child: Column(
-                  children: [
-                    const SizedBox(height: 26),
-
-                    SectionHeader(
-  title: 'Recent Transactions',
-  showButton: allTransactions.isNotEmpty,
-  destination: AllTransactionsScreen(
-    rawTransactions: allTransactions,
-    userName: userName ?? 'User',
-  ),
-),
-const SizedBox(height: 16),
-allTransactions.isEmpty
-    ? Container(
-        width: double.infinity,
-        padding: const EdgeInsets.symmetric(vertical: 28),
-        decoration: BoxDecoration(
-          color: Color(0xFFF5F7FA),
-          borderRadius: BorderRadius.circular(16),
-        ),
-        child: Column(children: const [
-          Icon(Icons.receipt_long_rounded, color: Color(0xFF98A2B3), size: 32),
-          SizedBox(height: 10),
-          Text('No recent transactions',
-              style: TextStyle(fontSize: 14, fontWeight: FontWeight.w500, color: Color(0xFF667085))),
-        ]),
-      )
-    : BankTransactionsWidget(
-        banks: _buildBanksFromTransactions(recentTransactions),
-        maxTransactionsPerBank: 5,
-      ),
-                  ],
-                ),
-              ),
-
-              const SizedBox(height: 18),
-              Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 18.0),
-                child: Column(
-                  children: [
-                    SectionHeader(
-                        title: "AI Analysis",
-                        showButton: false,
+            
+            child: Column(
+              children: [
+                // -------- TOP SECTION --------
+                Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 18),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      const SizedBox(height: 12),
+          
+                      SectionHeader(
+                        title: "Top Picks",
+                        showButton: true,
                         destination: OnboardingScreen(),
                       ),
-                      const SizedBox(height: 12),
-                      AIFinancialHeroCard(
-  onTap: () {
-    Navigator.push(
-      context,
-      _premiumRoute(const FinancialHealthScreen()),
-    );
-  },
-),
-
-                ],
+          
+                      const SizedBox(height: 16),
+          
+                      Row(
+                        children: [
+                          Column(
+                            children: [
+                              InfoCard(
+                                title: 'Subscription',
+                                currentValue: 600,
+                                maxValue: 1400,
+                                themeColor: "red",
+                              ),
+                              SizedBox(height: 8),
+                              InfoCard(
+                                title: 'Food',
+                                currentValue: 756,
+                                maxValue: 1200,
+                                themeColor: "purple",
+                              ),
+                            ],
+                          ),
+                          const SizedBox(width: 12),
+                          Expanded(
+                            child: InfoCard_Box(
+                              title: "Home Bills",
+                              currentValue: 200,
+                              maxValue: 1500,
+                              themeColor: "blue",
+                            ),
+                          ),
+                        ],
+                      ),
+          
+                      const SizedBox(height: 24),
+                    ],
+                  ),
                 ),
+          
+                // -------- USER TOTAL CARDS --------
+                // -------- USER TOTAL CARDS --------
+          isLoadingData
+              ? const HomeSkeletonLoader()
+              : plaidAccounts.isEmpty
+          ? Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 20),
+              child: Text(
+                "No bank accounts connected.",
+                style: TextStyle(color: Color(0xFF667085), fontSize: 14),
               ),
-                    
-              // -------- SPACE FOR BOTTOM NAV --------
-              const SizedBox(height: 120),
-            ],
+            )
+          : UserTotal(accounts: plaidAccounts),
+          
+                // -------- TRANSACTIONS --------
+                Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 18),
+                  child: Column(
+                    children: [
+                      const SizedBox(height: 26),
+          
+                      SectionHeader(
+            title: 'Recent Transactions',
+            showButton: allTransactions.isNotEmpty,
+            destination: AllTransactionsScreen(
+              rawTransactions: allTransactions,
+              userName: userName ?? 'User',
+            ),
+          ),
+          const SizedBox(height: 16),
+          allTransactions.isEmpty
+              ? Container(
+          width: double.infinity,
+          padding: const EdgeInsets.symmetric(vertical: 28),
+          decoration: BoxDecoration(
+            color: Color(0xFFF5F7FA),
+            borderRadius: BorderRadius.circular(16),
+          ),
+          child: Column(children: const [
+            Icon(Icons.receipt_long_rounded, color: Color(0xFF98A2B3), size: 32),
+            SizedBox(height: 10),
+            Text('No recent transactions',
+                style: TextStyle(fontSize: 14, fontWeight: FontWeight.w500, color: Color(0xFF667085))),
+          ]),
+                )
+              : BankTransactionsWidget(
+          banks: _buildBanksFromTransactions(recentTransactions),
+          maxTransactionsPerBank: 5,
+                ),
+                    ],
+                  ),
+                ),
+          
+                const SizedBox(height: 18),
+                Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 18.0),
+                  child: Column(
+                    children: [
+                      SectionHeader(
+                          title: "AI Analysis",
+                          showButton: false,
+                          destination: OnboardingScreen(),
+                        ),
+                        const SizedBox(height: 12),
+                        AIFinancialHeroCard(
+            onTap: () {
+              Navigator.push(
+                context,
+                _premiumRoute(const FinancialHealthScreen()),
+              );
+            },
+          ),
+          
+                  ],
+                  ),
+                ),
+                      
+                // -------- SPACE FOR BOTTOM NAV --------
+                const SizedBox(height: 120),
+              ],
+            ),
           ),
         ),
 
