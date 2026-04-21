@@ -19,13 +19,15 @@ const  sendEmail  = require("../utils/mailer.js"); // make sure you export {send
 const { encrypt, decrypt } = require("../utils/mediaCrypto");
 const ExitRequest = require("../models/collab_ExitRequest");
 
+const {HighLimiter, MediumLimiter, ModerateLimiter} = require('./rateLimiter.js');
+
 
 
 
 const router = express.Router();
 
 // TEST ROUTE - dynamic
-router.post("/create-dashboard", protect, async (req, res) => {
+router.post("/create-dashboard", protect, MediumLimiter, async (req, res) => {
   try {
     const { name, type, ownerId, currency, settings } = req.body;
 
@@ -56,7 +58,7 @@ router.post("/create-dashboard", protect, async (req, res) => {
   }
 });
 
-router.post("/create-entry", async (req, res) => {
+router.post("/create-entry", MediumLimiter,async (req, res) => {
   try {
     const {
       dashboardId,
@@ -94,7 +96,7 @@ router.post("/create-entry", async (req, res) => {
 });
 
 /// ─── Dashboard Member ───────────────────
-router.post("/add-member", protect, async (req, res) => {
+router.post("/add-member", MediumLimiter,protect, async (req, res) => {
   try {
     const { dashboardId, userId, role } = req.body;
 
@@ -113,7 +115,7 @@ router.post("/add-member", protect, async (req, res) => {
 });
 
 /// ─── Entry Verification ─────────────────
-router.post("/verify-entry", async (req, res) => {
+router.post("/verify-entry", MediumLimiter, async (req, res) => {
   try {
     const { entryId, uploadedBy, type, fileUrl, note, verifiedBy, verifiedAt } =
       req.body;
@@ -142,7 +144,7 @@ router.post("/verify-entry", async (req, res) => {
 });
 
 /// ─── Invitation ─────────────────────────
-router.post("/invite", protect, async (req, res) => {
+router.post("/invite", MediumLimiter, protect, async (req, res) => {
   try {
     const { dashboardId, fromUser, toUser, status } = req.body;
 
@@ -198,7 +200,7 @@ router.post("/invite", protect, async (req, res) => {
 });
 
 // GET dashboards for a user
-router.get("/dashboard-members", protect, async (req, res) => {
+router.get("/dashboard-members", ModerateLimiter, protect, async (req, res) => {
   try {
     const { userId } = req.query;
     if (!userId) return res.status(400).json({ error: "userId is required" });
@@ -211,7 +213,7 @@ router.get("/dashboard-members", protect, async (req, res) => {
   }
 });
 
-router.post("/dashboards-by-ids", protect, async (req, res) => {
+router.post("/dashboards-by-ids", ModerateLimiter, protect, async (req, res) => {
   try {
     const { ids } = req.body;
     if (!ids || !Array.isArray(ids))
@@ -243,7 +245,7 @@ router.post("/dashboards-by-ids", protect, async (req, res) => {
   }
 });
 
-router.post("/accept-invitation", protect, async (req, res) => {
+router.post("/accept-invitation", ModerateLimiter, protect, async (req, res) => {
   try {
     const { invitationId, dashboardId, userId } = req.body;
 
@@ -265,7 +267,7 @@ router.post("/accept-invitation", protect, async (req, res) => {
 
 // ─── GET Invitations for User ─────────────────
 // ─── GET Invitations for User (EMAIL-based) ─────────────────
-router.get("/invitations", async (req, res) => {
+router.get("/invitations", ModerateLimiter, async (req, res) => {
   try {
     const { userId } = req.query; // userId === email
 
@@ -285,7 +287,7 @@ router.get("/invitations", async (req, res) => {
   }
 });
 
-router.post("/reject-invitation", protect, async (req, res) => {
+router.post("/reject-invitation", MediumLimiter, protect, async (req, res) => {
   try {
     const { invitationId } = req.body;
 
@@ -300,7 +302,7 @@ router.post("/reject-invitation", protect, async (req, res) => {
 });
 
 // ─── Get Invited Dashboards With Members ─────────────────
-router.get("/invited-dashboards", protect, async (req, res) => {
+router.get("/invited-dashboards", ModerateLimiter, protect, async (req, res) => {
   try {
     const { userId } = req.query; // logged-in email
 
@@ -381,7 +383,7 @@ router.get("/invited-dashboards", protect, async (req, res) => {
 });
 
 router.get(
-  "/dashboard-members-by-dashboard", protect,
+  "/dashboard-members-by-dashboard", ModerateLimiter, protect,
   async (req, res) => {
     try {
       const { dashboardId } = req.query;
@@ -409,7 +411,7 @@ router.get(
 );
 
 // ─── Set Bill Split Total (ONE-TIME) ─────────────────
-router.post("/set-bill-split-total", protect, async (req, res) => {
+router.post("/set-bill-split-total", ModerateLimiter, protect, async (req, res) => {
   try {
     const { dashboardId, totalAmount } = req.body;
 
@@ -446,7 +448,7 @@ router.post("/set-bill-split-total", protect, async (req, res) => {
 });
 
 // ─── Get Bill Split Total ─────────────────
-router.get("/bill-split-total", protect, async (req, res) => {
+router.get("/bill-split-total", ModerateLimiter, protect, async (req, res) => {
   try {
     const { dashboardId } = req.query;
 
@@ -476,7 +478,7 @@ router.get("/bill-split-total", protect, async (req, res) => {
   }
 });
 
-router.post("/users-by-emails", protect, async (req, res) => {
+router.post("/users-by-emails", ModerateLimiter, protect, async (req, res) => {
   const { emails } = req.body;
   const users = await User.find({ email: { $in: emails } }, { email: 1, name: 1 });
   res.json(users);
@@ -515,7 +517,7 @@ router.post("/dashboard-entry", protect, async (req, res) => {
 
 // module.exports = router;
 
-router.get('/dashboard/:id', protect, async (req, res) => {
+router.get('/dashboard/:id', ModerateLimiter, protect, async (req, res) => {
   try {
     const dashboard = await Dashboard.findById(req.params.id);
     if (!dashboard) return res.status(404).json({ message: 'Dashboard not found' });
@@ -570,7 +572,7 @@ router.get("/dashboard-entries", protect, async (req, res) => {
   }
 });
 
-router.post("/ledger-assignment", protect, async (req, res) => {
+router.post("/ledger-assignment", MediumLimiter,protect, async (req, res) => {
   try {
     const { dashboardId, memberId, totalAmount, dueDate } = req.body;
 
@@ -624,7 +626,7 @@ router.post("/ledger-assignment", protect, async (req, res) => {
 });
 
 // ─── GET Unassigned Dashboard Members ─────────────────
-router.get("/unassigned-members", protect, async (req, res) => {
+router.get("/unassigned-members", ModerateLimiter,protect, async (req, res) => {
   try {
     const { dashboardId } = req.query;
 
@@ -680,7 +682,7 @@ router.get("/unassigned-members", protect, async (req, res) => {
 });
 
 // ─── GET Ledger Summary (Total Lent + Assigned Members Count) ─────────────────
-router.get("/ledger-summary", protect, async (req, res) => {
+router.get("/ledger-summary", ModerateLimiter, protect, async (req, res) => {
   try {
     const { dashboardId } = req.query;
 
@@ -722,7 +724,7 @@ router.get("/ledger-summary", protect, async (req, res) => {
 });
 
 // ─── GET Assigned Members with Total Assigned Amount ─────────────────
-router.get("/assigned-members-summary", protect, async (req, res) => {
+router.get("/assigned-members-summary", ModerateLimiter,protect, async (req, res) => {
   try {
     const { dashboardId } = req.query;
 
@@ -805,7 +807,7 @@ router.get("/assigned-members-summary", protect, async (req, res) => {
 });
 
 // ─── GET Ledger Assignments for Member ─────────────────
-router.get("/member-ledger", protect, async (req, res) => {
+router.get("/member-ledger", ModerateLimiter, protect, async (req, res) => {
   try {
     const { dashboardId, memberId } = req.query;
 
@@ -930,7 +932,7 @@ router.get("/member-ledger", protect, async (req, res) => {
 
 
 
-router.get("/dashboard-entry-image/:entryId", async (req, res) => {
+router.get("/dashboard-entry-image/:entryId", ModerateLimiter,async (req, res) => {
   try {
     const entry = await DashboardEntry.findById(req.params.entryId);
 
@@ -948,7 +950,7 @@ router.get("/dashboard-entry-image/:entryId", async (req, res) => {
 });
 
 
-router.get("/dashboard-entry/:entryId", protect, async (req, res) => {
+router.get("/dashboard-entry/:entryId", ModerateLimiter, protect, async (req, res) => {
   try {
     const entry = await DashboardEntry.findById(req.params.entryId);
 
@@ -972,7 +974,7 @@ router.get("/dashboard-entry/:entryId", protect, async (req, res) => {
 });
 
 
-router.post("/verify-entry-ocr", protect, async (req, res) => {
+router.post("/verify-entry-ocr", ModerateLimiter, protect, async (req, res) => {
   try {
     const { entryId } = req.body;
     if (!entryId) return res.status(400).json({ message: "entryId is required" });
@@ -1030,7 +1032,7 @@ router.post("/verify-entry-ocr", protect, async (req, res) => {
 
 
 // ─── Update Entry Status (Verify / Reject) ─────────────────
-router.post("/update-entry-status", protect, async (req, res) => {
+router.post("/update-entry-status", MediumLimiter, protect, async (req, res) => {
   try {
     const { entryId, status } = req.body;
 
@@ -1068,7 +1070,7 @@ router.post("/update-entry-status", protect, async (req, res) => {
 });
 
 // ─── GET Shared Expenses Total (Approved Entries Only) ─────────────────
-router.get("/shared-expenses-total", protect, async (req, res) => {
+router.get("/shared-expenses-total", ModerateLimiter, protect, async (req, res) => {
   try {
     const { dashboardId } = req.query;
 
@@ -1105,7 +1107,7 @@ router.get("/shared-expenses-total", protect, async (req, res) => {
 });
 
 // GET dashboard owner by entryId
-router.get("/entry-owner/:entryId", protect, async (req, res) => {
+router.get("/entry-owner/:entryId", MediumLimiter, protect, async (req, res) => {
   try {
     const { entryId } = req.params;
 
@@ -1142,7 +1144,7 @@ router.get("/entry-owner/:entryId", protect, async (req, res) => {
 const generateOTP = () => Math.floor(1000 + Math.random() * 9000).toString();
 const otpStore = new Map();
 
-router.post("/delete-group-otp", async (req, res) => {
+router.post("/delete-group-otp", HighLimiter, async (req, res) => {
   try {
     const { email } = req.body; // get email and name from request body
     if (!email) {
@@ -1176,7 +1178,7 @@ router.post("/delete-group-otp", async (req, res) => {
   }
 });
 
-router.post("/verify-delete-otp", protect, async (req, res) => {
+router.post("/verify-delete-otp", ModerateLimiter, protect, async (req, res) => {
   try {
     const { email, otp, dashboardId } = req.body;
     if (!email || !otp || !dashboardId) {
@@ -1229,7 +1231,7 @@ router.post("/verify-delete-otp", protect, async (req, res) => {
   }
 });
 
-router.post("/exit-group-request", protect, async (req, res) => {
+router.post("/exit-group-request", MediumLimiter, protect, async (req, res) => {
   try {
     const { dashboardId, toUserId, fromUserId } = req.body;
      // logged-in user
@@ -1307,7 +1309,7 @@ router.post("/exit-group-request", protect, async (req, res) => {
 });
 
 // routes/collab.js
-router.get("/exit-requests-by-dashboard", protect, async (req, res) => {
+router.get("/exit-requests-by-dashboard", MediumLimiter, protect, async (req, res) => {
   try {
     const { dashboardId } = req.query;
     const ownerEmail = req.user.email; // logged-in user
@@ -1333,7 +1335,7 @@ router.get("/exit-requests-by-dashboard", protect, async (req, res) => {
 });
 
 // routes/collab.js
-router.get("/exit-requests-by-dashboard-data", protect, async (req, res) => {
+router.get("/exit-requests-by-dashboard-data", MediumLimiter, protect, async (req, res) => {
   try {
     const { dashboardId } = req.query;
     const ownerEmail = req.user.email;
@@ -1357,7 +1359,7 @@ router.get("/exit-requests-by-dashboard-data", protect, async (req, res) => {
   }
 });
 
-router.post("/approve-exit-request", protect, async (req, res) => {
+router.post("/approve-exit-request", MediumLimiter, protect, async (req, res) => {
   try {
     const { requestId } = req.body;
 

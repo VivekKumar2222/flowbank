@@ -6,7 +6,9 @@ const router = express.Router();
 const otpGenerator = require("otp-generator");
 const jwt = require("jsonwebtoken");
 const {generateAccessToken, generateRefreshToken} = require("../utils/jwt.js");
-const protect = require("../middleware/middleware.js")
+const protect = require("../middleware/middleware.js");
+
+const {HighLimiter, MediumLimiter, ModerateLimiter} = require('./rateLimiter.js');
 
 
 // OTP storage in memory
@@ -16,7 +18,7 @@ const otpStore = new Map();
 const generateOTP = () => Math.floor(1000 + Math.random() * 9000).toString();
 
 // =================== SIGNUP ROUTE ===================
-router.post("/signup", async (req, res) => {
+router.post("/signup", HighLimiter, async (req, res) => {
   try {
     const { name, email, password } = req.body;
 
@@ -56,7 +58,7 @@ router.post("/signup", async (req, res) => {
 
 
 // =================== VERIFY OTP ROUTE ===================
-router.post("/verify-otp", async (req, res) => {
+router.post("/verify-otp", HighLimiter, async (req, res) => {
   try {
     const { email, otp } = req.body;
 
@@ -129,7 +131,7 @@ router.post("/verify-otp", async (req, res) => {
 });
 
 
-router.post("/verify-login-otp", async (req, res) => {
+router.post("/verify-login-otp", HighLimiter, async (req, res) => {
   try {
     const { email, otp } = req.body;
 
@@ -193,7 +195,7 @@ res.json({
 });
 
 // =================== RESEND OTP ROUTE ===================
-router.post("/resend-otp", async (req, res) => {
+router.post("/resend-otp", HighLimiter, async (req, res) => {
   try {
     const { email } = req.body;
 
@@ -203,12 +205,16 @@ router.post("/resend-otp", async (req, res) => {
       return res.status(400).json({ message: "User not found. Please sign up again." });
     }
 
+    if (record.lastSent && Date.now() - record.lastSent < 60000) {
+      return res.status(429).json({ message: "Please wait 60 seconds before resending." });
+    }
+
     // Generate new OTP
     const newOtp = generateOTP();
     const expiry = Date.now() + 5 * 60 * 1000; // 5 minutes validity
 
     // Update the existing record
-    otpStore.set(email, { ...record, otp: newOtp, expiry });
+    otpStore.set(email, { ...record, otp: newOtp, expiry, lastSent: Date.now() });
 
     // Send new OTP email
     const html = `
@@ -251,7 +257,7 @@ router.post("/resend-otp", async (req, res) => {
 //   }
 // });
 
-router.post("/login", async (req, res) => {
+router.post("/login", HighLimiter, async (req, res) => {
   try {
     const { email, password } = req.body;
 
@@ -338,7 +344,7 @@ router.post("/login", async (req, res) => {
 //   }
 // });
 
-router.post("/complete-profile", async (req, res) => {
+router.post("/complete-profile", MediumLimiter, async (req, res) => {
   try {
     const { email, phone, city, country } = req.body;
 
@@ -361,7 +367,7 @@ router.post("/complete-profile", async (req, res) => {
 });
 
 // ============= REQUEST PASSWORD RESET OTP =============
-router.post("/request-password-reset", protect ,async (req, res) => {
+router.post("/request-password-reset", HighLimiter, protect ,async (req, res) => {
   try {
     const { email } = req.body;
     console.log("API hitting JWT")
@@ -391,7 +397,7 @@ router.post("/request-password-reset", protect ,async (req, res) => {
   }
 });
 
-router.post("/request-password-reset-tokenless", async (req, res) => {
+router.post("/request-password-reset-tokenless", HighLimiter, async (req, res) => {
   try {
     const { email } = req.body;
     console.log("API hitting JWT")
@@ -441,26 +447,29 @@ router.post("/verify-reset-otp", (req, res) => {
 
 
 // ============= FINAL RESET PASSWORD ROUTE =============
+
 router.post("/reset-password", async (req, res) => {
-  try {
-    const { email, newPassword } = req.body;
+  try{
+  const { email, otp, newPassword } = req.body;
 
-    const user = await User.findOne({ email });
-    if (!user) return res.status(404).json({ message: "User not found" });
+  const record = otpStore.get(email);
+  if (!record || record.action !== "reset-password")
+    return res.status(400).json({ message: "OTP not verified" });
+  if (Date.now() > record.expiry)
+    return res.status(400).json({ message: "OTP expired" });
+  if (record.otp !== otp)
+    return res.status(400).json({ message: "Invalid OTP" });
 
-    const hashed = await bcrypt.hash(newPassword, 10);
-    user.password = hashed;
-    await user.save();
-
-    // Remove OTP
-    otpStore.delete(email);
-
-    res.json({ message: "Password updated successfully" });
-
-  } catch (err) {
+  // Now safe to reset
+  const hashed = await bcrypt.hash(newPassword, 10);
+  await User.findOneAndUpdate({ email }, { password: hashed });
+  otpStore.delete(email);
+  res.json({ message: "Password updated successfully" });
+} catch (err) {
     console.error("Reset Password Error:", err);
     res.status(500).json({ message: "Server error" });
   }
+
 });
 
 

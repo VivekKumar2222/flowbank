@@ -5,9 +5,11 @@ const jwt = require("jsonwebtoken");
 const {generateAccessToken, generateRefreshToken} = require("../utils/jwt.js");
 const protect = require("../middleware/middleware.js")
 
+const {HighLimiter, MediumLimiter, ModerateLimiter} = require('./rateLimiter.js');
+
 /// SEARCH USERS BY NAME
 /// GET /users/search?name=char
-router.get("/search", protect, async (req, res) => {
+router.get("/search", protect, MediumLimiter, async (req, res) => {
   try {
     const { name } = req.query;
 

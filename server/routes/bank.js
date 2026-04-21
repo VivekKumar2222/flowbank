@@ -4,6 +4,8 @@ const { PlaidApi, Configuration, PlaidEnvironments } = require("plaid");
 const User = require("../models/User");
 const BankAccount = require("../models/user_BankAccount");
 
+const {HighLimiter, MediumLimiter, ModerateLimiter} = require('./rateLimiter.js');
+
 const configuration = new Configuration({
   basePath: PlaidEnvironments.sandbox,
   baseOptions: {
@@ -16,7 +18,7 @@ const configuration = new Configuration({
 
 const plaidClient = new PlaidApi(configuration);
 
-router.get("/all-data/:email", async (req, res) => {
+router.get("/all-data/:email", MediumLimiter, async (req, res) => {
   try {
     const email = req.params.email;
     const user = await User.findOne({ email });

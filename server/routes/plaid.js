@@ -4,9 +4,12 @@ const plaidClient = require('../config/plaid');
 const User = require('../models/User');
 const { Products, CountryCode } = require('plaid');
 const BankAccount = require('../models/user_BankAccount');
+const {HighLimiter, MediumLimiter, ModerateLimiter} = require('./rateLimiter.js');
+
+
 
 // 1. Create Link Token — called when Connect Bank page loads
-router.post('/create-link-token', async (req, res) => {
+router.post('/create-link-token', HighLimiter, async (req, res) => {
   try {
     const { userId } = req.body;
 
@@ -26,7 +29,7 @@ router.post('/create-link-token', async (req, res) => {
 });
 
 // 2. Exchange Public Token — called after user connects bank
-router.post('/exchange-token', async (req, res) => {
+router.post('/exchange-token', HighLimiter, async (req, res) => {
   try {
     const { public_token, userId } = req.body;
 
