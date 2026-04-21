@@ -27,14 +27,7 @@ app.set('trust proxy', 1);
 // ✅ Middleware
 app.use(
   cors({
-    origin: (origin, callback) => {
-      // Allow Flutter web origins like http://localhost:xxxx or http://10.0.2.2:xxxx
-      if (!origin || origin.startsWith("http://localhost:") || origin.startsWith("http://10.0.2.2:")) {
-        callback(null, true);
-      } else {
-        callback(new Error("CORS blocked this origin"));
-      }
-    },
+    origin: true,   // allows all origins (phone APK, web, etc.)
     credentials: true,
     exposedHeaders: ["x-access-token"],
   })
