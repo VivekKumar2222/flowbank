@@ -18,6 +18,7 @@ import 'package:flowbank/api/api_service.dart';
 import '../home/home_skeleton_loader.dart';
 import 'all_transactions_screen.dart';
 import '../connectBank/connect_bank_screen.dart';
+import 'all_goals_screen.dart';
 
 class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
@@ -35,6 +36,8 @@ class _HomeScreenState extends State<HomeScreen> {
   List<Map<String, dynamic>> recentTransactions = [];
   bool isLoadingData = true;
   List<Map<String, dynamic>> allTransactions = [];
+  List<Map<String, dynamic>> _goals = [];
+  bool _goalsLoading = true;
   
     @override
   void initState() {
@@ -43,6 +46,72 @@ class _HomeScreenState extends State<HomeScreen> {
     //_loadUserEmail();
     //_fetchTotalBalance();
   }
+
+  static const List<String> _themeOrder = ['red', 'purple', 'blue'];
+
+Widget _addGoalSmallPlaceholder(String themeColor, {required VoidCallback onTap}) {
+  final Map<String, Color> accents = {
+    'red':    const Color(0xFFC11574),
+    'purple': const Color(0xFFB968F6),
+    'blue':   const Color(0xFF217BFF),
+  };
+  final Map<String, Color> bgs = {
+    'red':    const Color(0xFFFEF6FB),
+    'purple': const Color(0xFFF9F2FF),
+    'blue':   const Color(0xFFF5FAFF),
+  };
+  final Map<String, Color> borders = {
+    'red':    const Color(0xFFF6DBEA),
+    'purple': const Color(0xFFF1E1FE),
+    'blue':   const Color(0xFFD7E8FF),
+  };
+
+  // Match the exact size InfoCard renders at
+  return GestureDetector(
+    onTap: onTap,
+    child: Container(
+      width: 150, height: 72,
+      decoration: BoxDecoration(
+        color: bgs[themeColor],
+        borderRadius: BorderRadius.circular(14),
+        border: Border.all(color: borders[themeColor]!),
+      ),
+      child: Column(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          Icon(Icons.add_circle_outline_rounded, color: accents[themeColor], size: 22),
+          const SizedBox(height: 6),
+          Text('Add Goal',
+              style: TextStyle(fontSize: 12, fontWeight: FontWeight.w500, color: accents[themeColor])),
+        ],
+      ),
+    ),
+  );
+}
+
+Widget _addGoalBigPlaceholder({required VoidCallback onTap}) {
+  return GestureDetector(
+    onTap: onTap,
+    child: Container(
+      // Match InfoCard_Box height
+      height: 188,
+      decoration: BoxDecoration(
+        color: const Color(0xFFF5FAFF),
+        borderRadius: BorderRadius.circular(14),
+        border: Border.all(color: const Color(0xFFD7E8FF)),
+      ),
+      child: const Column(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          Icon(Icons.add_circle_outline_rounded, color: Color(0xFF217BFF), size: 28),
+          SizedBox(height: 8),
+          Text('Add Goal',
+              style: TextStyle(fontSize: 13, fontWeight: FontWeight.w500, color: Color(0xFF217BFF))),
+        ],
+      ),
+    ),
+  );
+}
 
   Future<void> _loadUserData() async {
     final prefs = await SharedPreferences.getInstance();
@@ -53,7 +122,9 @@ class _HomeScreenState extends State<HomeScreen> {
       
     });
     if (email != null && email!.isNotEmpty) {
+    _fetchGoals();
     _fetchTotalBalance();  // ✅ Now email is guaranteed
+    
   }
   }
 
@@ -78,6 +149,27 @@ final List<List<Color>> _cardGradients = [
   [Color(0xFFf7971e), Color(0xFFffd200)],
   [Color(0xFFc94b4b), Color(0xFF4b134f)],
 ];
+
+Future<void> _fetchGoals() async {
+  try {
+    final prefs = await SharedPreferences.getInstance();
+    final token = prefs.getString('token') ?? '';
+    //final response = await ApiService.get("/api/bank/all-data/$email", context);
+    final res = await ApiService.get(
+      '/api/goals/my-goals',
+      context
+    );
+    if (res.statusCode == 200) {
+      final List data = jsonDecode(res.body);
+      setState(() {
+        _goals = data.cast<Map<String, dynamic>>();
+        _goalsLoading = false;
+      });
+    }
+  } catch (_) {
+    setState(() => _goalsLoading = false);
+  }
+}
 
 Future<void> _fetchTotalBalance() async {
   final stopwatch = Stopwatch()..start();
@@ -359,6 +451,8 @@ String _fmtCategory(dynamic cat) {
             
             child: Column(
               children: [
+                // -------- YOUR GOALS --------
+
                 // -------- TOP SECTION --------
                 Padding(
                   padding: const EdgeInsets.symmetric(horizontal: 18),
@@ -376,35 +470,49 @@ String _fmtCategory(dynamic cat) {
                       const SizedBox(height: 16),
           
                       Row(
-                        children: [
-                          Column(
-                            children: [
-                              InfoCard(
-                                title: 'Subscription',
-                                currentValue: 600,
-                                maxValue: 1400,
-                                themeColor: "red",
-                              ),
-                              SizedBox(height: 8),
-                              InfoCard(
-                                title: 'Food',
-                                currentValue: 756,
-                                maxValue: 1200,
-                                themeColor: "purple",
-                              ),
-                            ],
-                          ),
-                          const SizedBox(width: 12),
-                          Expanded(
-                            child: InfoCard_Box(
-                              title: "Home Bills",
-                              currentValue: 200,
-                              maxValue: 1500,
-                              themeColor: "blue",
-                            ),
-                          ),
-                        ],
-                      ),
+  crossAxisAlignment: CrossAxisAlignment.start,
+  children: [
+    Column(
+      children: [
+        // Slot 1 - small card
+        _goals.length > 1
+            ? InfoCard(
+                title: _goals[1]['goalName'],
+                currentValue: (_goals[1]['currentSpend'] as num).toInt(),
+                maxValue: (_goals[1]['amount'] as num).toInt(),
+                themeColor: 'red',
+              )
+            : _addGoalSmallPlaceholder('red', onTap: () { /* navigate */ }),
+
+        const SizedBox(height: 8),
+
+        // Slot 2 - small card
+        _goals.length > 2
+            ? InfoCard(
+                title: _goals[2]['goalName'],
+                currentValue: (_goals[2]['currentSpend'] as num).toInt(),
+                maxValue: (_goals[2]['amount'] as num).toInt(),
+                themeColor: 'purple',
+              )
+            : _addGoalSmallPlaceholder('purple', onTap: () { /* navigate */ }),
+      ],
+    ),
+
+    const SizedBox(width: 12),
+
+    // Slot 0 - big card (first/primary goal)
+    Expanded(
+      child: _goals.isNotEmpty
+          ? InfoCard_Box(
+              title: _goals[0]['goalName'],
+              currentValue: (_goals[0]['currentSpend'] as num).toInt(),
+              maxValue: (_goals[0]['amount'] as num).toInt(),
+              themeColor: 'blue',
+            )
+          : _addGoalBigPlaceholder(onTap: () { /* navigate */ }),
+    ),
+  ],
+),
           
                       const SizedBox(height: 24),
                     ],

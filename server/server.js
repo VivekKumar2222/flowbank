@@ -22,6 +22,8 @@ const budgetGoalRoutes = require('./routes/goalSetRoutes');
 // ✅ Create app FIRST before using it
 const app = express();
 
+app.set('trust proxy', 1);
+
 // ✅ Middleware
 app.use(
   cors({
