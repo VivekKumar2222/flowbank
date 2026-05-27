@@ -83,7 +83,7 @@ class InfoCard extends StatelessWidget {
               alignment: Alignment.center,
               children: [
                 CustomPaint(
-                  size: const Size(54, 54),
+                  size: const Size(46, 46),
                   painter: CircleProgressPainter(
                     progress: progress,
                     backgroundColor: Colors.white,
@@ -93,8 +93,8 @@ class InfoCard extends StatelessWidget {
 
                 // Inner circle
                 Container(
-                  width: 46,
-                  height: 46,
+                  width: 38,
+                  height: 38,
                   decoration: BoxDecoration(
                     color: selected["inner"],
                     shape: BoxShape.circle,
@@ -132,6 +132,7 @@ class InfoCard extends StatelessWidget {
                   FittedBox(
                     fit: BoxFit.scaleDown,
                     child: Row(
+                      crossAxisAlignment: CrossAxisAlignment.end,
                       children: [
                         Text(
                           "$currentValue",
@@ -158,7 +159,7 @@ class InfoCard extends StatelessWidget {
                             style: const TextStyle(
                               color: Color(0xFF2A2A2A),
                               fontWeight: FontWeight.w600,
-                              fontSize: 17,
+                              fontSize: 14,
                               fontFamily: "Manrope",
                             ),
                           ),

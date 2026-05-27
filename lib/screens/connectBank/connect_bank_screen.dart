@@ -1,8 +1,11 @@
 import 'dart:convert';
+import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter/material.dart';
 import 'package:plaid_flutter/plaid_flutter.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:flowbank/api/api_service.dart';
+import 'package:flowbank/utils/plaid_stub.dart'
+    if (dart.library.html) 'package:flowbank/utils/plaid_web.dart';
 import '../home/new_homescreen.dart';  // your home screen
 import '../addGoalsInitialSignin/budget-goal-screen.dart'; // your budget goals screen
 import '../addGoalsInitialSignin/add_goals_screen.dart';
@@ -69,34 +72,53 @@ class _ConnectBankScreenState extends State<ConnectBankScreen> {
 
   Future<void> _openPlaidLink() async {
     if (_linkToken == null) return;
-
     setState(() => _isConnecting = true);
 
-    final configuration = LinkTokenConfiguration(token: _linkToken!);
-
-    PlaidLink.onSuccess.listen((LinkSuccess event) async {
-      final publicToken = event.publicToken;
-      await _exchangeToken(publicToken);
-    });
-
-    PlaidLink.onExit.listen((LinkExit event) {
-      setState(() => _isConnecting = false);
-      if (event.error != null) {
-        print('Plaid exit error: ${event.error?.message}');
-        print('Plaid exit error code: ${event.error?.code}');
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Error: ${event.error?.message ?? "Unknown"}')),
+    if (kIsWeb) {
+      try {
+        await openPlaidOnWeb(
+          linkToken: _linkToken!,
+          onSuccess: (publicToken) async {
+            await _exchangeToken(publicToken);
+          },
+          onExit: (errorCode, errorMessage) {
+            setState(() => _isConnecting = false);
+            if (errorMessage != null) {
+              ScaffoldMessenger.of(context).showSnackBar(
+                SnackBar(content: Text('Error: $errorMessage')),
+              );
+            }
+          },
         );
-      } else {
-        print('User exited Plaid Link without error');
+      } catch (e) {
+        setState(() => _isConnecting = false);
+        debugPrint('Plaid web error: $e');
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Plaid error: $e')),
+        );
       }
-    });
+    } else {
+      final configuration = LinkTokenConfiguration(token: _linkToken!);
 
-    PlaidLink.onEvent.listen((LinkEvent event) {
-      print('Plaid event: ${event.name}');
-    });
+      PlaidLink.onSuccess.listen((LinkSuccess event) async {
+        await _exchangeToken(event.publicToken);
+      });
 
-    await PlaidLink.open(configuration: configuration);
+      PlaidLink.onExit.listen((LinkExit event) {
+        setState(() => _isConnecting = false);
+        if (event.error != null) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(content: Text('Error: ${event.error?.message ?? "Unknown"}')),
+          );
+        }
+      });
+
+      PlaidLink.onEvent.listen((LinkEvent event) {
+        print('Plaid event: ${event.name}');
+      });
+
+      await PlaidLink.open(configuration: configuration);
+    }
   }
 
   Future<void> _exchangeToken(String publicToken) async {

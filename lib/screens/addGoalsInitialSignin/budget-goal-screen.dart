@@ -55,7 +55,8 @@ const List<_Duration> _durations = [
 
 // ─── Main Screen ──────────────────────────────────────────────────────────────
 class BudgetGoalScreen extends StatefulWidget {
-  const BudgetGoalScreen({super.key});
+  final VoidCallback? onGoalAdded;
+  const BudgetGoalScreen({super.key, this.onGoalAdded});
 
   @override
   State<BudgetGoalScreen> createState() => _BudgetGoalScreenState();
@@ -244,10 +245,16 @@ class _BudgetGoalScreenState extends State<BudgetGoalScreen>
                 height: 48,
                 child: ElevatedButton(
                   onPressed: () {
-                    Navigator.pushReplacement(
-                          context,
-                          MaterialPageRoute(builder: (_) => const HomeScreen()),
-                        ); // go back
+                    if (widget.onGoalAdded != null) {
+                      Navigator.pop(context); // close dialog
+                      Navigator.pop(context); // pop BudgetGoalScreen back to AllGoalsScreen
+                      widget.onGoalAdded!();
+                    } else {
+                      Navigator.pushReplacement(
+                        context,
+                        MaterialPageRoute(builder: (_) => const HomeScreen()),
+                      );
+                    }
                   },
                   style: ElevatedButton.styleFrom(
                     backgroundColor: _blue,

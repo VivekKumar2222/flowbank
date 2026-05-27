@@ -22,7 +22,7 @@
     "mongoose": "^8.19.2",
     "morgan": "^1.10.1",
     "node-cron": "^4.2.1",
-    "nodemailer": "^7.0.10",
+    "nodemailer": "^8.0.5",
     "otp-generator": "^4.0.1",
     "plaid": "^41.4.0"
   }

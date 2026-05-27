@@ -1,0 +1,47 @@
+{
+  "project_info": {
+    "project_number": "712252945401",
+    "project_id": "flowbankauth",
+    "storage_bucket": "flowbankauth.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:712252945401:android:408532708f5a62f50a0328",
+        "android_client_info": {
+          "package_name": "com.example.flowbank"
+        }
+      },
+      "oauth_client": [
+        {
+          "client_id": "712252945401-11ak70lfu26hookfrjnfqa03o5do8fc2.apps.googleusercontent.com",
+          "client_type": 1,
+          "android_info": {
+            "package_name": "com.example.flowbank",
+            "certificate_hash": "6d8baa11f41c0e1c58e2212dd6f2188faf4da31b"
+          }
+        },
+        {
+          "client_id": "712252945401-hqi28ea7p66rc33hdnltt9ctavtg9rin.apps.googleusercontent.com",
+          "client_type": 3
+        }
+      ],
+      "api_key": [
+        {
+          "current_key": "AIzaSyBUMz2b9b_qp_S-jJM2hx0ms6UElTE9FJw"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": [
+            {
+              "client_id": "712252945401-hqi28ea7p66rc33hdnltt9ctavtg9rin.apps.googleusercontent.com",
+              "client_type": 3
+            }
+          ]
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

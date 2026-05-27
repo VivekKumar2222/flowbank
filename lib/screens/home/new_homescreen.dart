@@ -49,6 +49,21 @@ class _HomeScreenState extends State<HomeScreen> {
 
   static const List<String> _themeOrder = ['red', 'purple', 'blue'];
 
+  IconData _goalIcon(String? category) {
+    switch ((category ?? '').toLowerCase()) {
+      case 'food':          return Icons.restaurant_rounded;
+      case 'transport':     return Icons.directions_car_rounded;
+      case 'subscriptions': return Icons.subscriptions_rounded;
+      case 'bills':         return Icons.receipt_rounded;
+      case 'shopping':      return Icons.shopping_bag_rounded;
+      case 'health':        return Icons.favorite_rounded;
+      case 'education':     return Icons.school_rounded;
+      case 'entertainment': return Icons.movie_rounded;
+      case 'home':          return Icons.home_rounded;
+      default:              return Icons.savings_rounded;
+    }
+  }
+
 Widget _addGoalSmallPlaceholder(String themeColor, {required VoidCallback onTap}) {
   final Map<String, Color> accents = {
     'red':    const Color(0xFFC11574),
@@ -70,7 +85,7 @@ Widget _addGoalSmallPlaceholder(String themeColor, {required VoidCallback onTap}
   return GestureDetector(
     onTap: onTap,
     child: Container(
-      width: 150, height: 72,
+      height: 72,
       decoration: BoxDecoration(
         color: bgs[themeColor],
         borderRadius: BorderRadius.circular(14),
@@ -462,9 +477,14 @@ String _fmtCategory(dynamic cat) {
                       const SizedBox(height: 12),
           
                       SectionHeader(
-                        title: "Top Picks",
+                        title: "Your Goals",
                         showButton: true,
-                        destination: OnboardingScreen(),
+                        onViewAll: () {
+                          Navigator.push(
+                            context,
+                            MaterialPageRoute(builder: (_) => const AllGoalsScreen()),
+                          ).then((_) => _fetchGoals());
+                        },
                       ),
           
                       const SizedBox(height: 16),
@@ -472,7 +492,10 @@ String _fmtCategory(dynamic cat) {
                       Row(
   crossAxisAlignment: CrossAxisAlignment.start,
   children: [
-    Column(
+    SizedBox(
+      width: 170,
+      child: Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
         // Slot 1 - small card
         _goals.length > 1
@@ -481,8 +504,12 @@ String _fmtCategory(dynamic cat) {
                 currentValue: (_goals[1]['currentSpend'] as num).toInt(),
                 maxValue: (_goals[1]['amount'] as num).toInt(),
                 themeColor: 'red',
+                icon: _goalIcon(_goals[1]['category'] as String?),
               )
-            : _addGoalSmallPlaceholder('red', onTap: () { /* navigate */ }),
+            : _addGoalSmallPlaceholder('red', onTap: () {
+                Navigator.push(context, MaterialPageRoute(builder: (_) => const AllGoalsScreen()))
+                  .then((_) => _fetchGoals());
+              }),
 
         const SizedBox(height: 8),
 
@@ -493,9 +520,14 @@ String _fmtCategory(dynamic cat) {
                 currentValue: (_goals[2]['currentSpend'] as num).toInt(),
                 maxValue: (_goals[2]['amount'] as num).toInt(),
                 themeColor: 'purple',
+                icon: _goalIcon(_goals[2]['category'] as String?),
               )
-            : _addGoalSmallPlaceholder('purple', onTap: () { /* navigate */ }),
+            : _addGoalSmallPlaceholder('purple', onTap: () {
+                Navigator.push(context, MaterialPageRoute(builder: (_) => const AllGoalsScreen()))
+                  .then((_) => _fetchGoals());
+              }),
       ],
+    ),
     ),
 
     const SizedBox(width: 12),
@@ -508,8 +540,12 @@ String _fmtCategory(dynamic cat) {
               currentValue: (_goals[0]['currentSpend'] as num).toInt(),
               maxValue: (_goals[0]['amount'] as num).toInt(),
               themeColor: 'blue',
+              icon: _goalIcon(_goals[0]['category'] as String?),
             )
-          : _addGoalBigPlaceholder(onTap: () { /* navigate */ }),
+          : _addGoalBigPlaceholder(onTap: () {
+              Navigator.push(context, MaterialPageRoute(builder: (_) => const AllGoalsScreen()))
+                .then((_) => _fetchGoals());
+            }),
     ),
   ],
 ),

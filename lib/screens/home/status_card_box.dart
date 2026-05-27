@@ -135,6 +135,7 @@ class InfoCard_Box extends StatelessWidget {
                   FittedBox(
                     fit: BoxFit.scaleDown,
                     child: Row(
+                      crossAxisAlignment: CrossAxisAlignment.end,
                       children: [
                         Text(
                           "$currentValue",
@@ -162,7 +163,7 @@ class InfoCard_Box extends StatelessWidget {
                             style: const TextStyle(
                               color: Color(0xFF2A2A2A),
                               fontWeight: FontWeight.w600,
-                              fontSize: 25,
+                              fontSize: 20,
                               fontFamily: "Manrope",
                               height: 0,
                             ),

@@ -1,13 +1,16 @@
 import 'dart:convert';
+import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter/material.dart';
 import 'package:google_sign_in/google_sign_in.dart';
 import 'package:flowbank/api/api_service.dart';
 
+const _clientId = '712252945401-hqi28ea7p66rc33hdnltt9ctavtg9rin.apps.googleusercontent.com';
+
 class GoogleAuthService {
   static final GoogleSignIn _googleSignIn = GoogleSignIn(
     scopes: ['email', 'profile'],
-    // Use your Web Client ID here (same one as in AndroidManifest)
-    serverClientId: '712252945401-hqi28ea7p66rc33hdnltt9ctavtg9rin.apps.googleusercontent.com',
+    clientId: kIsWeb ? _clientId : null,
+    serverClientId: kIsWeb ? null : _clientId,
   );
 
   /// Call this from Login or Signup modal.
@@ -29,16 +32,22 @@ class GoogleAuthService {
       final GoogleSignInAuthentication googleAuth =
           await googleUser.authentication;
 
-      final String? idToken = googleAuth.idToken;
-
-      if (idToken == null) {
-        throw Exception('Google idToken is null');
+      // Web (GIS OAuth flow) returns accessToken only; mobile returns idToken
+      final Map<String, String> authPayload;
+      if (kIsWeb) {
+        final String? accessToken = googleAuth.accessToken;
+        if (accessToken == null) throw Exception('Google accessToken is null');
+        authPayload = {'accessToken': accessToken};
+      } else {
+        final String? idToken = googleAuth.idToken;
+        if (idToken == null) throw Exception('Google idToken is null');
+        authPayload = {'idToken': idToken};
       }
 
-      // Send idToken to your backend
+      // Send token to your backend
       final response = await ApiService.post(
         '/api/auth/google',
-        {'idToken': idToken},
+        authPayload,
         context,
       );
 

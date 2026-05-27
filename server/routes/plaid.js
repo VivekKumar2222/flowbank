@@ -19,6 +19,7 @@ router.post('/create-link-token', HighLimiter, async (req, res) => {
       products: process.env.PLAID_PRODUCTS.split(',').map(p => p.trim()),
       country_codes: process.env.PLAID_COUNTRY_CODES.split(',').map(c => c.trim()),
       language: 'en',
+      redirect_uri: process.env.PLAID_REDIRECT_URI || undefined,
     });
 
     res.json({ link_token: response.data.link_token });

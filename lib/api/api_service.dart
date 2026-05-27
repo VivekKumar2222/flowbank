@@ -1,3 +1,4 @@
+import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter/material.dart';
 import '../screens/onboarding/OnboardingScreen.dart';
 import 'dart:convert';
@@ -8,16 +9,16 @@ import 'package:shared_preferences/shared_preferences.dart';
 import '../api/session_expired.dart';
 
 class ApiService {
-  static const String baseUrl =
-      "https://dagmar-bioelectric-varietally.ngrok-free.dev";
-      // "http://localhost:5000";
+  static final String baseUrl = kIsWeb
+      ? "http://localhost:5000"
+      : "http://10.0.2.2:5000";
 
-  static IOClient _client() {
+  static http.Client _client() {
+    if (kIsWeb) return http.Client();
     final httpClient = HttpClient();
     httpClient.connectionTimeout = const Duration(seconds: 30);
     httpClient.idleTimeout = const Duration(seconds: 5);
     httpClient.autoUncompress = true;
-
     return IOClient(httpClient);
   }
 
@@ -135,6 +136,24 @@ class ApiService {
       _handleUnauthorized(context);
     }
 
+    return response;
+  }
+
+  // ================= PATCH =================
+  static Future<http.Response> patch(
+    String endpoint,
+    Map<String, dynamic> body, BuildContext context
+  ) async {
+    final client = _client();
+    final response = await client.patch(
+      Uri.parse("$baseUrl$endpoint"),
+      headers: await _headers(),
+      body: jsonEncode(body),
+    );
+    client.close();
+    if (response.statusCode == 401) {
+      _handleUnauthorized(context);
+    }
     return response;
   }
 

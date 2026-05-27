@@ -4,12 +4,14 @@ class SectionHeader extends StatelessWidget {
   final String title;
   final bool showButton;
   final Widget? destination;
+  final VoidCallback? onViewAll;
 
   const SectionHeader({
     super.key,
     required this.title,
     this.showButton = false,
     this.destination,
+    this.onViewAll,
   });
 
   @override
@@ -33,7 +35,9 @@ class SectionHeader extends StatelessWidget {
           if (showButton)
 GestureDetector(
   onTap: () {
-    if (destination != null) {
+    if (onViewAll != null) {
+      onViewAll!();
+    } else if (destination != null) {
       Navigator.push(
         context,
         MaterialPageRoute(builder: (_) => destination!),

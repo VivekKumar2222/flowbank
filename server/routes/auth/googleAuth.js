@@ -2,26 +2,39 @@ const express = require('express');
 const router = express.Router();
 const { OAuth2Client } = require('google-auth-library');
 const jwt = require('jsonwebtoken');
+const axios = require('axios');
 const User = require('../../models/User'); // adjust path to your User model
 
 const client = new OAuth2Client(process.env.GOOGLE_WEB_CLIENT_ID);
 
 router.post('/google', async (req, res) => {
-  const { idToken } = req.body;
+  const { idToken, accessToken } = req.body;
 
-  if (!idToken) {
-    return res.status(400).json({ message: 'idToken is required' });
+  if (!idToken && !accessToken) {
+    return res.status(400).json({ message: 'idToken or accessToken is required' });
   }
 
   try {
-    // 1. Verify the token with Google
-    const ticket = await client.verifyIdToken({
-      idToken,
-      audience: process.env.GOOGLE_WEB_CLIENT_ID,
-    });
+    let email, name, picture, googleId;
 
-    const payload = ticket.getPayload();
-    const { email, name, picture, sub: googleId } = payload;
+    if (idToken) {
+      // Mobile: verify idToken directly
+      const ticket = await client.verifyIdToken({
+        idToken,
+        audience: process.env.GOOGLE_WEB_CLIENT_ID,
+      });
+      const payload = ticket.getPayload();
+      ({ email, name, picture, sub: googleId } = payload);
+    } else {
+      // Web: use accessToken to fetch user info from Google
+      const { data } = await axios.get('https://www.googleapis.com/oauth2/v3/userinfo', {
+        headers: { Authorization: `Bearer ${accessToken}` },
+      });
+      email = data.email;
+      name = data.name;
+      picture = data.picture;
+      googleId = data.sub;
+    }
 
     // 2. Find or create user in MongoDB
     let user = await User.findOne({ email });
