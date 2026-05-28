@@ -496,7 +496,17 @@ class _TxTile extends StatelessWidget {
         ])),
         Column(crossAxisAlignment: CrossAxisAlignment.end, children: [
           Text('${tx.isDebit ? '-' : '+'}\$${tx.amount.toStringAsFixed(2)}', style: TextStyle(fontSize: 14, fontWeight: FontWeight.w700, color: _accent)),
-          const SizedBox(height: 3),
+          const SizedBox(height: 4),
+          tx.category == 'Uncategorized'
+              ? const Text(
+                  'Categorize +',
+                  style: TextStyle(fontSize: 12, fontFamily: 'Manrope', fontWeight: FontWeight.w600, color: Color(0xFF667085)),
+                )
+              : Text(
+                  'Categorized',
+                  style: TextStyle(fontSize: 12, fontFamily: 'Manrope', fontWeight: FontWeight.w500, color: _accent),
+                ),
+          const SizedBox(height: 4),
           Text(shortDate, style: const TextStyle(fontSize: 11, color: Color(0xFF98A2B3))),
         ]),
       ]),

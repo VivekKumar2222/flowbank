@@ -1,8 +1,18 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/gestures.dart';
 import 'screens/onboarding/OnboardingScreen.dart';
 import 'package:device_preview/device_preview.dart';
 import 'screens/collaboration/delete_Group.dart';
 import 'screens/connectBank/connect_bank_screen.dart';
+
+class _MouseScrollBehavior extends MaterialScrollBehavior {
+  @override
+  Set<PointerDeviceKind> get dragDevices => {
+        PointerDeviceKind.touch,
+        PointerDeviceKind.mouse,
+        PointerDeviceKind.trackpad,
+      };
+}
 void main() {
   WidgetsFlutterBinding.ensureInitialized(); // 👈 this is required
   runApp(
@@ -22,6 +32,7 @@ class MyApp extends StatelessWidget {
     return MaterialApp(
       title: 'FlowBank',
       theme: ThemeData(fontFamily: 'Manrope', useMaterial3: true),
+      scrollBehavior: _MouseScrollBehavior(),
             locale: DevicePreview.locale(context),
       builder: DevicePreview.appBuilder,
 

@@ -200,13 +200,14 @@ class _AllGoalsScreenState extends State<AllGoalsScreen> {
   }
 
   void _showAddSpendSheet(Map<String, dynamic> goal) {
-    final String goalId   = goal['_id']?.toString() ?? '';
-    final String goalName = goal['goalName'] ?? '';
-    final double amount   = (goal['amount'] as num).toDouble();
-    final double spent    = (goal['currentSpend'] as num? ?? 0).toDouble();
-    final accentColor     = _accentColor(goal['themeColor'] as String?);
-    final amountCtrl      = TextEditingController();
-    bool submitting       = false;
+    final String goalId    = goal['_id']?.toString() ?? '';
+    final String goalName  = goal['goalName'] ?? '';
+    final double amount    = (goal['amount'] as num).toDouble();
+    final double spent     = (goal['currentSpend'] as num? ?? 0).toDouble();
+    final accentColor      = _accentColor(goal['themeColor'] as String?);
+    final bool isSavings   = (goal['goalType'] as String?) == 'savings';
+    final amountCtrl       = TextEditingController();
+    bool submitting        = false;
 
     showModalBottomSheet(
       context: context,
@@ -284,9 +285,9 @@ class _AllGoalsScreenState extends State<AllGoalsScreen> {
                     const SizedBox(height: 24),
 
                     // Label
-                    const Text(
-                      'How much did you spend?',
-                      style: TextStyle(fontSize: 15, fontWeight: FontWeight.w700, fontFamily: 'Manrope', color: Color(0xFF1A1F36)),
+                    Text(
+                      isSavings ? 'How much did you save?' : 'How much did you spend?',
+                      style: const TextStyle(fontSize: 15, fontWeight: FontWeight.w700, fontFamily: 'Manrope', color: Color(0xFF1A1F36)),
                     ),
                     const SizedBox(height: 10),
 
@@ -350,7 +351,7 @@ class _AllGoalsScreenState extends State<AllGoalsScreen> {
                         ),
                         child: submitting
                             ? const SizedBox(width: 20, height: 20, child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2))
-                            : const Text('Add Spend', style: TextStyle(fontSize: 15, fontWeight: FontWeight.w700, fontFamily: 'Manrope', color: Colors.white)),
+                            : Text(isSavings ? 'Add Savings' : 'Add Spend', style: const TextStyle(fontSize: 15, fontWeight: FontWeight.w700, fontFamily: 'Manrope', color: Colors.white)),
                       ),
                     ),
                   ],
@@ -411,13 +412,27 @@ class _GoalTile extends StatelessWidget {
     required this.onTap,
   });
 
+  Color _progressColor(bool isSavings, double progress) {
+    if (isSavings) {
+      if (progress >= 1.0) return const Color(0xFF2ECC71);
+      if (progress >= 0.5) return const Color(0xFF2ECC71);
+      return const Color(0xFFE67E22);
+    } else {
+      if (progress >= 1.0) return const Color(0xFFE53935);
+      if (progress >= 0.7) return const Color(0xFFE67E22);
+      return accentColor;
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
-    final double amount   = (goal['amount'] as num).toDouble();
-    final double spent    = (goal['currentSpend'] as num? ?? 0).toDouble();
-    final double progress = amount > 0 ? (spent / amount).clamp(0.0, 1.0) : 0.0;
-    final String name     = goal['goalName'] ?? '';
-    final String duration = _capitalize(goal['resetDuration'] ?? 'monthly');
+    final double amount    = (goal['amount'] as num).toDouble();
+    final double spent     = (goal['currentSpend'] as num? ?? 0).toDouble();
+    final double progress  = amount > 0 ? (spent / amount).clamp(0.0, 1.0) : 0.0;
+    final String name      = goal['goalName'] ?? '';
+    final String duration  = _capitalize(goal['resetDuration'] ?? 'monthly');
+    final bool isSavings   = (goal['goalType'] as String?) == 'savings';
+    final Color barColor   = _progressColor(isSavings, progress);
 
     return GestureDetector(
       onTap: onTap,
@@ -474,15 +489,38 @@ class _GoalTile extends StatelessWidget {
                     ),
                   ],
                 ),
-                const SizedBox(height: 3),
-                Text(
-                  duration,
-                  style: TextStyle(
-                    fontSize: 12,
-                    fontWeight: FontWeight.w500,
-                    fontFamily: 'Manrope',
-                    color: accentColor.withValues(alpha: 0.7),
-                  ),
+                const SizedBox(height: 4),
+                Row(
+                  children: [
+                    Text(
+                      duration,
+                      style: TextStyle(
+                        fontSize: 12,
+                        fontWeight: FontWeight.w500,
+                        fontFamily: 'Manrope',
+                        color: accentColor.withValues(alpha: 0.7),
+                      ),
+                    ),
+                    const SizedBox(width: 8),
+                    Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 2),
+                      decoration: BoxDecoration(
+                        color: isSavings
+                            ? const Color(0xFF2ECC71).withValues(alpha: 0.12)
+                            : const Color(0xFF1E88E5).withValues(alpha: 0.10),
+                        borderRadius: BorderRadius.circular(6),
+                      ),
+                      child: Text(
+                        isSavings ? 'Savings' : 'Limit',
+                        style: TextStyle(
+                          fontSize: 10,
+                          fontWeight: FontWeight.w700,
+                          fontFamily: 'Manrope',
+                          color: isSavings ? const Color(0xFF2ECC71) : const Color(0xFF1E88E5),
+                        ),
+                      ),
+                    ),
+                  ],
                 ),
                 const SizedBox(height: 8),
                 ClipRRect(
@@ -490,13 +528,15 @@ class _GoalTile extends StatelessWidget {
                   child: LinearProgressIndicator(
                     value: progress,
                     minHeight: 5,
-                    backgroundColor: accentColor.withValues(alpha: 0.12),
-                    valueColor: AlwaysStoppedAnimation(accentColor),
+                    backgroundColor: barColor.withValues(alpha: 0.12),
+                    valueColor: AlwaysStoppedAnimation(barColor),
                   ),
                 ),
                 const SizedBox(height: 4),
                 Text(
-                  '\$${spent.toStringAsFixed(0)} spent of \$${amount.toStringAsFixed(0)}',
+                  isSavings
+                      ? 'PKR ${spent.toStringAsFixed(0)} saved of PKR ${amount.toStringAsFixed(0)}'
+                      : 'PKR ${spent.toStringAsFixed(0)} spent of PKR ${amount.toStringAsFixed(0)}',
                   style: const TextStyle(
                     fontSize: 11,
                     fontFamily: 'Manrope',

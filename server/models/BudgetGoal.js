@@ -7,6 +7,7 @@ const schema = new mongoose.Schema({
   resetDuration: { type: String, enum: ['weekly','monthly','yearly'] },
   category:      { type: String },
   currentSpend:  { type: Number, default: 0 },
+  goalType:      { type: String, enum: ['spending', 'savings'], default: 'spending' },
   createdAt:     { type: Date, default: Date.now },
 });
 module.exports = mongoose.model('BudgetGoal', schema);
