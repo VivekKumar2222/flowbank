@@ -38,13 +38,13 @@ class _HomeScreenState extends State<HomeScreen> {
   List<Map<String, dynamic>> allTransactions = [];
   List<Map<String, dynamic>> _goals = [];
   bool _goalsLoading = true;
-  
-    @override
+  Map<String, String> _categorizedMap = {};
+
+  @override
   void initState() {
     super.initState();
     _loadUserData();
-    //_loadUserEmail();
-    //_fetchTotalBalance();
+    _fetchCategorizations();
   }
 
   static const List<String> _themeOrder = ['red', 'purple', 'blue'];
@@ -186,6 +186,38 @@ Future<void> _fetchGoals() async {
   }
 }
 
+Future<void> _fetchCategorizations() async {
+  try {
+    // ignore: use_build_context_synchronously
+    final res = await ApiService.get('/api/categorize/my-categorizations', context);
+    if (res.statusCode == 200 && mounted) {
+      final List data = jsonDecode(res.body);
+      setState(() {
+        _categorizedMap = {
+          for (final r in data)
+            r['transactionId'].toString(): (r['categoryRefName']?.toString().isNotEmpty == true
+                ? r['categoryRefName'].toString()
+                : r['categorizedTo'] == 'goal' ? 'Goal' : 'Group'),
+        };
+      });
+    }
+  } catch (_) {}
+}
+
+void _showHomeCategorizeSheet(PlaidTransaction tx) {
+  showModalBottomSheet(
+    context: context,
+    isScrollControlled: true,
+    backgroundColor: Colors.transparent,
+    builder: (_) => CategorizationSheet(
+      tx: tx,
+      onSuccess: (transactionId, refName) {
+        if (mounted) setState(() => _categorizedMap[transactionId] = refName);
+      },
+    ),
+  );
+}
+
 Future<void> _fetchTotalBalance() async {
   final stopwatch = Stopwatch()..start();
   try {
@@ -273,13 +305,26 @@ List<Bank> _buildBanksFromTransactions(List<Map<String, dynamic>> txList) {
     final name = (t['name'] ?? t['merchant_name'] ?? 'Transaction').toString();
     final date = _fmtDate(t['date']?.toString() ?? '');
     final category = _fmtCategory(t['category']);
+    final txId = t['transaction_id']?.toString() ?? t['id']?.toString() ?? '';
+    final categorizedIn = _categorizedMap[txId];
     byAccount.putIfAbsent(accountName, () => []).add(TransactionItem(
       title: name,
       subtitle: category,
       date: date,
       amount: rawAmount.abs(),
       isPositive: !isDebit,
-      isCategorized: category != 'Uncategorized',
+      categorizedIn: categorizedIn,
+      onCategorize: categorizedIn == null
+          ? () => _showHomeCategorizeSheet(PlaidTransaction(
+                transactionId: txId,
+                name: name,
+                amount: rawAmount.abs(),
+                date: t['date']?.toString() ?? '',
+                category: category,
+                accountName: accountName,
+                isDebit: isDebit,
+              ))
+          : null,
     ));
   }
   return byAccount.entries.map((e) {

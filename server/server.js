@@ -14,6 +14,7 @@ const plaidRoutes = require('./routes/plaid');
 const bankRoutes = require('./routes/bank');
 const googleAuthRoute = require('./routes/auth/googleAuth');
 const budgetGoalRoutes = require('./routes/goalSetRoutes');
+const categorizationRoutes = require('./routes/categorizationRoutes');
 
 
 
@@ -53,6 +54,7 @@ app.use('/api/plaid', plaidRoutes);
 app.use('/api/bank', bankRoutes);
 app.use('/api/auth', googleAuthRoute);
 app.use('/api/goals', budgetGoalRoutes);
+app.use('/api/categorize', categorizationRoutes);
 
 
 // ✅ Test route

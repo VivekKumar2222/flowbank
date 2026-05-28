@@ -18,11 +18,11 @@ class Bank {
 class TransactionItem {
   final String title;
   final String subtitle;
-  final String date; // NEW
+  final String date;
   final double amount;
   final bool isPositive;
-  final bool isCategorized; // NEW
-  final VoidCallback? onCategorize; // optional action
+  final String? categorizedIn; // null = not categorized; non-null = "Categorized in X"
+  final VoidCallback? onCategorize;
 
   TransactionItem({
     required this.title,
@@ -30,7 +30,7 @@ class TransactionItem {
     required this.date,
     required this.amount,
     required this.isPositive,
-    required this.isCategorized,
+    this.categorizedIn,
     this.onCategorize,
   });
 }
@@ -303,16 +303,19 @@ class _TransactionTile extends StatelessWidget {
                       fontWeight: FontWeight.w500
                         ),
                       ),
-                      Text(
-                        tx.subtitle,
-                        style:  TextStyle(
-                          fontSize: 13,
-                          color: tx.isPositive
-                          ? const Color(0xFF4490FF)
-                      : const Color(0xFFFF4646),
-                      fontWeight: FontWeight.w500
+                      if (!tx.isPositive || tx.subtitle != 'Uncategorized')
+                        Text(
+                          !tx.isPositive && tx.categorizedIn != null && tx.subtitle == 'Uncategorized'
+                              ? 'Categorized in ${tx.categorizedIn}'
+                              : tx.subtitle,
+                          style: TextStyle(
+                            fontSize: 13,
+                            color: tx.isPositive
+                                ? const Color(0xFF4490FF)
+                                : const Color(0xFFFF4646),
+                            fontWeight: FontWeight.w500,
+                          ),
                         ),
-                      ),
                       
                     ],
                   ),
@@ -339,30 +342,29 @@ class _TransactionTile extends StatelessWidget {
       const SizedBox(height: 6),
 
       /// CATEGORIZED / CATEGORIZE+
-      tx.isCategorized
-          ? Text(
-              "Categorized",
-              style: TextStyle(
-                fontSize: 12,
-                fontFamily: "Manrope",
-                fontWeight: FontWeight.w500,
-                color: tx.isPositive
-                    ? const Color(0xFF217BFF)
-                    : const Color(0xFFFF2121),
-              ),
-            )
-          : GestureDetector(
-              onTap: tx.onCategorize,
-              child: const Text(
-                "Categorize +",
+      if (!tx.isPositive)
+        tx.categorizedIn != null
+            ? Text(
+                "Categorized",
                 style: TextStyle(
                   fontSize: 12,
                   fontFamily: "Manrope",
-                  fontWeight: FontWeight.w600,
-                  color: Color(0xFF667085),
+                  fontWeight: FontWeight.w500,
+                  color: const Color(0xFFFF2121),
+                ),
+              )
+            : GestureDetector(
+                onTap: tx.onCategorize,
+                child: const Text(
+                  "Categorize +",
+                  style: TextStyle(
+                    fontSize: 12,
+                    fontFamily: "Manrope",
+                    fontWeight: FontWeight.w600,
+                    color: Color(0xFF667085),
+                  ),
                 ),
               ),
-            ),
     ],
   ),
 ),

@@ -1,3 +1,4 @@
+import 'dart:convert';
 import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
@@ -6,8 +7,11 @@ import 'package:open_file/open_file.dart';
 import 'package:excel/excel.dart' hide Border;
 import 'package:pdf/pdf.dart';
 import 'package:pdf/widgets.dart' as pw;
+import 'package:shared_preferences/shared_preferences.dart';
+import '../../api/api_service.dart';
 
 class PlaidTransaction {
+  final String transactionId;
   final String name;
   final double amount;
   final String date;
@@ -16,6 +20,7 @@ class PlaidTransaction {
   final bool isDebit;
 
   PlaidTransaction({
+    required this.transactionId,
     required this.name,
     required this.amount,
     required this.date,
@@ -27,6 +32,7 @@ class PlaidTransaction {
   factory PlaidTransaction.fromMap(Map<String, dynamic> map) {
     final double rawAmount = (map['amount'] as num?)?.toDouble() ?? 0.0;
     return PlaidTransaction(
+      transactionId: map['transaction_id']?.toString() ?? map['id']?.toString() ?? '',
       name: map['name'] ?? map['merchant_name'] ?? 'Unknown',
       amount: rawAmount.abs(),
       date: map['date']?.toString() ?? '',
@@ -72,12 +78,45 @@ class _AllTransactionsScreenState extends State<AllTransactionsScreen> {
   String _selectedFilter = 'All';
   String _selectedSort = 'Newest';
   bool _isExporting = false;
+  Map<String, String> _categorizedMap = {};
 
   @override
   void initState() {
     super.initState();
     _allTx = widget.rawTransactions.map((m) => PlaidTransaction.fromMap(m)).toList();
     _applyFilters();
+    _fetchCategorizations();
+  }
+
+  Future<void> _fetchCategorizations() async {
+    try {
+      final res = await ApiService.get('/api/categorize/my-categorizations', context);
+      if (res.statusCode == 200 && mounted) {
+        final List data = jsonDecode(res.body);
+        setState(() {
+          _categorizedMap = {
+            for (final r in data)
+              r['transactionId'].toString(): (r['categoryRefName']?.toString().isNotEmpty == true
+                  ? r['categoryRefName'].toString()
+                  : r['categorizedTo'] == 'goal' ? 'Goal' : 'Group'),
+          };
+        });
+      }
+    } catch (_) {}
+  }
+
+  void _showCategorizeSheet(PlaidTransaction tx) {
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      builder: (_) => CategorizationSheet(
+        tx: tx,
+        onSuccess: (transactionId, refName) {
+          if (mounted) setState(() => _categorizedMap[transactionId] = refName);
+        },
+      ),
+    );
   }
 
   @override
@@ -446,7 +485,12 @@ class _AllTransactionsScreenState extends State<AllTransactionsScreen> {
                         padding: const EdgeInsets.only(bottom: 8, top: 4),
                         child: Text(key, style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w700, color: _textLight, letterSpacing: 0.5)),
                       ),
-                      ...txs.map((tx) => _TxTile(tx: tx, shortDate: _shortDate(tx.date))),
+                      ...txs.map((tx) => _TxTile(
+                        tx: tx,
+                        shortDate: _shortDate(tx.date),
+                        categorizedIn: _categorizedMap[tx.transactionId],
+                        onCategorize: () => _showCategorizeSheet(tx),
+                      )),
                       const SizedBox(height: 8),
                     ]);
                   },
@@ -466,7 +510,15 @@ class _AllTransactionsScreenState extends State<AllTransactionsScreen> {
 class _TxTile extends StatelessWidget {
   final PlaidTransaction tx;
   final String shortDate;
-  const _TxTile({required this.tx, required this.shortDate});
+  final String? categorizedIn;
+  final VoidCallback onCategorize;
+
+  const _TxTile({
+    required this.tx,
+    required this.shortDate,
+    required this.categorizedIn,
+    required this.onCategorize,
+  });
 
   Color get _accent => tx.isDebit ? const Color(0xFFE53935) : const Color(0xFF1E88E5);
 
@@ -492,24 +544,301 @@ class _TxTile extends StatelessWidget {
         Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
           Text(tx.name, maxLines: 1, overflow: TextOverflow.ellipsis, style: TextStyle(fontSize: 14, fontWeight: FontWeight.w600, color: _accent)),
           const SizedBox(height: 3),
-          Text(tx.category, style: TextStyle(fontSize: 12, color: _accent.withOpacity(0.7), fontWeight: FontWeight.w500)),
+          if (tx.isDebit || tx.category != 'Uncategorized')
+            Text(
+              tx.isDebit && categorizedIn != null && tx.category == 'Uncategorized'
+                  ? 'Categorized in $categorizedIn'
+                  : tx.category,
+              style: TextStyle(fontSize: 12, color: _accent.withOpacity(0.7), fontWeight: FontWeight.w500),
+            ),
         ])),
         Column(crossAxisAlignment: CrossAxisAlignment.end, children: [
           Text('${tx.isDebit ? '-' : '+'}\$${tx.amount.toStringAsFixed(2)}', style: TextStyle(fontSize: 14, fontWeight: FontWeight.w700, color: _accent)),
           const SizedBox(height: 4),
-          tx.category == 'Uncategorized'
-              ? const Text(
-                  'Categorize +',
-                  style: TextStyle(fontSize: 12, fontFamily: 'Manrope', fontWeight: FontWeight.w600, color: Color(0xFF667085)),
-                )
-              : Text(
-                  'Categorized',
-                  style: TextStyle(fontSize: 12, fontFamily: 'Manrope', fontWeight: FontWeight.w500, color: _accent),
-                ),
+          if (tx.isDebit)
+            categorizedIn != null
+                ? Text('Categorized', style: TextStyle(fontSize: 12, fontFamily: 'Manrope', fontWeight: FontWeight.w500, color: _accent))
+                : GestureDetector(
+                    onTap: onCategorize,
+                    child: const Text(
+                      'Categorize +',
+                      style: TextStyle(fontSize: 12, fontFamily: 'Manrope', fontWeight: FontWeight.w600, color: Color(0xFF667085)),
+                    ),
+                  ),
           const SizedBox(height: 4),
           Text(shortDate, style: const TextStyle(fontSize: 11, color: Color(0xFF98A2B3))),
         ]),
       ]),
+    );
+  }
+}
+
+// ─── Categorize Bottom Sheet ──────────────────────────────────────────────────
+
+class CategorizationSheet extends StatefulWidget {
+  final PlaidTransaction tx;
+  final void Function(String transactionId, String categoryRefName) onSuccess;
+
+  const CategorizationSheet({super.key, required this.tx, required this.onSuccess});
+
+  @override
+  State<CategorizationSheet> createState() => _CategorizationSheetState();
+}
+
+class _CategorizationSheetState extends State<CategorizationSheet> {
+  static const _blue   = Color(0xFF1E88E5);
+  static const _purple = Color(0xFF7C3AED);
+  static const _textDark  = Color(0xFF1A1F36);
+  static const _textLight = Color(0xFF98A2B3);
+  static const _bgGrey    = Color(0xFFF5F7FA);
+  static const _border    = Color(0xFFE2E8F0);
+
+  int _step = 0;
+  String? _type;
+  List<Map<String, dynamic>> _items = [];
+  String? _selectedId;
+  String? _selectedName;
+  bool _loading = false;
+  bool _submitting = false;
+
+  Future<void> _pickType(String type) async {
+    setState(() { _type = type; _loading = true; _step = 1; _items = []; _selectedId = null; });
+    try {
+      if (type == 'goal') {
+        await _fetchGoals();
+      } else {
+        await _fetchDashboards();
+      }
+    } finally {
+      if (mounted) setState(() => _loading = false);
+    }
+  }
+
+  Future<void> _fetchGoals() async {
+    final res = await ApiService.get('/api/goals/my-goals', context);
+    if (res.statusCode == 200 && mounted) {
+      final List data = jsonDecode(res.body);
+      setState(() {
+        _items = data.map<Map<String, dynamic>>((g) => {
+          'id': g['_id'].toString(),
+          'name': g['goalName']?.toString() ?? 'Goal',
+          'sub': 'PKR ${(g['amount'] ?? 0)} target · ${g['goalType'] == 'savings' ? 'Savings' : 'Limit'}',
+        }).toList();
+      });
+    }
+  }
+
+  Future<void> _fetchDashboards() async {
+    final prefs = await SharedPreferences.getInstance();
+    if (!mounted) return;
+    final email = prefs.getString('userEmail') ?? '';
+    if (email.isEmpty) return;
+
+    // ignore: use_build_context_synchronously
+    final membersRes = await ApiService.get('/api/collab/dashboard-members?userId=$email', context);
+    if (!mounted || membersRes.statusCode != 200) return;
+
+    final List membersData = jsonDecode(membersRes.body);
+    final ids = membersData.map((m) => m['dashboardId'].toString()).toList();
+    if (ids.isEmpty) { setState(() => _items = []); return; }
+
+    // ignore: use_build_context_synchronously
+    final dashRes = await ApiService.post('/api/collab/dashboards-by-ids', {'ids': ids}, context);
+    if (dashRes.statusCode == 200 && mounted) {
+      final List data = jsonDecode(dashRes.body);
+      setState(() {
+        _items = data.map<Map<String, dynamic>>((d) => {
+          'id': d['_id'].toString(),
+          'name': d['name']?.toString() ?? 'Group',
+          'sub': d['type']?.toString() ?? 'Shared Group',
+        }).toList();
+      });
+    }
+  }
+
+  Future<void> _submit() async {
+    if (_selectedId == null) return;
+    setState(() => _submitting = true);
+    try {
+      final res = await ApiService.post('/api/categorize', {
+        'transactionId': widget.tx.transactionId,
+        'categorizedTo': _type,
+        'categoryRefId': _selectedId,
+        'categoryRefName': _selectedName,
+        'amount': widget.tx.amount,
+        'transactionName': widget.tx.name,
+      }, context);
+
+      if (res.statusCode == 201 || res.statusCode == 409) {
+        widget.onSuccess(widget.tx.transactionId, _selectedName ?? '');
+        if (mounted) Navigator.pop(context);
+      } else {
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(content: Text('Failed to categorize. Try again.')),
+          );
+        }
+      }
+    } catch (e) {
+      if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Error: $e')));
+    } finally {
+      if (mounted) setState(() => _submitting = false);
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: EdgeInsets.fromLTRB(24, 20, 24, MediaQuery.of(context).viewInsets.bottom + 32),
+      decoration: const BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.vertical(top: Radius.circular(28)),
+      ),
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Center(child: Container(width: 40, height: 4, decoration: BoxDecoration(color: _border, borderRadius: BorderRadius.circular(4)))),
+          const SizedBox(height: 16),
+          _step == 0 ? _buildTypeStep() : _buildPickStep(),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildTypeStep() {
+    final accent = widget.tx.isDebit ? const Color(0xFFE53935) : _blue;
+    return Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+      const Text('Categorize Transaction', style: TextStyle(fontSize: 17, fontWeight: FontWeight.w700, color: _textDark)),
+      const SizedBox(height: 4),
+      Text(
+        '${widget.tx.name}  ·  ${widget.tx.isDebit ? '-' : '+'}\$${widget.tx.amount.toStringAsFixed(2)}',
+        style: TextStyle(fontSize: 13, color: accent, fontWeight: FontWeight.w500),
+      ),
+      const SizedBox(height: 20),
+      _typeCard(
+        icon: Icons.savings_rounded,
+        color: _blue,
+        title: 'Budget Goal',
+        sub: 'Apply to a spending limit or savings target',
+        onTap: () => _pickType('goal'),
+      ),
+      const SizedBox(height: 10),
+      _typeCard(
+        icon: Icons.group_rounded,
+        color: _purple,
+        title: 'Collaboration Group',
+        sub: 'Add as an entry in a shared group',
+        onTap: () => _pickType('collaboration'),
+      ),
+    ]);
+  }
+
+  Widget _typeCard({required IconData icon, required Color color, required String title, required String sub, required VoidCallback onTap}) {
+    return GestureDetector(
+      onTap: onTap,
+      child: Container(
+        padding: const EdgeInsets.all(16),
+        decoration: BoxDecoration(
+          color: color.withOpacity(0.05),
+          borderRadius: BorderRadius.circular(14),
+          border: Border.all(color: color.withOpacity(0.25)),
+        ),
+        child: Row(children: [
+          Container(
+            width: 44, height: 44,
+            decoration: BoxDecoration(color: color, borderRadius: BorderRadius.circular(12)),
+            child: Icon(icon, color: Colors.white, size: 22),
+          ),
+          const SizedBox(width: 14),
+          Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+            Text(title, style: TextStyle(fontSize: 15, fontWeight: FontWeight.w600, color: color)),
+            const SizedBox(height: 2),
+            Text(sub, style: const TextStyle(fontSize: 12, color: _textLight)),
+          ])),
+          Icon(Icons.arrow_forward_ios_rounded, size: 13, color: color.withOpacity(0.6)),
+        ]),
+      ),
+    );
+  }
+
+  Widget _buildPickStep() {
+    final color = _type == 'goal' ? _blue : _purple;
+    final title = _type == 'goal' ? 'Select Goal' : 'Select Group';
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        Row(children: [
+          GestureDetector(
+            onTap: () => setState(() { _step = 0; _items = []; _selectedId = null; }),
+            child: Container(
+              width: 32, height: 32,
+              decoration: BoxDecoration(color: _bgGrey, borderRadius: BorderRadius.circular(8)),
+              child: const Icon(Icons.arrow_back_ios_new_rounded, size: 14, color: _textDark),
+            ),
+          ),
+          const SizedBox(width: 12),
+          Text(title, style: const TextStyle(fontSize: 17, fontWeight: FontWeight.w700, color: _textDark)),
+        ]),
+        const SizedBox(height: 16),
+        if (_loading)
+          const Center(child: Padding(padding: EdgeInsets.symmetric(vertical: 28), child: CircularProgressIndicator(strokeWidth: 2)))
+        else if (_items.isEmpty)
+          const Padding(
+            padding: EdgeInsets.symmetric(vertical: 28),
+            child: Center(child: Text('No items found', style: TextStyle(color: _textLight, fontSize: 14))),
+          )
+        else
+          ConstrainedBox(
+            constraints: const BoxConstraints(maxHeight: 260),
+            child: ListView.builder(
+              shrinkWrap: true,
+              itemCount: _items.length,
+              itemBuilder: (_, i) {
+                final item = _items[i];
+                final sel = _selectedId == item['id'];
+                return GestureDetector(
+                  onTap: () => setState(() { _selectedId = item['id'] as String; _selectedName = item['name'] as String; }),
+                  child: Container(
+                    margin: const EdgeInsets.only(bottom: 8),
+                    padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+                    decoration: BoxDecoration(
+                      color: sel ? color.withOpacity(0.06) : _bgGrey,
+                      borderRadius: BorderRadius.circular(12),
+                      border: Border.all(color: sel ? color : Colors.transparent, width: 1.5),
+                    ),
+                    child: Row(children: [
+                      Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                        Text(item['name'] as String, style: TextStyle(fontSize: 14, fontWeight: FontWeight.w600, color: sel ? color : _textDark)),
+                        const SizedBox(height: 2),
+                        Text(item['sub'] as String, style: const TextStyle(fontSize: 12, color: _textLight)),
+                      ])),
+                      if (sel) Icon(Icons.check_circle_rounded, color: color, size: 20),
+                    ]),
+                  ),
+                );
+              },
+            ),
+          ),
+        const SizedBox(height: 12),
+        SizedBox(
+          width: double.infinity,
+          height: 50,
+          child: ElevatedButton(
+            onPressed: _selectedId == null || _submitting ? null : _submit,
+            style: ElevatedButton.styleFrom(
+              backgroundColor: color,
+              disabledBackgroundColor: color.withOpacity(0.35),
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+            ),
+            child: _submitting
+                ? const SizedBox(width: 20, height: 20, child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2))
+                : const Text('Confirm', style: TextStyle(fontSize: 15, fontWeight: FontWeight.w700, color: Colors.white)),
+          ),
+        ),
+      ],
     );
   }
 }
