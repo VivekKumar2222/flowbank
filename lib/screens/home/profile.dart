@@ -17,6 +17,8 @@ class ProfileScreen extends StatefulWidget {
 class _ProfileScreenState extends State<ProfileScreen> {
   String userName = "";
   String userEmail = "";
+  double? _monthlyIncome;
+  bool _incomeConfirmed = false;
 
   String _getInitials(String name) {
   List<String> names = name.split(" ");
@@ -47,6 +49,68 @@ class _ProfileScreenState extends State<ProfileScreen> {
       userName = prefs.getString("userName") ?? "User";
       userEmail = prefs.getString("userEmail") ?? "No email";
     });
+    _fetchIncome();
+  }
+
+  Future<void> _fetchIncome() async {
+    try {
+      // ignore: use_build_context_synchronously
+      final res = await ApiService.get('/api/auth/income', context);
+      if (res.statusCode == 200 && mounted) {
+        final data = jsonDecode(res.body);
+        setState(() {
+          _monthlyIncome = (data['monthlyIncome'] as num?)?.toDouble();
+          _incomeConfirmed = data['incomeConfirmed'] == true;
+        });
+      }
+    } catch (_) {}
+  }
+
+  Future<void> _saveIncome(double amount) async {
+    try {
+      // ignore: use_build_context_synchronously
+      final res = await ApiService.patch(
+        '/api/auth/income',
+        {'monthlyIncome': amount, 'incomeConfirmed': true},
+        context,
+      );
+      if (res.statusCode == 200 && mounted) {
+        final data = jsonDecode(res.body);
+        setState(() {
+          _monthlyIncome = (data['monthlyIncome'] as num?)?.toDouble();
+          _incomeConfirmed = true;
+        });
+      }
+    } catch (_) {}
+  }
+
+  void _showEditIncomeDialog() {
+    final ctrl = TextEditingController(
+        text: _monthlyIncome != null && _monthlyIncome! > 0 ? _monthlyIncome!.toStringAsFixed(0) : '');
+    showDialog(
+      context: context,
+      builder: (_) => AlertDialog(
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+        title: const Text('Monthly Income', style: TextStyle(fontSize: 16, fontWeight: FontWeight.w700)),
+        content: TextField(
+          controller: ctrl,
+          keyboardType: const TextInputType.numberWithOptions(decimal: true),
+          decoration: const InputDecoration(prefixText: '\$ ', hintText: '0'),
+          autofocus: true,
+        ),
+        actions: [
+          TextButton(onPressed: () => Navigator.pop(context), child: const Text('Cancel')),
+          ElevatedButton(
+            onPressed: () {
+              final val = double.tryParse(ctrl.text);
+              if (val != null && val >= 0) { Navigator.pop(context); _saveIncome(val); }
+            },
+            style: ElevatedButton.styleFrom(backgroundColor: const Color(0xFF1A73E8)),
+            child: const Text('Save', style: TextStyle(color: Colors.white)),
+          ),
+        ],
+      ),
+    );
   }
 
   Future<void> logout(BuildContext context) async {
@@ -247,7 +311,71 @@ class _ProfileScreenState extends State<ProfileScreen> {
                 ),
             ),
 
-            const SizedBox(height: 40),
+            const SizedBox(height: 24),
+
+            // ── Income Card ──────────────────────────────────
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 18),
+              child: Container(
+                padding: const EdgeInsets.all(16),
+                decoration: BoxDecoration(
+                  color: const Color(0xFFF0F7FF),
+                  borderRadius: BorderRadius.circular(16),
+                  border: Border.all(color: const Color(0xFFBDD7FF), width: 1.2),
+                ),
+                child: Row(children: [
+                  Container(
+                    width: 44, height: 44,
+                    decoration: BoxDecoration(
+                      color: const Color(0xFF1A73E8).withOpacity(0.12),
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                    child: const Icon(Icons.account_balance_wallet_rounded, color: Color(0xFF1A73E8), size: 22),
+                  ),
+                  const SizedBox(width: 14),
+                  Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                    Row(children: [
+                      const Text('Monthly Income', style: TextStyle(fontSize: 13, fontWeight: FontWeight.w600, color: Color(0xFF475467))),
+                      const SizedBox(width: 6),
+                      Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                        decoration: BoxDecoration(
+                          color: _incomeConfirmed ? const Color(0xFF10B981).withOpacity(0.1) : const Color(0xFFF59E0B).withOpacity(0.1),
+                          borderRadius: BorderRadius.circular(6),
+                        ),
+                        child: Text(
+                          _incomeConfirmed ? 'Confirmed' : 'Estimated',
+                          style: TextStyle(
+                            fontSize: 10,
+                            fontWeight: FontWeight.w700,
+                            color: _incomeConfirmed ? const Color(0xFF10B981) : const Color(0xFFF59E0B),
+                          ),
+                        ),
+                      ),
+                    ]),
+                    const SizedBox(height: 2),
+                    Text(
+                      _monthlyIncome != null ? '\$${_monthlyIncome!.toStringAsFixed(0)}/month' : 'Not set',
+                      style: const TextStyle(fontSize: 20, fontWeight: FontWeight.w800, color: Color(0xFF1A1F36), fontFamily: 'Manrope'),
+                    ),
+                  ])),
+                  GestureDetector(
+                    onTap: _showEditIncomeDialog,
+                    child: Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                      decoration: BoxDecoration(
+                        color: const Color(0xFF1A73E8).withOpacity(0.08),
+                        borderRadius: BorderRadius.circular(10),
+                        border: Border.all(color: const Color(0xFFBDD7FF)),
+                      ),
+                      child: const Text('Edit', style: TextStyle(fontSize: 13, fontWeight: FontWeight.w600, color: Color(0xFF1A73E8))),
+                    ),
+                  ),
+                ]),
+              ),
+            ),
+
+            const SizedBox(height: 24),
 
             // Bank Section Header
             // Padding(

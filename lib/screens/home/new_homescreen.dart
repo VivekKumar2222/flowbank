@@ -42,6 +42,9 @@ class _HomeScreenState extends State<HomeScreen> {
   Map<String, String> _categorizedMap = {};
   List<Map<String, dynamic>> _investments = [];
   bool _investmentsLoading = true;
+  double? _monthlyIncome;
+  bool _incomeConfirmed = false;
+  bool _incomeBannerDismissed = false;
 
   @override
   void initState() {
@@ -49,6 +52,7 @@ class _HomeScreenState extends State<HomeScreen> {
     _loadUserData();
     _fetchCategorizations();
     _fetchInvestments();
+    _fetchSavedIncome();
   }
 
   static const List<String> _themeOrder = ['red', 'purple', 'blue'];
@@ -204,6 +208,83 @@ Future<void> _fetchInvestments() async {
   } catch (_) {
     if (mounted) setState(() => _investmentsLoading = false);
   }
+}
+
+Future<void> _fetchSavedIncome() async {
+  try {
+    // ignore: use_build_context_synchronously
+    final res = await ApiService.get('/api/auth/income', context);
+    if (res.statusCode == 200 && mounted) {
+      final data = jsonDecode(res.body);
+      setState(() {
+        _monthlyIncome = (data['monthlyIncome'] as num?)?.toDouble();
+        _incomeConfirmed = data['incomeConfirmed'] == true;
+      });
+    }
+  } catch (_) {}
+}
+
+double _estimateIncomeFromTransactions(List<Map<String, dynamic>> transactions) {
+  final Map<String, double> byMonth = {};
+  for (final t in transactions) {
+    final rawAmount = (t['amount'] as num?)?.toDouble() ?? 0.0;
+    if (rawAmount >= 0) continue; // only credits (negative = money in from Plaid)
+    final dateStr = t['date']?.toString() ?? '';
+    try {
+      final dt = DateTime.parse(dateStr);
+      final key = '${dt.year}-${dt.month.toString().padLeft(2, '0')}';
+      byMonth[key] = (byMonth[key] ?? 0) + rawAmount.abs();
+    } catch (_) {}
+  }
+  if (byMonth.isEmpty) return 0;
+  final sorted = byMonth.keys.toList()..sort();
+  final last3 = sorted.length > 3 ? sorted.sublist(sorted.length - 3) : sorted;
+  return last3.fold(0.0, (s, k) => s + byMonth[k]!) / last3.length;
+}
+
+Future<void> _saveIncome(double amount) async {
+  try {
+    // ignore: use_build_context_synchronously
+    final res = await ApiService.patch(
+      '/api/auth/income',
+      {'monthlyIncome': amount, 'incomeConfirmed': true},
+      context,
+    );
+    if (res.statusCode == 200 && mounted) {
+      setState(() { _monthlyIncome = amount; _incomeConfirmed = true; });
+    }
+  } catch (_) {}
+}
+
+void _showEditIncomeDialog(double current) {
+  final ctrl = TextEditingController(text: current > 0 ? current.toStringAsFixed(0) : '');
+  showDialog(
+    context: context,
+    builder: (_) => AlertDialog(
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+      title: const Text('Monthly Income', style: TextStyle(fontSize: 16, fontWeight: FontWeight.w700)),
+      content: TextField(
+        controller: ctrl,
+        keyboardType: const TextInputType.numberWithOptions(decimal: true),
+        decoration: const InputDecoration(prefixText: '\$ ', hintText: '0'),
+        autofocus: true,
+      ),
+      actions: [
+        TextButton(onPressed: () => Navigator.pop(context), child: const Text('Cancel')),
+        ElevatedButton(
+          onPressed: () {
+            final val = double.tryParse(ctrl.text);
+            if (val != null && val >= 0) {
+              Navigator.pop(context);
+              _saveIncome(val);
+            }
+          },
+          style: ElevatedButton.styleFrom(backgroundColor: const Color(0xFF217BFF)),
+          child: const Text('Save', style: TextStyle(color: Colors.white)),
+        ),
+      ],
+    ),
+  );
 }
 
 Future<void> _fetchCategorizations() async {
@@ -536,6 +617,81 @@ String _fmtCategory(dynamic cat) {
             
             child: Column(
               children: [
+                // -------- INCOME BANNER --------
+                Builder(builder: (_) {
+                  if (_incomeBannerDismissed || _incomeConfirmed) return const SizedBox.shrink();
+                  if (isLoadingData || allTransactions.isEmpty) return const SizedBox.shrink();
+                  final estimated = _monthlyIncome ?? _estimateIncomeFromTransactions(allTransactions);
+                  if (estimated <= 0) return const SizedBox.shrink();
+                  return Padding(
+                    padding: const EdgeInsets.fromLTRB(18, 12, 18, 0),
+                    child: Container(
+                      padding: const EdgeInsets.fromLTRB(16, 14, 16, 14),
+                      decoration: BoxDecoration(
+                        color: const Color(0xFFF0F7FF),
+                        borderRadius: BorderRadius.circular(16),
+                        border: Border.all(color: const Color(0xFFBDD7FF), width: 1.2),
+                      ),
+                      child: Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                        Container(
+                          width: 38, height: 38,
+                          decoration: BoxDecoration(
+                            color: const Color(0xFF217BFF).withOpacity(0.12),
+                            borderRadius: BorderRadius.circular(10),
+                          ),
+                          child: const Icon(Icons.account_balance_wallet_rounded, color: Color(0xFF217BFF), size: 20),
+                        ),
+                        const SizedBox(width: 12),
+                        Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                          const Text('Estimated Monthly Income',
+                              style: TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: Color(0xFF475467))),
+                          const SizedBox(height: 2),
+                          Text('\$${estimated.toStringAsFixed(0)}/month',
+                              style: const TextStyle(fontSize: 18, fontWeight: FontWeight.w800, color: Color(0xFF1A1F36), fontFamily: 'Manrope')),
+                          const SizedBox(height: 10),
+                          Row(children: [
+                            Expanded(
+                              child: GestureDetector(
+                                onTap: () => _saveIncome(estimated),
+                                child: Container(
+                                  padding: const EdgeInsets.symmetric(vertical: 8),
+                                  decoration: BoxDecoration(
+                                    color: const Color(0xFF217BFF),
+                                    borderRadius: BorderRadius.circular(10),
+                                  ),
+                                  child: const Center(child: Text('Confirm', style: TextStyle(fontSize: 13, fontWeight: FontWeight.w700, color: Colors.white))),
+                                ),
+                              ),
+                            ),
+                            const SizedBox(width: 8),
+                            Expanded(
+                              child: GestureDetector(
+                                onTap: () => _showEditIncomeDialog(estimated),
+                                child: Container(
+                                  padding: const EdgeInsets.symmetric(vertical: 8),
+                                  decoration: BoxDecoration(
+                                    color: const Color(0xFFE8F0FE),
+                                    borderRadius: BorderRadius.circular(10),
+                                    border: Border.all(color: const Color(0xFFBDD7FF)),
+                                  ),
+                                  child: const Center(child: Text('Edit', style: TextStyle(fontSize: 13, fontWeight: FontWeight.w700, color: Color(0xFF217BFF)))),
+                                ),
+                              ),
+                            ),
+                          ]),
+                        ])),
+                        GestureDetector(
+                          onTap: () => setState(() => _incomeBannerDismissed = true),
+                          child: const Padding(
+                            padding: EdgeInsets.only(left: 8),
+                            child: Icon(Icons.close_rounded, size: 16, color: Color(0xFF98A2B3)),
+                          ),
+                        ),
+                      ]),
+                    ),
+                  );
+                }),
+
                 // -------- YOUR GOALS --------
 
                 // -------- TOP SECTION --------

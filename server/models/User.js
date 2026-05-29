@@ -34,8 +34,11 @@ authProvider: {
   default: 'local',
 },
 
+  monthlyIncome:    { type: Number, default: null },
+  incomeConfirmed:  { type: Boolean, default: false },
+
   // plaidAccessToken: { type: String, default: null },
-  // plaidItemId: { type: String, default: null }, 
+  // plaidItemId: { type: String, default: null },
 }, { timestamps: true });
 
 module.exports = mongoose.model("User", userSchema);

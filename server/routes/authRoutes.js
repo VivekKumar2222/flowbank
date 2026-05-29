@@ -469,9 +469,35 @@ router.post("/reset-password", async (req, res) => {
     console.error("Reset Password Error:", err);
     res.status(500).json({ message: "Server error" });
   }
-
 });
 
+// ============= GET INCOME =============
+router.get('/income', protect, async (req, res) => {
+  try {
+    const user = await User.findById(req.user._id).select('monthlyIncome incomeConfirmed');
+    if (!user) return res.status(404).json({ message: 'User not found' });
+    res.json({ monthlyIncome: user.monthlyIncome, incomeConfirmed: user.incomeConfirmed });
+  } catch (err) {
+    res.status(500).json({ message: 'Server error' });
+  }
+});
 
+// ============= SAVE / UPDATE INCOME =============
+router.patch('/income', protect, async (req, res) => {
+  try {
+    const { monthlyIncome, incomeConfirmed } = req.body;
+    if (monthlyIncome == null || monthlyIncome < 0) {
+      return res.status(400).json({ message: 'monthlyIncome required and must be non-negative' });
+    }
+    const user = await User.findByIdAndUpdate(
+      req.user._id,
+      { monthlyIncome, incomeConfirmed: incomeConfirmed ?? true },
+      { new: true }
+    ).select('monthlyIncome incomeConfirmed');
+    res.json({ monthlyIncome: user.monthlyIncome, incomeConfirmed: user.incomeConfirmed });
+  } catch (err) {
+    res.status(500).json({ message: 'Server error' });
+  }
+});
 
 module.exports = router;
