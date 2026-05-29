@@ -114,16 +114,16 @@ class _AllGoalsScreenState extends State<AllGoalsScreen> {
                               color: _textDark,
                             ),
                           ),
-                          const SizedBox(height: 2),
-                          Text(
-                            userName ?? 'User',
-                            style: const TextStyle(
-                              color: Color(0xFF0179FE),
-                              fontSize: 16,
-                              fontFamily: 'Manrope',
-                              fontWeight: FontWeight.w600,
-                            ),
-                          ),
+                          // const SizedBox(height: 2),
+                          // Text(
+                          //   userName ?? 'User',
+                          //   style: const TextStyle(
+                          //     color: Color(0xFF0179FE),
+                          //     fontSize: 16,
+                          //     fontFamily: 'Manrope',
+                          //     fontWeight: FontWeight.w600,
+                          //   ),
+                          // ),
                         ],
                       ),
                       Padding(

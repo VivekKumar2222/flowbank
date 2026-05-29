@@ -1,6 +1,7 @@
 const router = require('express').Router();
 const protect = require('../middleware/middleware.js');
 const { ModerateLimiter } = require('./rateLimiter.js');
+const { encrypt } = require('../utils/mediaCrypto');
 
 const TransactionCategorization = require('../models/TransactionCategorization.js');
 const BudgetGoal = require('../models/BudgetGoal.js');
@@ -17,6 +18,7 @@ router.post('/', protect, ModerateLimiter, async (req, res) => {
       categoryRefName,
       amount,
       transactionName,
+      verificationImage,
     } = req.body;
 
     if (!transactionId || !categorizedTo || !categoryRefId || !amount) {
@@ -41,11 +43,13 @@ router.post('/', protect, ModerateLimiter, async (req, res) => {
       if (!goal) return res.status(404).json({ message: 'Goal not found' });
 
     } else if (categorizedTo === 'collaboration') {
+      const encryptedImage = verificationImage ? encrypt(verificationImage) : null;
       await DashboardEntry.create({
         dashboardId: categoryRefId,
         userId: req.user.email,
         amount,
         status: 'pending',
+        verificationImage: encryptedImage,
       });
     }
 

@@ -19,6 +19,7 @@ import '../home/home_skeleton_loader.dart';
 import 'all_transactions_screen.dart';
 import '../connectBank/connect_bank_screen.dart';
 import 'all_goals_screen.dart';
+import '../investments/all_investments_screen.dart';
 
 class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
@@ -39,12 +40,15 @@ class _HomeScreenState extends State<HomeScreen> {
   List<Map<String, dynamic>> _goals = [];
   bool _goalsLoading = true;
   Map<String, String> _categorizedMap = {};
+  List<Map<String, dynamic>> _investments = [];
+  bool _investmentsLoading = true;
 
   @override
   void initState() {
     super.initState();
     _loadUserData();
     _fetchCategorizations();
+    _fetchInvestments();
   }
 
   static const List<String> _themeOrder = ['red', 'purple', 'blue'];
@@ -186,6 +190,22 @@ Future<void> _fetchGoals() async {
   }
 }
 
+Future<void> _fetchInvestments() async {
+  try {
+    // ignore: use_build_context_synchronously
+    final res = await ApiService.get('/api/investments/active', context);
+    if (res.statusCode == 200 && mounted) {
+      final List data = jsonDecode(res.body);
+      setState(() {
+        _investments = data.cast<Map<String, dynamic>>();
+        _investmentsLoading = false;
+      });
+    }
+  } catch (_) {
+    if (mounted) setState(() => _investmentsLoading = false);
+  }
+}
+
 Future<void> _fetchCategorizations() async {
   try {
     // ignore: use_build_context_synchronously
@@ -291,8 +311,13 @@ final List<Map<String, dynamic>> parsedTransactions = allTxRaw.take(5).toList();
 Future<void> _handleRefresh() async {
   setState(() {
     isLoadingData = true;
+    _investmentsLoading = true;
   });
-  await _loadUserData(); // This will also trigger _fetchTotalBalance
+  await Future.wait([
+    _loadUserData(),
+    _fetchInvestments(),
+    _fetchCategorizations(),
+  ]);
 }
 
 List<Bank> _buildBanksFromTransactions(List<Map<String, dynamic>> txList) {
@@ -600,16 +625,131 @@ String _fmtCategory(dynamic cat) {
                   ),
                 ),
           
+                // -------- INVESTMENTS --------
+                Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 18),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      SectionHeader(
+                        title: 'Investments',
+                        showButton: true,
+                        onViewAll: () {
+                          Navigator.push(
+                            context,
+                            MaterialPageRoute(builder: (_) => const AllInvestmentsScreen()),
+                          ).then((_) => _fetchInvestments());
+                        },
+                      ),
+                      const SizedBox(height: 12),
+                      _investmentsLoading
+                          ? const SizedBox(
+                              height: 72,
+                              child: Center(child: CircularProgressIndicator(strokeWidth: 2, color: Color(0xFF1E88E5))),
+                            )
+                          : _investments.isEmpty
+                              ? GestureDetector(
+                                  onTap: () => Navigator.push(
+                                    context,
+                                    MaterialPageRoute(builder: (_) => const AllInvestmentsScreen()),
+                                  ).then((_) => _fetchInvestments()),
+                                  child: Container(
+                                    width: double.infinity,
+                                    padding: const EdgeInsets.symmetric(vertical: 22, horizontal: 16),
+                                    decoration: BoxDecoration(
+                                      color: const Color(0xFFF5F7FA),
+                                      borderRadius: BorderRadius.circular(14),
+                                      border: Border.all(color: const Color(0xFFE2E8F0)),
+                                    ),
+                                    child: const Column(
+                                      children: [
+                                        Icon(Icons.trending_up_rounded, color: Color(0xFF98A2B3), size: 28),
+                                        SizedBox(height: 8),
+                                        Text('No investments yet',
+                                            style: TextStyle(fontSize: 13, fontWeight: FontWeight.w600, color: Color(0xFF475467))),
+                                        SizedBox(height: 2),
+                                        Text('Tap to start tracking your investments',
+                                            style: TextStyle(fontSize: 11, color: Color(0xFF98A2B3))),
+                                      ],
+                                    ),
+                                  ),
+                                )
+                              : Column(
+                                  children: _investments.take(4).map((inv) => _HomeInvestmentTile(
+                                    investment: inv,
+                                    onTap: () => Navigator.push(
+                                      context,
+                                      MaterialPageRoute(builder: (_) => const AllInvestmentsScreen()),
+                                    ).then((_) => _fetchInvestments()),
+                                  )).toList(),
+                                ),
+                      const SizedBox(height: 24),
+                    ],
+                  ),
+                ),
+
                 // -------- USER TOTAL CARDS --------
                 // -------- USER TOTAL CARDS --------
           isLoadingData
               ? const HomeSkeletonLoader()
               : plaidAccounts.isEmpty
           ? Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 20),
-              child: Text(
-                "No bank accounts connected.",
-                style: TextStyle(color: Color(0xFF667085), fontSize: 14),
+              padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 8),
+              child: Container(
+                width: double.infinity,
+                padding: const EdgeInsets.symmetric(vertical: 28, horizontal: 20),
+                decoration: BoxDecoration(
+                  color: const Color(0xFFD6D6D6),
+                  borderRadius: BorderRadius.circular(16),
+                  border: Border.all(color: const Color(0xFFB0B0B0), width: 1.2),
+                ),
+                child: Column(
+                  children: [
+                    const Icon(Icons.account_balance_rounded, size: 36, color: Color(0xFF5E5E5E)),
+                    const SizedBox(height: 10),
+                    const Text(
+                      'No bank connected',
+                      style: TextStyle(
+                        fontSize: 16,
+                        fontWeight: FontWeight.w700,
+                        color: Color(0xFF3D3D3D),
+                      ),
+                    ),
+                    const SizedBox(height: 4),
+                    const Text(
+                      'Connect a bank to see your accounts and transactions',
+                      textAlign: TextAlign.center,
+                      style: TextStyle(
+                        fontSize: 12,
+                        color: Color(0xFF5E5E5E),
+                        fontWeight: FontWeight.w500,
+                      ),
+                    ),
+                    const SizedBox(height: 16),
+                    GestureDetector(
+                      onTap: () => Navigator.push(
+                        context,
+                        MaterialPageRoute(builder: (_) => const ConnectBankScreen(isAddingNew: true)),
+                      ),
+                      child: Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 9),
+                        decoration: BoxDecoration(
+                          color: const Color(0xFF217BFF),
+                          borderRadius: BorderRadius.circular(10),
+                        ),
+                        child: const Text(
+                          '+ Add Bank',
+                          style: TextStyle(
+                            color: Colors.white,
+                            fontSize: 13,
+                            fontFamily: 'Manrope',
+                            fontWeight: FontWeight.w600,
+                          ),
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
               ),
             )
           : UserTotal(accounts: plaidAccounts),
@@ -756,6 +896,92 @@ String _fmtCategory(dynamic cat) {
   }
 }
 
+
+// ─── Home Investment Tile ─────────────────────────────────────────────────────
+
+class _HomeInvestmentTile extends StatelessWidget {
+  final Map<String, dynamic> investment;
+  final VoidCallback onTap;
+
+  const _HomeInvestmentTile({required this.investment, required this.onTap});
+
+  Color get _typeColor {
+    switch (investment['type']) {
+      case 'stock':       return const Color(0xFF1E88E5);
+      case 'crypto':      return const Color(0xFFF59E0B);
+      case 'real_estate': return const Color(0xFF10B981);
+      case 'business':    return const Color(0xFF7C3AED);
+      default:            return const Color(0xFF64748B);
+    }
+  }
+
+  IconData get _typeIcon {
+    switch (investment['type']) {
+      case 'stock':       return Icons.show_chart_rounded;
+      case 'crypto':      return Icons.currency_bitcoin_rounded;
+      case 'real_estate': return Icons.apartment_rounded;
+      case 'business':    return Icons.business_center_rounded;
+      default:            return Icons.trending_up_rounded;
+    }
+  }
+
+  double get _totalInvested {
+    final buys = (investment['buyEntries'] as List?) ?? [];
+    return buys.fold(0.0, (s, e) => s + ((e['amount'] as num?)?.toDouble() ?? 0.0));
+  }
+
+  String get _typeLabel {
+    switch (investment['type']) {
+      case 'stock':       return 'Stock';
+      case 'crypto':      return 'Crypto';
+      case 'real_estate': return 'Real Estate';
+      case 'business':    return 'Business';
+      default:            return 'Other';
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final color = _typeColor;
+    return GestureDetector(
+      onTap: onTap,
+      child: Container(
+        margin: const EdgeInsets.only(bottom: 8),
+        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+        decoration: BoxDecoration(
+          color: color.withOpacity(0.04),
+          borderRadius: BorderRadius.circular(14),
+          border: Border.all(color: color.withOpacity(0.18), width: 1.1),
+        ),
+        child: Row(children: [
+          Container(
+            width: 40, height: 40,
+            decoration: BoxDecoration(color: color, borderRadius: BorderRadius.circular(11)),
+            child: Icon(_typeIcon, color: Colors.white, size: 20),
+          ),
+          const SizedBox(width: 12),
+          Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+            Text(investment['name'] ?? '',
+                style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w700,
+                    color: Color(0xFF1A1F36), fontFamily: 'Manrope'),
+                maxLines: 1, overflow: TextOverflow.ellipsis),
+            const SizedBox(height: 2),
+            Text(_typeLabel,
+                style: TextStyle(fontSize: 11, fontWeight: FontWeight.w500, color: color)),
+          ])),
+          Column(crossAxisAlignment: CrossAxisAlignment.end, children: [
+            Text('\$${_totalInvested.toStringAsFixed(2)}',
+                style: TextStyle(fontSize: 14, fontWeight: FontWeight.w700, color: color)),
+            const SizedBox(height: 2),
+            const Text('invested', style: TextStyle(fontSize: 10, color: Color(0xFF98A2B3))),
+          ]),
+          const SizedBox(width: 4),
+          const Icon(Icons.chevron_right_rounded, size: 18, color: Color(0xFF98A2B3)),
+        ]),
+      ),
+    );
+  }
+}
 
 class AIFinancialHeroCard extends StatelessWidget {
   final VoidCallback onTap;

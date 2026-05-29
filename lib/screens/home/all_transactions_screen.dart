@@ -1,5 +1,6 @@
 import 'dart:convert';
 import 'dart:io';
+import 'dart:typed_data';
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import 'package:path_provider/path_provider.dart';
@@ -8,6 +9,8 @@ import 'package:excel/excel.dart' hide Border;
 import 'package:pdf/pdf.dart';
 import 'package:pdf/widgets.dart' as pw;
 import 'package:shared_preferences/shared_preferences.dart';
+import 'package:image_picker/image_picker.dart';
+import 'package:http/http.dart' as http;
 import '../../api/api_service.dart';
 
 class PlaidTransaction {
@@ -600,9 +603,37 @@ class _CategorizationSheetState extends State<CategorizationSheet> {
   String? _selectedName;
   bool _loading = false;
   bool _submitting = false;
+  Uint8List? _proofImageBytes;
+  final _imagePicker = ImagePicker();
+
+  bool get _requiresVerification {
+    if (_selectedId == null || _type != 'collaboration') return false;
+    final item = _items.firstWhere((i) => i['id'] == _selectedId, orElse: () => {});
+    return (item['requireVerification'] as bool?) ?? false;
+  }
+
+  Future<void> _pickImage() async {
+    final XFile? file = await _imagePicker.pickImage(source: ImageSource.gallery);
+    if (file == null) return;
+    final bytes = await file.readAsBytes();
+    if (mounted) setState(() => _proofImageBytes = bytes);
+  }
+
+  Future<String?> _uploadToCloudinary(Uint8List bytes) async {
+    final uri = Uri.parse('https://api.cloudinary.com/v1_1/dzuc4aors/image/upload');
+    final request = http.MultipartRequest('POST', uri)
+      ..fields['upload_preset'] = 'verification_unsigned'
+      ..files.add(http.MultipartFile.fromBytes('file', bytes, filename: 'verification.jpg'));
+    final response = await request.send();
+    if (response.statusCode == 200) {
+      final data = jsonDecode(await response.stream.bytesToString());
+      return data['secure_url'] as String?;
+    }
+    return null;
+  }
 
   Future<void> _pickType(String type) async {
-    setState(() { _type = type; _loading = true; _step = 1; _items = []; _selectedId = null; });
+    setState(() { _type = type; _loading = true; _step = 1; _items = []; _selectedId = null; _proofImageBytes = null; });
     try {
       if (type == 'goal') {
         await _fetchGoals();
@@ -651,6 +682,7 @@ class _CategorizationSheetState extends State<CategorizationSheet> {
           'id': d['_id'].toString(),
           'name': d['name']?.toString() ?? 'Group',
           'sub': d['type']?.toString() ?? 'Shared Group',
+          'requireVerification': (d['settings']?['requireVerification'] as bool?) ?? false,
         }).toList();
       });
     }
@@ -658,26 +690,41 @@ class _CategorizationSheetState extends State<CategorizationSheet> {
 
   Future<void> _submit() async {
     if (_selectedId == null) return;
+    if (_requiresVerification && _proofImageBytes == null) return;
     setState(() => _submitting = true);
     try {
-      final res = await ApiService.post('/api/categorize', {
+      String? imageUrl;
+      if (_requiresVerification && _proofImageBytes != null) {
+        imageUrl = await _uploadToCloudinary(_proofImageBytes!);
+        if (imageUrl == null) {
+          if (mounted) ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(content: Text('Image upload failed. Please try again.')),
+          );
+          setState(() => _submitting = false);
+          return;
+        }
+      }
+
+      final body = <String, dynamic>{
         'transactionId': widget.tx.transactionId,
         'categorizedTo': _type,
         'categoryRefId': _selectedId,
         'categoryRefName': _selectedName,
         'amount': widget.tx.amount,
         'transactionName': widget.tx.name,
-      }, context);
+        if (imageUrl != null) 'verificationImage': imageUrl,
+      };
+
+      // ignore: use_build_context_synchronously
+      final res = await ApiService.post('/api/categorize', body, context);
 
       if (res.statusCode == 201 || res.statusCode == 409) {
         widget.onSuccess(widget.tx.transactionId, _selectedName ?? '');
         if (mounted) Navigator.pop(context);
       } else {
-        if (mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(content: Text('Failed to categorize. Try again.')),
-          );
-        }
+        if (mounted) ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Failed to categorize. Try again.')),
+        );
       }
     } catch (e) {
       if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Error: $e')));
@@ -772,7 +819,7 @@ class _CategorizationSheetState extends State<CategorizationSheet> {
       children: [
         Row(children: [
           GestureDetector(
-            onTap: () => setState(() { _step = 0; _items = []; _selectedId = null; }),
+            onTap: () => setState(() { _step = 0; _items = []; _selectedId = null; _proofImageBytes = null; }),
             child: Container(
               width: 32, height: 32,
               decoration: BoxDecoration(color: _bgGrey, borderRadius: BorderRadius.circular(8)),
@@ -800,7 +847,7 @@ class _CategorizationSheetState extends State<CategorizationSheet> {
                 final item = _items[i];
                 final sel = _selectedId == item['id'];
                 return GestureDetector(
-                  onTap: () => setState(() { _selectedId = item['id'] as String; _selectedName = item['name'] as String; }),
+                  onTap: () => setState(() { _selectedId = item['id'] as String; _selectedName = item['name'] as String; _proofImageBytes = null; }),
                   child: Container(
                     margin: const EdgeInsets.only(bottom: 8),
                     padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
@@ -822,12 +869,52 @@ class _CategorizationSheetState extends State<CategorizationSheet> {
               },
             ),
           ),
+        if (_selectedId != null && _requiresVerification) ...[
+          const SizedBox(height: 8),
+          GestureDetector(
+            onTap: _pickImage,
+            child: Container(
+              width: double.infinity,
+              padding: const EdgeInsets.all(14),
+              decoration: BoxDecoration(
+                color: _proofImageBytes != null ? _purple.withOpacity(0.05) : _bgGrey,
+                borderRadius: BorderRadius.circular(12),
+                border: Border.all(
+                  color: _proofImageBytes != null ? _purple : _border,
+                  width: _proofImageBytes != null ? 1.5 : 1,
+                ),
+              ),
+              child: _proofImageBytes != null
+                  ? Row(children: [
+                      ClipRRect(
+                        borderRadius: BorderRadius.circular(8),
+                        child: Image.memory(_proofImageBytes!, width: 48, height: 48, fit: BoxFit.cover),
+                      ),
+                      const SizedBox(width: 12),
+                      Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                        Text('Receipt attached', style: TextStyle(fontSize: 13, fontWeight: FontWeight.w600, color: _purple)),
+                        const Text('Tap to change', style: TextStyle(fontSize: 12, color: _textLight)),
+                      ])),
+                      Icon(Icons.check_circle_rounded, color: _purple, size: 20),
+                    ])
+                  : Row(children: [
+                      const Icon(Icons.receipt_long_rounded, color: _textLight, size: 20),
+                      const SizedBox(width: 12),
+                      const Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                        Text('Attach proof of payment', style: TextStyle(fontSize: 13, fontWeight: FontWeight.w600, color: _textDark)),
+                        Text('This group requires a receipt or screenshot', style: TextStyle(fontSize: 12, color: _textLight)),
+                      ])),
+                      const Icon(Icons.arrow_forward_ios_rounded, size: 12, color: _textLight),
+                    ]),
+            ),
+          ),
+        ],
         const SizedBox(height: 12),
         SizedBox(
           width: double.infinity,
           height: 50,
           child: ElevatedButton(
-            onPressed: _selectedId == null || _submitting ? null : _submit,
+            onPressed: _selectedId == null || _submitting || (_requiresVerification && _proofImageBytes == null) ? null : _submit,
             style: ElevatedButton.styleFrom(
               backgroundColor: color,
               disabledBackgroundColor: color.withOpacity(0.35),
