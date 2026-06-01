@@ -16,6 +16,7 @@ const googleAuthRoute = require('./routes/auth/googleAuth');
 const budgetGoalRoutes = require('./routes/goalSetRoutes');
 const categorizationRoutes = require('./routes/categorizationRoutes');
 const investmentRoutes = require('./routes/investmentRoutes');
+const aiRoutes = require('./routes/aiRoutes');
 
 
 
@@ -57,6 +58,7 @@ app.use('/api/auth', googleAuthRoute);
 app.use('/api/goals', budgetGoalRoutes);
 app.use('/api/categorize', categorizationRoutes);
 app.use('/api/investments', investmentRoutes);
+app.use('/api/ai', aiRoutes);
 
 
 // ✅ Test route

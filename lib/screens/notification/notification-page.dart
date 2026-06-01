@@ -1,6 +1,7 @@
 import 'dart:convert';
 import 'dart:ui';
 import 'package:flutter/material.dart';
+import 'package:lottie/lottie.dart';
 import 'package:http/http.dart' as http;
 import '../notification/notification-outlook.dart';
 import 'package:shared_preferences/shared_preferences.dart';
@@ -66,34 +67,27 @@ class _NotificationPageState extends State<NotificationPage> {
   }
 
   Widget _loadingScreen() {
-  return Scaffold(
-    backgroundColor: Colors.white,
-    body: Center(
-      child: Column(
-        mainAxisAlignment: MainAxisAlignment.center,
-        children: [
-          SizedBox(
-            width: 180,
-            child: LinearProgressIndicator(
-              minHeight: 6,
-              backgroundColor: Colors.blue.shade100,
-              valueColor: const AlwaysStoppedAnimation(Color(0xFF217BFF)),
-              borderRadius: BorderRadius.circular(12),
+    return Scaffold(
+      backgroundColor: Colors.white,
+      body: Center(
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Lottie.asset('assets/money-loading.json', width: 150, height: 150),
+            const SizedBox(height: 24),
+            SizedBox(
+              width: 180,
+              child: LinearProgressIndicator(
+                minHeight: 6,
+                backgroundColor: Colors.blue.shade100,
+                valueColor: const AlwaysStoppedAnimation(Color(0xFF217BFF)),
+                borderRadius: BorderRadius.circular(12),
+              ),
             ),
-          ),
-          const SizedBox(height: 18),
-          const Text(
-            "Loading content",
-            style: TextStyle(
-              fontSize: 16,
-              fontWeight: FontWeight.w600,
-              color: Color(0xFF217BFF),
-            ),
-          ),
-        ],
+          ],
+        ),
       ),
-    ),
-  );
+    );
 }
 
   @override

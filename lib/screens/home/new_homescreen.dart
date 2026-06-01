@@ -12,6 +12,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 import '../collaboration/collaboration_screen.dart';
 import '../notification/notification-page.dart';
 import 'financial_health_screen.dart';
+import '../ai/ai_hub_screen.dart';
 import 'dart:convert';
 import 'package:http/http.dart' as http;
 import 'package:flowbank/api/api_service.dart';
@@ -964,7 +965,7 @@ String _fmtCategory(dynamic cat) {
             onTap: () {
               Navigator.push(
                 context,
-                _premiumRoute(const FinancialHealthScreen()),
+                _premiumRoute(const AiHubScreen()),
               );
             },
           ),
