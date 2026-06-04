@@ -1,3 +1,10 @@
+# =============================================================================
+# ARCHIVED — No longer active in production.
+# Receipt verification is now handled by the Groq Vision pipeline in
+# server/routes/collabRoutes.js (verifyReceiptWithVision).
+# This file is kept for academic reference only.
+# =============================================================================
+
 from fastapi import FastAPI
 from pydantic import BaseModel
 from ocr_engine import run_ocr

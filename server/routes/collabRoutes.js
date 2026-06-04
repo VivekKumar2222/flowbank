@@ -1,6 +1,98 @@
 const axios = require("axios");
-
+const Groq = require('groq-sdk');
 const express = require("express");
+
+// ─── Vision-based Receipt Verification (replaces python-ocr service) ──────────
+
+const groqVision = new Groq({ apiKey: process.env.GROQ_API_KEY });
+
+function _scoreNameJS(ocrName, expectedName) {
+  if (!ocrName || !expectedName) return 0;
+  const a = ocrName.toLowerCase().trim();
+  const b = expectedName.toLowerCase().trim();
+  if (a.includes(b) || b.includes(a)) return 25;
+  const aChars = new Set(a.replace(/\s/g, '').split(''));
+  const bChars = new Set(b.replace(/\s/g, '').split(''));
+  const intersection = [...aChars].filter(c => bChars.has(c)).length;
+  const union = new Set([...aChars, ...bChars]).size;
+  const ratio = union > 0 ? intersection / union : 0;
+  return ratio >= 0.7 ? 25 : Math.floor((ratio / 0.7) * 25);
+}
+
+function _scoreAmountJS(ocrAmount, expectedAmount) {
+  try {
+    const ocr = parseFloat(String(ocrAmount).replace(/,/g, '').split(/\s/)[0]);
+    const expected = parseFloat(expectedAmount);
+    if (isNaN(ocr) || isNaN(expected) || expected === 0) return 0;
+    const percentDiff = Math.abs(ocr - expected) / expected;
+    if (percentDiff <= 0.02) return 25;
+    if (percentDiff <= 0.05) return 15;
+    if (percentDiff <= 0.10) return 5;
+    return 0;
+  } catch { return 0; }
+}
+
+function _scoreDateJS(ocrDate, expectedDate) {
+  try {
+    let ocrParsed;
+    if (/^\d{1,2}[\/\-]\d{1,2}[\/\-]\d{4}$/.test(String(ocrDate))) {
+      const parts = String(ocrDate).split(/[\/\-]/);
+      ocrParsed = new Date(`${parts[2]}-${parts[1].padStart(2, '0')}-${parts[0].padStart(2, '0')}`);
+    } else {
+      ocrParsed = new Date(ocrDate);
+    }
+    const expected = new Date(expectedDate);
+    if (isNaN(ocrParsed) || isNaN(expected)) return 0;
+    const daysDiff = Math.abs((ocrParsed - expected) / 86400000);
+    if (daysDiff === 0) return 25;
+    if (daysDiff <= 1) return 20;
+    if (daysDiff <= 3) return 10;
+    if (daysDiff <= 7) return 5;
+    return 0;
+  } catch { return 0; }
+}
+
+async function verifyReceiptWithVision(imageUrl, senderName, receiverName, amount, date) {
+  const prompt = `You are a receipt analysis system. Examine this receipt or payment proof image carefully.
+
+Extract these four fields and return ONLY a valid JSON object with no extra text or explanation:
+{
+  "sender": "full name of person who sent or paid (null if not visible)",
+  "receiver": "full name of person or merchant who received the payment (null if not visible)",
+  "amount": "total amount as a plain number string e.g. 150.00 (null if not visible)",
+  "date": "date in DD/MM/YYYY format (null if not visible)"
+}`;
+
+  const response = await groqVision.chat.completions.create({
+    model: 'meta-llama/llama-4-scout-17b-16e-instruct',
+    messages: [{
+      role: 'user',
+      content: [
+        { type: 'image_url', image_url: { url: imageUrl } },
+        { type: 'text', text: prompt },
+      ],
+    }],
+    max_tokens: 200,
+    temperature: 0.1,
+  });
+
+  const raw = response.choices[0]?.message?.content || '{}';
+  const jsonMatch = raw.match(/\{[\s\S]*\}/);
+  let extracted = { sender: null, receiver: null, amount: null, date: null };
+  try {
+    if (jsonMatch) extracted = JSON.parse(jsonMatch[0]);
+  } catch { /* keep nulls */ }
+
+  const scores = {
+    sender:   _scoreNameJS(extracted.sender, senderName),
+    receiver: _scoreNameJS(extracted.receiver, receiverName),
+    amount:   _scoreAmountJS(extracted.amount, amount),
+    date:     _scoreDateJS(extracted.date, date),
+  };
+  const totalScore = Object.values(scores).reduce((a, b) => a + b, 0);
+
+  return { extracted, scores, totalScore, verified: totalScore >= 70 };
+}
 const Dashboard = require("../models/collab_Dashboard");
 const DashboardEntry = require("../models/collab_DashboardEntry");
 const DashboardMember = require("../models/collab_DashboardMember");
@@ -1001,18 +1093,10 @@ router.post("/verify-entry-ocr", ModerateLimiter, protect, async (req, res) => {
 
     let ocrData;
     try {
-      const ocrResponse = await axios.post("http://127.0.0.1:8000/ocr/verify", {
-        image_url: imageUrl,
-        sender_name: senderName,
-        receiver_name: receiverName,
-        amount: amountNumber,
-        date: dateStr,
-      });
-
-      ocrData = ocrResponse.data;
+      ocrData = await verifyReceiptWithVision(imageUrl, senderName, receiverName, amountNumber, dateStr);
     } catch (ocrError) {
-      console.error("OCR server error:", ocrError.message);
-      return res.status(500).json({ message: "OCR server failed", error: ocrError.message });
+      console.error("Vision OCR error:", ocrError.message);
+      return res.status(500).json({ message: "Receipt verification failed", error: ocrError.message });
     }
 
     entry.ocrVerification = ocrData;

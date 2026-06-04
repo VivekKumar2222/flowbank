@@ -7,11 +7,10 @@ import 'package:http/http.dart' as http;
 import 'package:http/io_client.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import '../api/session_expired.dart';
+import '../config/api_config.dart';
 
 class ApiService {
-  static final String baseUrl = kIsWeb
-      ? "http://localhost:5000"
-      : "http://10.0.2.2:5000";
+  static final String baseUrl = ApiConfig.nodeServerUrl;
 
   static http.Client _client() {
     if (kIsWeb) return http.Client();

@@ -10,7 +10,7 @@ const { PlaidApi, Configuration, PlaidEnvironments } = require('plaid');
 const Groq = require('groq-sdk');
 
 const groq = new Groq({ apiKey: process.env.GROQ_API_KEY });
-const PYTHON_AI = 'http://127.0.0.1:8001';
+const PYTHON_AI = process.env.PYTHON_AI_URL || 'http://127.0.0.1:8001';
 
 const plaidClient = new PlaidApi(new Configuration({
   basePath: PlaidEnvironments.sandbox,

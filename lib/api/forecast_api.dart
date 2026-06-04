@@ -1,13 +1,10 @@
 import 'dart:convert';
 import 'package:http/http.dart' as http;
 import '../models/forecast_point.dart';
+import '../config/api_config.dart';
 
 class ForecastApi {
-  // IMPORTANT:
-  // Android emulator -> use 10.0.2.2
-  // Physical phone -> use your PC IP (e.g. http://192.168.1.5:8000)
-  // iOS simulator -> use http://127.0.0.1:8000
-  static const String baseUrl = "http://127.0.0.1:8000";
+  static const String baseUrl = ApiConfig.pythonAiUrl;
 
   static Future<List<ForecastPoint>> fetchForecast({
     required String userId,
