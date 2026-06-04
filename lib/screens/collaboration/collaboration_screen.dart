@@ -12,6 +12,7 @@ import '../collaboration/create_group.dart';
 
 import '../home/section_header.dart';
 import '../onboarding/OnboardingScreen.dart';
+import '../notification/notification-page.dart';
 
 /// --------------------
 /// Collaboration Screen
@@ -408,7 +409,16 @@ class _CollaborationScreenState extends State<CollaborationScreen> {
               type: BottomNavigationBarType.fixed,
               selectedItemColor: activeColor,
               unselectedItemColor: inactiveColor,
-              onTap: (_) {},
+              onTap: (index) {
+                if (index == 0) {
+                  Navigator.popUntil(context, (route) => route.isFirst);
+                } else if (index == 2) {
+                  Navigator.pushReplacement(
+                    context,
+                    MaterialPageRoute(builder: (_) => const NotificationPage()),
+                  );
+                }
+              },
               items: const [
                 BottomNavigationBarItem(
                   icon: Icon(Icons.home_rounded),

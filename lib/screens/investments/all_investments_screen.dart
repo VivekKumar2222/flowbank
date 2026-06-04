@@ -6,6 +6,7 @@ import '../../api/api_service.dart';
 import 'create_investment_screen.dart';
 import 'closed_investments_screen.dart';
 import 'investment_detail_sheet.dart';
+import 'net_worth_screen.dart';
 
 class AllInvestmentsScreen extends StatefulWidget {
   const AllInvestmentsScreen({super.key});
@@ -26,12 +27,15 @@ class _AllInvestmentsScreenState extends State<AllInvestmentsScreen> {
   bool _loading = true;
   String _userName = 'User';
   String _userInitials = 'U';
+  Map<String, dynamic>? _benchmark;
+  bool _benchmarkLoading = false;
 
   @override
   void initState() {
     super.initState();
     _loadUserData();
     _fetchInvestments();
+    _fetchBenchmark();
   }
 
   Future<void> _loadUserData() async {
@@ -57,6 +61,20 @@ class _AllInvestmentsScreenState extends State<AllInvestmentsScreen> {
     }
   }
 
+  Future<void> _fetchBenchmark() async {
+    if (mounted) setState(() => _benchmarkLoading = true);
+    try {
+      final res = await ApiService.get('/api/networth/benchmark', context);
+      if (res.statusCode == 200 && mounted) {
+        setState(() { _benchmark = jsonDecode(res.body); _benchmarkLoading = false; });
+      } else {
+        if (mounted) setState(() => _benchmarkLoading = false);
+      }
+    } catch (_) {
+      if (mounted) setState(() => _benchmarkLoading = false);
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -72,20 +90,33 @@ class _AllInvestmentsScreenState extends State<AllInvestmentsScreen> {
       ),
       body: _loading
           ? const Center(child: CircularProgressIndicator(strokeWidth: 2, color: _blue))
-          : _investments.isEmpty
-              ? _buildEmpty()
-              : RefreshIndicator(
-                  onRefresh: _fetchInvestments,
-                  color: _blue,
-                  child: ListView.builder(
-                    padding: const EdgeInsets.fromLTRB(16, 12, 16, 100),
-                    itemCount: _investments.length,
-                    itemBuilder: (_, i) => _InvestmentTile(
-                      investment: _investments[i],
-                      onRefresh: _fetchInvestments,
+          : RefreshIndicator(
+              onRefresh: () async {
+                await _fetchInvestments();
+                await _fetchBenchmark();
+              },
+              color: _blue,
+              child: _investments.isEmpty
+                  ? _buildEmpty()
+                  : CustomScrollView(
+                      slivers: [
+                        SliverPadding(
+                          padding: const EdgeInsets.fromLTRB(16, 12, 16, 12),
+                          sliver: SliverList(
+                            delegate: SliverChildBuilderDelegate(
+                              (_, i) => _InvestmentTile(
+                                investment: _investments[i],
+                                onRefresh: _fetchInvestments,
+                              ),
+                              childCount: _investments.length,
+                            ),
+                          ),
+                        ),
+                        SliverToBoxAdapter(child: _buildBenchmarkSection()),
+                        const SliverPadding(padding: EdgeInsets.only(bottom: 100)),
+                      ],
                     ),
-                  ),
-                ),
+            ),
     );
   }
 
@@ -140,24 +171,7 @@ class _AllInvestmentsScreenState extends State<AllInvestmentsScreen> {
                         ),
                         Padding(
                           padding: const EdgeInsets.only(bottom: 8),
-                          child: GestureDetector(
-                            onTap: () => Navigator.push(context,
-                              MaterialPageRoute(builder: (_) => const ClosedInvestmentsScreen()),
-                            ),
-                            child: Container(
-                              padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 9),
-                              decoration: BoxDecoration(
-                                color: const Color(0xFFF5F7FA),
-                                borderRadius: BorderRadius.circular(10),
-                                border: Border.all(color: const Color(0xFFE2E8F0)),
-                              ),
-                              child: const Row(children: [
-                                Icon(Icons.history_rounded, size: 15, color: Color(0xFF475467)),
-                                SizedBox(width: 5),
-                                Text('Closed', style: TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: Color(0xFF475467), fontFamily: 'Manrope')),
-                              ]),
-                            ),
-                          ),
+                          child: _buildMenuButton(),
                         ),
                       ],
                     ),
@@ -170,6 +184,254 @@ class _AllInvestmentsScreenState extends State<AllInvestmentsScreen> {
       ),
     );
   }
+
+  Widget _buildMenuButton() {
+    return PopupMenuButton<String>(
+      onSelected: (value) {
+        if (value == 'networth') {
+          Navigator.push(context, MaterialPageRoute(builder: (_) => const NetWorthScreen()));
+        } else if (value == 'closed') {
+          Navigator.push(context, MaterialPageRoute(builder: (_) => const ClosedInvestmentsScreen()));
+        }
+      },
+      offset: const Offset(0, 44),
+      color: Colors.white,
+      elevation: 12,
+      shadowColor: Colors.black12,
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+      itemBuilder: (_) => [
+        PopupMenuItem(
+          value: 'networth',
+          child: Row(children: [
+            Container(
+              width: 32, height: 32,
+              decoration: BoxDecoration(
+                color: const Color(0xFF0179FE).withOpacity(0.10),
+                borderRadius: BorderRadius.circular(8),
+              ),
+              child: const Icon(Icons.account_balance_wallet_rounded, size: 16, color: Color(0xFF0179FE)),
+            ),
+            const SizedBox(width: 12),
+            const Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+              Text('Net Worth', style: TextStyle(fontSize: 14, fontWeight: FontWeight.w600, fontFamily: 'Manrope')),
+              Text('Assets & liabilities', style: TextStyle(fontSize: 11, color: Color(0xFF98A2B3))),
+            ]),
+          ]),
+        ),
+        const PopupMenuDivider(height: 1),
+        PopupMenuItem(
+          value: 'closed',
+          child: Row(children: [
+            Container(
+              width: 32, height: 32,
+              decoration: BoxDecoration(
+                color: const Color(0xFF475467).withOpacity(0.08),
+                borderRadius: BorderRadius.circular(8),
+              ),
+              child: const Icon(Icons.history_rounded, size: 16, color: Color(0xFF475467)),
+            ),
+            const SizedBox(width: 12),
+            const Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+              Text('Closed', style: TextStyle(fontSize: 14, fontWeight: FontWeight.w600, fontFamily: 'Manrope')),
+              Text('Exited investments', style: TextStyle(fontSize: 11, color: Color(0xFF98A2B3))),
+            ]),
+          ]),
+        ),
+      ],
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 9),
+        decoration: BoxDecoration(
+          color: const Color(0xFFF5F7FA),
+          borderRadius: BorderRadius.circular(10),
+          border: Border.all(color: const Color(0xFFE2E8F0)),
+        ),
+        child: const Row(mainAxisSize: MainAxisSize.min, children: [
+          Icon(Icons.more_horiz_rounded, size: 16, color: Color(0xFF475467)),
+          SizedBox(width: 5),
+          Text('More', style: TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: Color(0xFF475467), fontFamily: 'Manrope')),
+        ]),
+      ),
+    );
+  }
+
+  Widget _buildBenchmarkSection() {
+    if (_benchmarkLoading) {
+      return const Padding(
+        padding: EdgeInsets.fromLTRB(16, 4, 16, 0),
+        child: Center(child: SizedBox(height: 20, width: 20, child: CircularProgressIndicator(strokeWidth: 2, color: _blue))),
+      );
+    }
+    if (_benchmark == null || !(_benchmark!['hasBenchmark'] as bool? ?? false)) {
+      return const SizedBox.shrink();
+    }
+
+    final portfolioReturn = (_benchmark!['portfolioReturn'] as num).toDouble();
+    final benchmarkReturn = (_benchmark!['benchmarkReturn'] as num).toDouble();
+    final alpha = (_benchmark!['alpha'] as num).toDouble();
+    final portfolioValue = (_benchmark!['portfolioValue'] as num).toDouble();
+    final benchmarkValue = (_benchmark!['benchmarkValue'] as num).toDouble();
+    final chartData = (_benchmark!['chartData'] as List?) ?? [];
+    final outperforming = alpha >= 0;
+
+    return Container(
+      margin: const EdgeInsets.fromLTRB(16, 4, 16, 0),
+      padding: const EdgeInsets.all(20),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(18),
+        border: Border.all(color: const Color(0xFFE2E8F0)),
+      ),
+      child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+        Row(children: [
+          Container(
+            width: 36, height: 36,
+            decoration: BoxDecoration(color: _blue.withOpacity(0.1), borderRadius: BorderRadius.circular(10)),
+            child: const Icon(Icons.leaderboard_rounded, color: _blue, size: 18),
+          ),
+          const SizedBox(width: 12),
+          const Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+            Text('vs S&P 500', style: TextStyle(fontSize: 14, fontWeight: FontWeight.w700, color: _textDark, fontFamily: 'Manrope')),
+            Text('Benchmark Comparison', style: TextStyle(fontSize: 11, color: _textLight)),
+          ]),
+          const Spacer(),
+          Container(
+            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+            decoration: BoxDecoration(
+              color: outperforming
+                  ? const Color(0xFF10B981).withOpacity(0.10)
+                  : const Color(0xFFEF4444).withOpacity(0.10),
+              borderRadius: BorderRadius.circular(20),
+            ),
+            child: Row(mainAxisSize: MainAxisSize.min, children: [
+              Icon(outperforming ? Icons.arrow_upward_rounded : Icons.arrow_downward_rounded,
+                  size: 11, color: outperforming ? const Color(0xFF10B981) : const Color(0xFFEF4444)),
+              const SizedBox(width: 3),
+              Text(
+                '${alpha > 0 ? '+' : ''}${alpha.toStringAsFixed(1)}% alpha',
+                style: TextStyle(fontSize: 11, fontWeight: FontWeight.w700,
+                    color: outperforming ? const Color(0xFF10B981) : const Color(0xFFEF4444)),
+              ),
+            ]),
+          ),
+        ]),
+        const SizedBox(height: 14),
+        Row(children: [
+          _benchStat('Your Portfolio', '\$${portfolioValue.toStringAsFixed(0)}',
+              '${portfolioReturn >= 0 ? '+' : ''}${portfolioReturn.toStringAsFixed(1)}%',
+              portfolioReturn >= 0 ? _blue : const Color(0xFFEF4444)),
+          const SizedBox(width: 10),
+          _benchStat('S&P 500 (SPY)', '\$${benchmarkValue.toStringAsFixed(0)}',
+              '${benchmarkReturn >= 0 ? '+' : ''}${benchmarkReturn.toStringAsFixed(1)}%',
+              const Color(0xFF64748B)),
+        ]),
+        if (chartData.isNotEmpty) ...[
+          const SizedBox(height: 16),
+          _buildBenchmarkChart(chartData),
+        ],
+        const SizedBox(height: 10),
+        Text(
+          outperforming
+              ? 'Your portfolio outperformed S&P 500 by ${alpha.toStringAsFixed(1)}%'
+              : 'S&P 500 outperformed your portfolio by ${alpha.abs().toStringAsFixed(1)}%',
+          style: TextStyle(
+              fontSize: 11,
+              color: outperforming ? const Color(0xFF10B981) : const Color(0xFFEF4444),
+              fontWeight: FontWeight.w500),
+        ),
+      ]),
+    );
+  }
+
+  Widget _benchStat(String label, String value, String pct, Color color) => Expanded(
+    child: Container(
+      padding: const EdgeInsets.all(12),
+      decoration: BoxDecoration(
+        color: color.withOpacity(0.05),
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: color.withOpacity(0.18)),
+      ),
+      child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+        Text(label, style: const TextStyle(fontSize: 10, color: _textLight)),
+        const SizedBox(height: 4),
+        Text(value, style: TextStyle(fontSize: 14, fontWeight: FontWeight.w700, color: color, fontFamily: 'Manrope')),
+        Text(pct, style: TextStyle(fontSize: 11, fontWeight: FontWeight.w600, color: color.withOpacity(0.75))),
+      ]),
+    ),
+  );
+
+  Widget _buildBenchmarkChart(List chartData) {
+    double maxVal = 1;
+    for (final m in chartData) {
+      final inv = (m['invested'] as num).toDouble();
+      final spy = (m['spyValue'] as num).toDouble();
+      if (inv > maxVal) maxVal = inv;
+      if (spy > maxVal) maxVal = spy;
+    }
+
+    return Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+      Row(children: [
+        _legendDot(_blue, 'Amount Invested'),
+        const SizedBox(width: 14),
+        _legendDot(const Color(0xFF64748B), 'SPY Value'),
+      ]),
+      const SizedBox(height: 8),
+      SizedBox(
+        height: 72,
+        child: Row(
+          crossAxisAlignment: CrossAxisAlignment.end,
+          children: chartData.map<Widget>((m) {
+            final inv = (m['invested'] as num).toDouble();
+            final spy = (m['spyValue'] as num).toDouble();
+            final invH = (inv / maxVal * 60).clamp(4.0, 60.0);
+            final spyH = (spy / maxVal * 60).clamp(4.0, 60.0);
+            return Expanded(child: Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 1),
+              child: Row(
+                crossAxisAlignment: CrossAxisAlignment.end,
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  Container(
+                    width: 5,
+                    height: invH,
+                    decoration: BoxDecoration(
+                      color: _blue.withOpacity(0.75),
+                      borderRadius: BorderRadius.circular(2),
+                    ),
+                  ),
+                  const SizedBox(width: 1),
+                  Container(
+                    width: 5,
+                    height: spyH,
+                    decoration: BoxDecoration(
+                      color: const Color(0xFF64748B).withOpacity(0.55),
+                      borderRadius: BorderRadius.circular(2),
+                    ),
+                  ),
+                ],
+              ),
+            ));
+          }).toList(),
+        ),
+      ),
+      const SizedBox(height: 4),
+      Row(mainAxisAlignment: MainAxisAlignment.spaceBetween, children: [
+        Text(
+          chartData.isNotEmpty ? (chartData.first['date'] as String) : '',
+          style: const TextStyle(fontSize: 9, color: _textLight),
+        ),
+        Text(
+          chartData.isNotEmpty ? (chartData.last['date'] as String) : '',
+          style: const TextStyle(fontSize: 9, color: _textLight),
+        ),
+      ]),
+    ]);
+  }
+
+  Widget _legendDot(Color color, String label) => Row(mainAxisSize: MainAxisSize.min, children: [
+    Container(width: 8, height: 8, decoration: BoxDecoration(color: color, borderRadius: BorderRadius.circular(2))),
+    const SizedBox(width: 4),
+    Text(label, style: const TextStyle(fontSize: 10, color: _textLight)),
+  ]);
 
   Widget _buildEmpty() {
     return Center(child: Column(mainAxisAlignment: MainAxisAlignment.center, children: [

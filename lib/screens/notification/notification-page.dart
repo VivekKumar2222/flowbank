@@ -7,6 +7,7 @@ import '../notification/notification-outlook.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:flowbank/api/api_service.dart';
 import '../home/profile.dart';
+import '../collaboration/collaboration_screen.dart';
 
 class NotificationPage extends StatefulWidget {
   const NotificationPage({super.key});
@@ -17,9 +18,13 @@ class NotificationPage extends StatefulWidget {
 
 class _NotificationPageState extends State<NotificationPage> {
   String? userEmail;
-  
+
   List notifications = [];
   bool _pageLoading = false;
+
+  static const int _selectedIndex = 2;
+  static const Color _activeColor = Color(0xFF217BFF);
+  static const Color _inactiveColor = Color(0xFF667085);
 
   @override
   void initState() {
@@ -166,20 +171,19 @@ class _NotificationPageState extends State<NotificationPage> {
 
 
       body: Padding(
-        
         padding: const EdgeInsets.only(left: 16.0, right: 16.0, top: 12.0),
         child: notifications.isEmpty
-      ? Center(
-          child: Text(
-            "You will see your notifications here",
-            textAlign: TextAlign.center,
-            style: TextStyle(
-              fontSize: 16,
-              color: Colors.grey[600],
-              fontWeight: FontWeight.w500,
-            ),
-          ),
-        )
+            ? Center(
+                child: Text(
+                  "You will see your notifications here",
+                  textAlign: TextAlign.center,
+                  style: TextStyle(
+                    fontSize: 16,
+                    color: Colors.grey[600],
+                    fontWeight: FontWeight.w500,
+                  ),
+                ),
+              )
             : ListView.separated(
                 itemCount: notifications.length,
                 separatorBuilder: (_, __) => const SizedBox(height: 12),
@@ -192,6 +196,48 @@ class _NotificationPageState extends State<NotificationPage> {
                   );
                 },
               ),
+      ),
+      bottomNavigationBar: ClipRRect(
+        borderRadius: const BorderRadius.only(
+          topLeft: Radius.circular(24),
+          topRight: Radius.circular(24),
+        ),
+        child: BackdropFilter(
+          filter: ImageFilter.blur(sigmaX: 20, sigmaY: 20),
+          child: BottomNavigationBar(
+            currentIndex: _selectedIndex,
+            backgroundColor: Colors.white.withOpacity(0.6),
+            elevation: 0,
+            type: BottomNavigationBarType.fixed,
+            selectedItemColor: _activeColor,
+            unselectedItemColor: _inactiveColor,
+            onTap: (index) {
+              if (index == 0) {
+                Navigator.popUntil(context, (route) => route.isFirst);
+              } else if (index == 1) {
+                Navigator.pushReplacement(
+                  context,
+                  MaterialPageRoute(builder: (_) => const CollaborationScreen()),
+                );
+              }
+              // index == 2: already here
+            },
+            items: const [
+              BottomNavigationBarItem(
+                icon: Icon(Icons.home_rounded),
+                label: "Home",
+              ),
+              BottomNavigationBarItem(
+                icon: Icon(Icons.groups_rounded),
+                label: "Groups",
+              ),
+              BottomNavigationBarItem(
+                icon: Icon(Icons.notification_add),
+                label: "Notifications",
+              ),
+            ],
+          ),
+        ),
       ),
     );
   }
